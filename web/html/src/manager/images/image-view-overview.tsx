@@ -612,7 +612,7 @@ class ImageViewOverview extends Component<ImageViewOverviewProps> {
     return (
       <div>
         {this.hasBuilt() && <BootstrapPanel title={t("Image Status")}>{this.renderStatus(data)}</BootstrapPanel>}
-        <div className="row-0">
+        <div className="row">
           <div className="col-md-6">
             <BootstrapPanel title={t("Image Info")}>
               <div className="auto-overflow">
@@ -638,32 +638,34 @@ class ImageViewOverview extends Component<ImageViewOverviewProps> {
                 </div>
               )}
               {window.isAdmin && data.buildServer && (
-                <div className="btn-group pull-right">
-                  {!data.external && (
-                    <ModalButton
-                      className="btn-default btn-xs"
-                      text={t("Rebuild")}
-                      title={t("Reschedule the build")}
-                      icon="fa-cogs"
-                      target="build-modal"
-                    />
-                  )}
-                  {this.canInspect() && (
-                    <ModalButton
-                      className="btn-default btn-xs"
-                      text={t("Reinspect")}
-                      title={t("Reschedule the inspect")}
-                      icon="fa-search"
-                      target="inspect-modal"
-                    />
-                  )}
+                <div className="d-flex pt-3 border-top mt-5">
+                  <div className="btn-group pull-right">
+                    {!data.external && (
+                      <ModalButton
+                        className="btn-default btn-xs"
+                        text={t("Rebuild")}
+                        title={t("Reschedule the build")}
+                        icon="fa-cogs"
+                        target="build-modal"
+                      />
+                    )}
+                    {this.canInspect() && (
+                      <ModalButton
+                        className="btn-default btn-xs"
+                        text={t("Reinspect")}
+                        title={t("Reschedule the inspect")}
+                        icon="fa-search"
+                        target="inspect-modal"
+                      />
+                    )}
+                  </div>
                 </div>
               )}
             </BootstrapPanel>
           </div>
         </div>
         {data.customData && Object.keys(data.customData).length > 0 && (
-          <div className="row-0">
+          <div className="row">
             <div className="col-md-12">
               <BootstrapPanel title={t("Custom Image Information")}>
                 <ImageCustomInfo data={data} />

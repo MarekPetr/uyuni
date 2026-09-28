@@ -122,8 +122,8 @@ public class BaseHandler implements XmlRpcInvocationHandler {
                 params.set(0, user);
             }
         }
-        else if (!params.isEmpty() && params.get(0) instanceof User) {
-            user = (User) params.get(0);
+        else if (!params.isEmpty() && (params.get(0) instanceof User paramUser)) {
+            user = paramUser;
         }
 
 
@@ -299,7 +299,7 @@ public class BaseHandler implements XmlRpcInvocationHandler {
      * @throws XmlRpcFault Thrown if we can't find the method asked for
      */
     /*
-     * TODO: Make this method even smarterer.
+     * OLDTODO: Make this method even smarterer.
      *      Currently this finds methods that match the number of parameters and returns
      *          those.
      */

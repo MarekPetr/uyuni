@@ -1,4 +1,4 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
@@ -13,7 +13,7 @@
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <button type="button" class="close" data-bs-dismiss="modal" aria-hidden="true"><i class="fa fa-close"></i></button>
+                        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close"><i class="fa fa-close" aria-hidden="true"></i></button>
                         <h4 class="modal-title"><bean:message key="mirror-credentials.jsp.modal-edit.title" /></h4>
                     </div>
                     <div class="modal-body">
@@ -25,13 +25,13 @@
                             </ul>
                         </div>
                         <form class="form-horizontal" role="form" id="add-credentials-form">
-                            <div class="form-group">
+                            <div class="row">
                                 <label for="modal-user" class="col-sm-2 control-label"><bean:message key="mirror-credentials.jsp.username" />:</label>
                                 <div class="col-sm-10">
                                     <input type="text" class="form-control" autocomplete="off" id="edit-user" placeholder="Username" required>
                                 </div>
                             </div>
-                            <div class="form-group">
+                            <div class="row">
                                 <label for="modal-password" class="col-sm-2 control-label"><bean:message key="mirror-credentials.jsp.password" />:</label>
                                 <div class="col-sm-10">
                                     <input type="password" autocomplete="new-password" class="form-control" id="edit-password" required>
@@ -57,12 +57,12 @@
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <button type="button" class="close" data-bs-dismiss="modal" aria-hidden="true"><i class="fa fa-close"></i></button>
+                        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close"><i class="fa fa-close" aria-hidden="true"></i></button>
                         <h4 class="modal-title"><bean:message key="mirror-credentials.jsp.modal-delete.title" /></h4>
                     </div>
                     <div class="modal-body">
                         <form class="form-horizontal" role="form">
-                            <div class="form-group">
+                            <div class="row">
                                 <label class="col-sm-2 control-label"><bean:message key="mirror-credentials.jsp.username" />:</label>
                                 <div class="col-sm-10">
                                     <p class="form-control-static" id="delete-user"></p>
@@ -88,7 +88,7 @@
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <button type="button" class="close" data-bs-dismiss="modal" aria-hidden="true"><i class="fa fa-close"></i></button>
+                        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close"><i class="fa fa-close" aria-hidden="true"></i></button>
                         <h4 class="modal-title"><bean:message key="mirror-credentials.jsp.modal-subscriptions.title" /></h4>
                     </div>
                     <div id="modal-list-subscriptions-body" class="modal-body">
@@ -114,7 +114,9 @@
                 <c:when test='${issMaster}'>
                     <div class="row" id="mirror-credentials">
                         <div class="col-sm-9" id="listset-container">
-                            <rhn:icon type="spinner"></rhn:icon>
+                            <div class="credentials-screen-spinner">
+                                <div class="position-absolute"><rhn:icon type="spinner"></rhn:icon></div>
+                            </div>
                             <script>ajax("render-mirror-credentials", "", makeRendererHandler("listset-container", false).callback, "text/html");</script>
                         </div>
                         <div class="col-sm-3 hidden-xs" id="wizard-faq">

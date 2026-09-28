@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 SUSE LLC
+ * Copyright (c) 2026 SUSE LLC
  * Copyright (c) 2009--2015 Red Hat, Inc.
  *
  * This software is licensed to you under the GNU General Public License,
@@ -20,6 +20,7 @@ import com.redhat.rhn.common.conf.Config;
 import com.redhat.rhn.common.conf.ConfigDefaults;
 import com.redhat.rhn.common.localization.LocalizationService;
 import com.redhat.rhn.common.util.CryptHelper;
+import com.redhat.rhn.common.util.Pbkdf2Sha256Crypt;
 import com.redhat.rhn.common.util.SHA256Crypt;
 import com.redhat.rhn.domain.BaseDomainHelper;
 import com.redhat.rhn.domain.access.AccessGroup;
@@ -36,7 +37,6 @@ import com.redhat.rhn.domain.server.Server;
 import com.redhat.rhn.domain.server.ServerGroup;
 import com.redhat.rhn.domain.user.Address;
 import com.redhat.rhn.domain.user.AddressImpl;
-import com.redhat.rhn.domain.user.EnterpriseUser;
 import com.redhat.rhn.domain.user.Pane;
 import com.redhat.rhn.domain.user.RhnTimeZone;
 import com.redhat.rhn.domain.user.StateChange;
@@ -54,7 +54,7 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.hibernate.annotations.Type;
+import org.hibernate.type.YesNoConverter;
 
 import java.util.Collections;
 import java.util.Date;
@@ -63,22 +63,23 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
-import javax.persistence.Transient;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 
 /**
  * Class UserImpl that reflects the DB representation of web_contact
@@ -107,7 +108,7 @@ public class UserImpl extends BaseDomainHelper implements User {
     private String password;  // Note: access = field can be added if using field-based access
 
     @Column(name = "read_only", nullable = false)
-    @Type(type = "yes_no")
+    @Convert(converter = YesNoConverter.class)
     private boolean readOnly;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER, optional = false)
@@ -120,7 +121,7 @@ public class UserImpl extends BaseDomainHelper implements User {
     @JoinColumn(name = "org_id")
     private Org org;
 
-    @OneToMany(mappedBy = "id", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<AddressImpl> addresses = new HashSet<>();
 
     @OneToMany(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY, orphanRemoval = true)
@@ -156,7 +157,8 @@ public class UserImpl extends BaseDomainHelper implements User {
 
     @ManyToMany
     @JoinTable(
-            name = "access.userNamespace",
+            schema = "access",
+            name = "userNamespace",
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "namespace_id")
     )
@@ -164,7 +166,8 @@ public class UserImpl extends BaseDomainHelper implements User {
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
-            name = "access.userAccessGroup",
+            schema = "access",
+            name = "userAccessGroup",
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "group_id")
     )
@@ -172,9 +175,6 @@ public class UserImpl extends BaseDomainHelper implements User {
 
     @Transient
     private Boolean wasOrgAdmin;
-
-    @Transient
-    private transient EnterpriseUser euser;
 
     @Transient
     private transient PamServiceFactory pamServiceFactory = new DefaultPamServiceFactory();
@@ -264,7 +264,8 @@ public class UserImpl extends BaseDomainHelper implements User {
          * set it.
          */
         if (Config.get().getBoolean(ConfigDefaults.WEB_ENCRYPTED_PASSWORDS)) {
-            this.password = SHA256Crypt.crypt(passwordIn);
+            String hashed = Pbkdf2Sha256Crypt.crypt(passwordIn);
+            this.password = (hashed != null ? hashed : SHA256Crypt.crypt(passwordIn));
         }
         else {
             this.password = passwordIn;
@@ -385,7 +386,7 @@ public class UserImpl extends BaseDomainHelper implements User {
         addRole(label, false);
 
         if (RoleFactory.ORG_ADMIN.equals(label)) {
-            getAccessGroups().addAll(AccessGroupFactory.DEFAULT_GROUPS);
+            getAccessGroups().addAll(AccessGroupFactory.getDefaultGroups());
         }
     }
 
@@ -403,8 +404,8 @@ public class UserImpl extends BaseDomainHelper implements User {
             UserGroupImpl ug = org.getUserGroup(label);
             if (ug != null) {
                 UserGroupMembers ugm = new UserGroupMembers(this, ug, temporary);
-                groupMembers.add(ugm);
-                UserGroupFactory.save(ugm);
+                UserGroupMembers managedUgm = UserGroupFactory.save(ugm);
+                groupMembers.add(managedUgm);
             }
             else {
                 throw new IllegalArgumentException("Org doesn't have role: " + label);
@@ -466,7 +467,7 @@ public class UserImpl extends BaseDomainHelper implements User {
          * authenticate via pam, otherwise, use the db.
          */
         if (!StringUtils.isBlank(pamAuthService) && this.getUsePamAuthentication()) {
-            if (password.startsWith(CryptHelper.getMD5Prefix())) {
+            if (password.startsWith(CryptHelper.MD5_PREFIX)) {
                 // password field in DB is NOT NULL, so we set a random password
                 // when using PAM authentication. Here the password is still MD5
                 // based. Just set a new one with SHA256crypt
@@ -488,8 +489,12 @@ public class UserImpl extends BaseDomainHelper implements User {
              */
             boolean useEncrPasswds = Config.get().getBoolean(ConfigDefaults.WEB_ENCRYPTED_PASSWORDS);
             if (useEncrPasswds) {
-                // user uses SHA-256 encrypted password
-                if (password.startsWith(CryptHelper.getSHA256Prefix())) {
+                if (password.startsWith(Pbkdf2Sha256Crypt.PREFIX)) {
+                    // user has been migrated to PBKDF2-SHA256 by the Python auth path
+                    result = Pbkdf2Sha256Crypt.verify(thePassword, password);
+                }
+                else if (password.startsWith(CryptHelper.getSHA256Prefix())) {
+                    // legacy SHA-256 crypt(3) password
                     result = SHA256Crypt.crypt(thePassword, password).equals(password);
                 }
             }
@@ -795,42 +800,6 @@ public class UserImpl extends BaseDomainHelper implements User {
     }
 
     /**
-     * Gets the current value of phone
-     * @return String the current value
-     */
-    @Override
-    public String getPhone() {
-        return getAddress().getPhone();
-    }
-
-    /**
-     * Sets the value of phone to new value
-     * @param phoneIn New value for phone
-     */
-    @Override
-    public void setPhone(String phoneIn) {
-        getAddress().setPhone(phoneIn);
-    }
-
-    /**
-     * Gets the current value of fax
-     * @return String the current value
-     */
-    @Override
-    public String getFax() {
-        return getAddress().getFax();
-    }
-
-    /**
-     * Sets the value of fax to new value
-     * @param faxIn New value for fax
-     */
-    @Override
-    public void setFax(String faxIn) {
-        getAddress().setFax(faxIn);
-    }
-
-    /**
      * Gets the current value of email
      * @return String the current value
      */
@@ -897,144 +866,6 @@ public class UserImpl extends BaseDomainHelper implements User {
     }
 
     /**
-     * Getter for address1
-     * @return Address1
-     */
-    @Override
-    public String getAddress1() {
-        return getAddress().getAddress1();
-    }
-
-    /**
-     * Setter for address1
-     * @param address1In New value for address1
-     */
-    @Override
-    public void setAddress1(String address1In) {
-        getAddress().setAddress1(address1In);
-    }
-
-    /**
-     * Getter for address2
-     * @return Address2
-     */
-    @Override
-    public String getAddress2() {
-        return getAddress().getAddress2();
-    }
-
-    /**
-     * Setter for address2
-     * @param address2In New value for address2
-     */
-    @Override
-    public void setAddress2(String address2In) {
-        getAddress().setAddress2(address2In);
-    }
-
-    /**
-     * Getter for city
-     * @return City
-     */
-    @Override
-    public String getCity() {
-        return getAddress().getCity();
-    }
-
-    /**
-     * Setter for city
-     * @param cityIn New value for city
-     */
-    @Override
-    public void setCity(String cityIn) {
-        getAddress().setCity(cityIn);
-    }
-
-    /**
-     * Getter for state
-     * @return State
-     */
-    @Override
-    public String getState() {
-        return getAddress().getState();
-    }
-
-    /**
-     * Setter for state
-     * @param stateIn New value for state
-     */
-    @Override
-    public void setState(String stateIn) {
-        getAddress().setState(stateIn);
-    }
-
-    /**
-     * Getter for zip
-     * @return Zip
-     */
-    @Override
-    public String getZip() {
-        return getAddress().getZip();
-    }
-
-    /**
-     * Setter for zip
-     * @param zipIn New value for zip
-     */
-    @Override
-    public void setZip(String zipIn) {
-        getAddress().setZip(zipIn);
-    }
-
-    /**
-     * Getter for country
-     * @return Country
-     */
-    @Override
-    public String getCountry() {
-        return getAddress().getCountry();
-    }
-
-    /**
-     * Setter for country
-     * @param countryIn New value for country
-     */
-    @Override
-    public void setCountry(String countryIn) {
-        getAddress().setCountry(countryIn);
-    }
-
-
-    /**
-     * Getter for isPoBox
-     * @return isPoBox
-     */
-    @Override
-    public String getIsPoBox() {
-        return getAddress().getIsPoBox();
-    }
-
-    /**
-     * Setter for isPoBox
-     * @param isPoBoxIn New value for isPoBox
-     */
-    @Override
-    public void setIsPoBox(String isPoBoxIn) {
-        getAddress().setIsPoBox(isPoBoxIn);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public EnterpriseUser getEnterpriseUser() {
-        if (euser == null) {
-            euser = new EnterpriseUserImpl();
-        }
-        return euser;
-    }
-
-    /**
      * {@inheritDoc}
      */
     @Override
@@ -1050,364 +881,25 @@ public class UserImpl extends BaseDomainHelper implements User {
         hiddenPanes = p;
     }
 
-    protected void setAddress(Address addIn) {
-        addresses.clear();
-        addresses.add((AddressImpl) addIn);
-    }
-
-    protected Address getAddress() {
-        Address baddr = null;
-        Address addr = null;
-        Address[] addrA = addresses.toArray(new Address[addresses.size()]);
+    @Override
+    public void setAddress(Address addressIn) {
         if (!addresses.isEmpty()) {
-            for (Address addressIn : addrA) {
-                if (addressIn.getType().equals(Address.TYPE_MARKETING)) {
-                    addr = addressIn;
-                }
-                if (addressIn.getType().equals("B")) {
-                    baddr = addressIn;
-                }
-            }
-        }
-        if (addr == null) {
-            addr = UserFactory.createAddress();
-            if (baddr != null) {
-                addr.setAddress1(baddr.getAddress1());
-                addr.setAddress2(baddr.getAddress2());
-                addr.setCity(baddr.getCity());
-                addr.setCountry(baddr.getCountry());
-                addr.setFax(baddr.getFax());
-                addr.setIsPoBox(baddr.getIsPoBox());
-                addr.setPhone(baddr.getPhone());
-                addr.setState(baddr.getState());
-                addr.setZip(baddr.getZip());
-            }
-            addresses.add((AddressImpl)addr);
-        }
-        return addr;
-    }
-
-    /**
-     * Set the addresses.
-     * @param s the set
-     */
-    protected void setAddresses(Set<AddressImpl> s) {
-        addresses = s;
-    }
-
-    /**
-     * Get the addresses
-     * @return Set of addresses
-     */
-    protected Set<AddressImpl> getAddresses() {
-        return addresses;
-    }
-
-    /**
-     * Default POJO imple of EnterpriseUser done as an internal
-     * class to facilitate compatibility between hosted/sat.
-     * EnterpriseUserImpl
-     */
-    class EnterpriseUserImpl extends BaseDomainHelper
-                implements EnterpriseUser {
-
-        /**
-        * Default constructor
-        *
-        */
-        protected EnterpriseUserImpl() {
-        }
-
-        /**
-        * Gets the current value of id
-        * @return long the current value
-        */
-        @Override
-        public Long getId() {
-            return id;
-        }
-
-        /**
-        * Sets the value of id to new value
-        * @param idIn New value for id
-        */
-        @Override
-        public void setId(Long idIn) {
-            id = idIn;
-        }
-
-        /**
-        * Gets the current value of login
-        * @return String the current value
-        */
-        @Override
-        public String getLogin() {
-            return login;
-        }
-
-        /**
-        * Sets the value of login to new value
-        * @param loginIn New value for login
-        */
-        @Override
-        public void setLogin(String loginIn) {
-            login = loginIn;
-        }
-
-        /**
-        * Gets the current value of password
-        * @return String the current value
-        */
-        @Override
-        public String getPassword() {
-            return password;
-        }
-
-        /**
-        * Sets the value of password to new value
-        * @param passwordIn New value for password
-        */
-        @Override
-        public void setPassword(String passwordIn) {
-            /**
-            * If we're using encrypted passwords, encode the
-            * password before setting it. Otherwise, just
-            * set it.
-            */
-            if (Config.get().getBoolean(ConfigDefaults.WEB_ENCRYPTED_PASSWORDS)) {
-                password = SHA256Crypt.crypt(passwordIn);
-            }
-            else {
-                password = passwordIn;
-            }
-        }
-
-        /**
-        * Gets the current value of prefix
-        * @return String the current value
-        */
-        @Override
-        public String getPrefix() {
-            return personalInfo.getPrefix();
-        }
-
-        /**
-        * Sets the value of prefix to new value
-        * @param prefixIn New value for prefix
-        */
-        @Override
-        public void setPrefix(String prefixIn) {
-            personalInfo.setPrefix(prefixIn);
-        }
-
-        /**
-        * Gets the current value of firstNames
-        * @return String the current value
-        */
-        @Override
-        public String getFirstNames() {
-            return personalInfo.getFirstNames();
-        }
-
-        /**
-        * Sets the value of firstNames to new value
-        * @param firstNamesIn New value for firstNames
-        */
-        @Override
-        public void setFirstNames(String firstNamesIn) {
-            personalInfo.setFirstNames(firstNamesIn);
-        }
-
-        /**
-        * Gets the current value of lastName
-        * @return String the current value
-        */
-        @Override
-        public String getLastName() {
-            return personalInfo.getLastName();
-        }
-
-        /**
-        * Sets the value of lastName to new value
-        * @param lastNameIn New value for lastName
-        */
-        @Override
-        public void setLastName(String lastNameIn) {
-            personalInfo.setLastName(lastNameIn);
-        }
-
-        /**
-        * Gets the current value of title
-        * @return String the current value
-        */
-        @Override
-        public String getTitle() {
-            return personalInfo.getTitle();
-        }
-
-        /**
-        * Sets the value of title to new value
-        * @param titleIn New value for title
-        */
-        @Override
-        public void setTitle(String titleIn) {
-            personalInfo.setTitle(titleIn);
-        }
-
-        /**
-        * Gets the current value of email
-        * @return String the current value
-        */
-        @Override
-        public String getEmail() {
-            return personalInfo.getEmail();
-        }
-
-        /**
-        * Sets the value of email to new value
-        * @param emailIn New value for email
-        */
-        @Override
-        public void setEmail(String emailIn) {
-            personalInfo.setEmail(emailIn);
-        }
-
-        /**
-        * Getter for lastLoggedIn
-        * @return lastLoggedIn
-        */
-        @Override
-        public Date getLastLoggedIn() {
-            return userInfo.getLastLoggedIn();
-        }
-
-        /**
-        * Setter for lastLoggedIn
-        * @param lastLoggedInIn New value for lastLoggedIn
-        */
-        @Override
-        public void setLastLoggedIn(Date lastLoggedInIn) {
-            userInfo.setLastLoggedIn(lastLoggedInIn);
-        }
-
-        /**
-        * @inheritDoc
-        * @param modifiedIn the modified date
-        */
-        @Override
-        public void setModified(Date modifiedIn) {
-            // Not implemented
-        }
-
-        /**
-        * @inheritDoc
-        * @return date modified
-        */
-        @Override
-        public Date getModified() {
-            return null;
-        }
-
-        /**
-        * @inheritDoc
-        * @param createdIn date created in
-        */
-        @Override
-        public void setCreated(Date createdIn) {
-            // Not implemented
-        }
-
-        /**
-        * @inheritDoc
-        * @return date was created
-        */
-        @Override
-        public Date getCreated() {
-            return null;
-        }
-
-        /**
-        * @return Returns the timeZone.
-        */
-        @Override
-        public RhnTimeZone getTimeZone() {
-            return userInfo.getTimeZone();
-        }
-        /**
-        * @param timeZoneIn The timeZone to set.
-        */
-        @Override
-        public void setTimeZone(RhnTimeZone timeZoneIn) {
-            userInfo.setTimeZone(timeZoneIn);
-        }
-
-        /**
-        * Set the address of this enterprise user.
-        * @param addressIn the address to set
-        */
-        @Override
-        public void setAddress(Address addressIn) {
+            AddressImpl current = addresses.iterator().next();
+            current.setUser(null);
             addresses.clear();
-            addresses.add((AddressImpl)addressIn);
         }
 
-        /**
-        *
-        * @return returns the address info
-        */
-        @Override
-        public Address getAddress() {
-            Address baddr = null;
-            Address addr = null;
-            Address[] addrA = addresses.toArray(new Address[addresses.size()]);
-            if (!addresses.isEmpty()) {
-                for (Address addressIn : addrA) {
-                    if (addressIn.getType().equals(Address.TYPE_MARKETING)) {
-                        addr = addressIn;
-                    }
-                    if (addressIn.getType().equals("B")) {
-                        baddr = addressIn;
-                    }
-                }
-            }
-            if (addr == null) {
-                addr = UserFactory.createAddress();
-                if (baddr != null) {
-                    addr.setAddress1(baddr.getAddress1());
-                    addr.setAddress2(baddr.getAddress2());
-                    addr.setCity(baddr.getCity());
-                    addr.setCountry(baddr.getCountry());
-                    addr.setFax(baddr.getFax());
-                    addr.setIsPoBox(baddr.getIsPoBox());
-                    addr.setPhone(baddr.getPhone());
-                    addr.setState(baddr.getState());
-                    addr.setZip(baddr.getZip());
-                }
-                addresses.add((AddressImpl)addr);
-            }
-            return addr;
-        }
-
-
-
-        /**
-        *
-        * @param companyIn the company value
-        */
-        @Override
-        public void setCompany(String companyIn) {
-            personalInfo.setCompany(companyIn);
-        }
-
-        /**
-        *
-        * @return returns the company value
-        */
-        @Override
-        public String getCompany() {
-            return personalInfo.getCompany();
+        if (addressIn != null) {
+            AddressImpl address = (AddressImpl) addressIn;
+            address.setUser(this);
+            addresses.add(address);
         }
     }
+
+    public Address getAddress() {
+        return addresses.stream().findFirst().orElse(null);
+    }
+
 
     /** {@inheritDoc} */
     @Override
@@ -1503,6 +995,18 @@ public class UserImpl extends BaseDomainHelper implements User {
     @Override
     public void  setWebTheme(String webThemeIn) {
         this.userInfo.setWebTheme(webThemeIn);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean getBetaFeaturesEnabled() {
+        return this.userInfo.getBetaFeaturesEnabled();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setBetaFeaturesEnabled(boolean betaFeaturesEnabledIn) {
+        this.userInfo.setBetaFeaturesEnabled(betaFeaturesEnabledIn);
     }
 
     @Override

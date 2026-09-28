@@ -1,0 +1,22 @@
+# Copyright (c) 2026 SUSE LLC
+# Licensed under the terms of the MIT license.
+
+@rke2
+@no_user_creation
+Feature: RKE2 TFTP container sanity checks on the server
+  In order to provision systems via PXE boot
+  As the system administrator
+  I want to ensure the TFTP container is correctly deployed and serving files
+
+  Scenario: TFTP deployment is ready and service has active endpoints
+    Given The Kubernetes cluster is ready on "server"
+    And the "tftp" deployment on "server" in the namespace "uyuni" should become ready within 15 minutes
+    # WORKAROUND to be fixed in this card: https://github.com/SUSE/spacewalk/issues/31404
+    # Then the "tftp" service on "server" in the namespace "uyuni" should have at least one active endpoint
+
+  # WORKAROUND to be fixed in this card: https://github.com/SUSE/spacewalk/issues/31404
+  # Scenario: TFTP serves a file placed in the boot root
+  #   Given I create a sanity-check file in the TFTP boot root on "server"
+  #   When I download the sanity-check file via TFTP from "server"
+  #   Then the downloaded TFTP content should match the expected sanity-check content on "server"
+  #   And I remove the sanity-check file from the TFTP boot root on "server"

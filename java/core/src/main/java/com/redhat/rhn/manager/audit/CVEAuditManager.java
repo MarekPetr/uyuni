@@ -60,9 +60,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Root;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 
 /**
  * CVESearchManager.
@@ -185,26 +185,22 @@ public class CVEAuditManager {
      * (given by a list of channel product IDs) and channel tree given by
      * the ID of the parent channel. Will return the base channel as well.
      *
-     * TODO: Merge with {@link DistUpgradeManager#findProductChannels(long, String)}.
+     * OLDTODO: Merge with {@link DistUpgradeManager#findProductChannels(long, String)}.
      *
      * @param channelProductIDs IDs of channel products (rhnChannelProduct rows)
      * @param parentChannelID ID of a parent channel
      * @return list of channels relevant for given channel products
      */
-    public static List<Channel> findProductChannels(List<Long> channelProductIDs,
-            Long parentChannelID) {
-        CriteriaBuilder builder = getSession().getCriteriaBuilder();
-        CriteriaQuery<Channel> query = builder.createQuery(Channel.class);
-
-        Root<Channel> root = query.from(Channel.class);
-        query.where(builder.and(
-                root.get("product").get("id").in(channelProductIDs),
-                builder.or(
-                        builder.equal(root.get("id"), parentChannelID),
-                        builder.equal(root.get("parentChannel"), parentChannelID)
-                )
-        ));
-        return getSession().createQuery(query).list();
+    public static List<Channel> findProductChannels(List<Long> channelProductIDs, Long parentChannelID) {
+        return getSession()
+                .createQuery("""
+                        FROM Channel ch
+                        WHERE ch.product.id IN (:channelProductIDs)
+                                AND (ch.id = :parentChannelId OR ch.parentChannel.id = :parentChannelId)
+                        """, Channel.class)
+                .setParameterList("channelProductIDs", channelProductIDs)
+                .setParameter("parentChannelId", parentChannelID)
+                .list();
     }
 
     /**
@@ -600,7 +596,7 @@ public class CVEAuditManager {
     /**
      * Only packageInstalled and channelAssigned can be null on an affected entry.
      * This is because of the result that the SQL query returns.
-     * TODO: This should be refactored either at the query or here, preferably after dropping Oracle support.
+     * OLDTODO: This should be refactored either at the query or here, preferably after dropping Oracle support.
      *
      * This class is a wrapper of a single row extracted by a sql query that contains info about
      *   - a system

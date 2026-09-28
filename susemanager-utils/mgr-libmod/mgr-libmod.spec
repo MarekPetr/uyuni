@@ -1,7 +1,7 @@
 #
 # spec file for package mgr-libmod
 #
-# Copyright (c) 2025 SUSE LLC
+# Copyright (c) 2026 SUSE LLC
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -15,9 +15,10 @@
 # Please submit bugfixes or comments via https://bugs.opensuse.org/
 #
 
+%{?!python_module:%define python_module() python-%{**} python3-%{**}}
 
 Name:           mgr-libmod
-Version:        5.2.1
+Version:        5.3.1
 Release:        0
 Summary:        Modular dependency resolver for content lifecycle management
 License:        MIT
@@ -26,13 +27,14 @@ Group:          Applications/Internet
 URL:            https://github.com/uyuni-project/uyuni
 #!CreateArchive: %{name}
 Source:         %{name}-%{version}.tar.gz
-BuildRequires:  python3-pytest
-BuildRequires:  python3-rpm-macros
+BuildRequires:  %{python_module pytest}
+BuildRequires:  fdupes
+BuildRequires:  python-rpm-macros
 Requires:       python3-libmodulemd
 Requires(pre):  coreutils
 BuildArch:      noarch
 %if 0%{?rhel}
-BuildRequires:  python3-rpm-generators
+BuildRequires:  %{python_module rpm-generators}
 %endif
 
 %description
@@ -42,16 +44,17 @@ mgr-libmod
 %setup -q
 
 %build
-%{__python3} setup.py build
+%python_build
 
 %install
-%{__python3} setup.py install --skip-build --root %{buildroot}
+%python_install
+%python_expand %fdupes %{buildroot}%{$python_sitelib}
 mkdir -p %{buildroot}%{_bindir}
 cp -R scripts/* %{buildroot}%{_bindir}
 
 %files
-%defattr(-,root,root)
-%{python3_sitelib}/*
+%{python_sitelib}/mgrlibmod
+%{python_sitelib}/mgrlibmod-%{version}*-info
 %{_bindir}/mgr-libmod
 %license LICENSE
 

@@ -10,34 +10,35 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Spacewalk\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-22 09:58+0200\n"
-"PO-Revision-Date: 2011-03-04 16:08+0000\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: Danish <dansk@dansk-gruppen.dk>\n"
+"POT-Creation-Date: 2026-08-28 09:41+0200\n"
+"PO-Revision-Date: 2026-02-06 17:04+0000\n"
+"Last-Translator: Peter Andreasen <noesgaard@gmail.com>\n"
+"Language-Team: Danish <https://l10n.opensuse.org/projects/uyuni/backend/da/>\n"
 "Language: da\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: Weblate 5.15.2\n"
 
-#: ../server/apacheAuth.py:72
+#: ../server/apacheAuth.py:80
 #, python-format
 msgid "incomplete proxy authentication token: %s"
-msgstr ""
+msgstr "ufuldstændig token til at identificere proxy: %s"
 
-#: ../server/apacheAuth.py:103
+#: ../server/apacheAuth.py:111
 #, python-format
 msgid "Sent proxy signature %s does not match ours %s."
-msgstr ""
+msgstr "Sendt proxy signatur %s matcher ikke vores %s."
 
-#: ../server/apacheAuth.py:142
+#: ../server/apacheAuth.py:150
 msgid "declined proxy authentication"
-msgstr ""
+msgstr "afviste proxy autentificering"
 
 #: ../server/apacheRequest.py:68
 #, python-format
 msgid "Invalid request received (%s)."
-msgstr ""
+msgstr "Ugyldig forespørgsel modtaget (%s)."
 
 #. Send the message as a fault.
 #: ../server/apacheRequest.py:130
@@ -46,6 +47,8 @@ msgid ""
 "IMPORTANT MESSAGE FOLLOWS:\n"
 "%s"
 msgstr ""
+"VIGTIG MEDDELELSE FØLGER:\n"
+"%s"
 
 #: ../server/apacheRequest.py:160
 #, python-format
@@ -53,12 +56,14 @@ msgid ""
 "While running '%s': caught\n"
 "%s : %s\n"
 msgstr ""
+"Ved kørsel af '%s': fangede\n"
+"%s : %s\n"
 
 #. pylint: disable-next=consider-using-f-string
 #: ../server/apacheRequest.py:675
 #, python-format
 msgid "Invalid URI %s"
-msgstr ""
+msgstr "Ugyldig URI %s"
 
 #: ../server/handlers/app/packages.py:220
 #, python-format
@@ -67,19 +72,22 @@ msgid ""
 "                   %s Account has been deactivated on this server.\n"
 "                   Please contact your Org administrator for more help."
 msgstr ""
+"\n"
+"                   %s Konto deaktiveret på denne server.\n"
+"                   Kontakt din Org administrator for mere hjælp."
 
 #: ../server/handlers/xmlrpc/proxy.py:71
 #, python-format
 msgid "SUSE Multi-Linux Manager Proxy service not enabled for server profile: \"%s\""
-msgstr ""
+msgstr "SUSE Multi-Linux Manager Proxy service ikke aktiveret for server profil: \"%s\""
 
 #: ../server/handlers/xmlrpc/proxy.py:94
 msgid "Invalid session key"
-msgstr ""
+msgstr "Ugyldig sessionsnøgle"
 
 #: ../server/handlers/xmlrpc/proxy.py:102
 msgid "This server ID no longer exists"
-msgstr ""
+msgstr "Dette server ID findes ikke længere"
 
 #: ../server/importlib/userAuth.py:109
 msgid "You are not authorized to manage packages in the null org"
@@ -160,20 +168,20 @@ msgstr ""
 #. Invalid server certificate.
 #: ../server/rhnHandler.py:62
 msgid "Please run rhn_register as root on this client"
-msgstr ""
+msgstr "Kør rhn_register som root på denne klient"
 
 #: ../server/rhnHandler.py:76
 #, python-format
 msgid "Service not enabled for system profile: \"%s\""
 msgstr ""
 
-#: ../server/rhnPackage.py:52 ../server/rhnPackage.py:98
-#: ../server/rhnPackage.py:118 ../server/rhnPackage.py:179
+#: ../server/rhnPackage.py:51 ../server/rhnPackage.py:97
+#: ../server/rhnPackage.py:117 ../server/rhnPackage.py:179
 #, python-format
 msgid "Invalid RPM package %s requested"
 msgstr ""
 
-#: ../server/rhnPackage.py:124
+#: ../server/rhnPackage.py:123
 msgid "Package not found"
 msgstr ""
 
@@ -201,85 +209,85 @@ msgstr ""
 msgid "Maximum usage count of %s reached"
 msgstr ""
 
-#: ../server/rhnServer/server_token.py:869
+#: ../server/rhnServer/server_token.py:866
 msgid "Stacking of re-registration tokens with different base entitlements is not supported"
 msgstr ""
 
-#: ../server/rhnServer/server_token.py:946
+#: ../server/rhnServer/server_token.py:943
 #, python-format
 msgid "Could not find token '%s'"
 msgstr ""
 
 #. Cannot use activation keys from different orgs
-#: ../server/rhnServer/server_token.py:979
+#: ../server/rhnServer/server_token.py:976
 msgid "Tokens from mismatching orgs"
 msgstr ""
 
 #. Two tokens with different kickstart sessions
-#: ../server/rhnServer/server_token.py:989
+#: ../server/rhnServer/server_token.py:986
 msgid "Kickstart session mismatch"
 msgstr ""
 
-#: ../server/rhnServer/server_token.py:1013
+#: ../server/rhnServer/server_token.py:1010
 msgid "Stacking of re-registration tokens is not supported"
 msgstr ""
 
-#: ../server/rhnUser.py:327 ../server/rhnUser.py:330
+#: ../server/rhnUser.py:321 ../server/rhnUser.py:324
 msgid "Invalid username/password combination"
 msgstr ""
 
 #. nope, not reserved either
-#: ../server/rhnUser.py:527
+#: ../server/rhnUser.py:505
 #, python-format
 msgid "Username `%s' has not been reserved"
 msgstr ""
 
 #. New accounts have to specify an e-mail address
-#: ../server/rhnUser.py:533
+#: ../server/rhnUser.py:511
 msgid "E-mail address not specified"
 msgstr ""
 
-#: ../server/rhnUser.py:575
+#: ../server/rhnUser.py:553
 #, python-format
 msgid "username should be at least %d characters"
 msgstr ""
 
-#: ../server/rhnUser.py:579
+#: ../server/rhnUser.py:557
 #, python-format
 msgid "username should be less than %d characters"
 msgstr ""
 
-#: ../server/rhnUser.py:593
+#: ../server/rhnUser.py:571
 #, python-format
 msgid "username = `%s', invalid character `%s'"
 msgstr ""
 
-#: ../server/rhnUser.py:614
+#: ../server/rhnUser.py:592
 #, python-format
 msgid "Please limit your e-mail address to %s chars"
 msgstr ""
 
-#: ../server/rhnUser.py:704
+#: ../server/rhnUser.py:690
 #, python-format
 msgid "password must be at least %d characters"
 msgstr ""
 
-#: ../server/rhnUser.py:708
+#: ../server/rhnUser.py:694
 #, python-format
 msgid "Password must be shorter than %d characters"
 msgstr ""
 
-#: ../server/rhnUser.py:724
+#: ../server/rhnUser.py:710
 #, python-format
 msgid "password contains character `%s'"
 msgstr ""
 
-#: ../server/rhnUser.py:733
+#: ../server/rhnUser.py:719
 #, python-format
 msgid "username should be at least %d characters long"
 msgstr ""
 
-#: ../server/rhnUser.py:744
+#: ../server/rhnUser.py:730
 #, python-format
 msgid "Cannot register usernames ending with %s"
 msgstr ""
@@ -1001,15 +1009,15 @@ msgstr ""
 msgid "Imported kickstartable trees (%d)"
 msgstr ""
 
-#: ../satellite_tools/reposync.py:138
+#: ../satellite_tools/reposync.py:148
 msgid "+++ sending log as an email +++"
 msgstr ""
 
-#: ../satellite_tools/reposync.py:141
+#: ../satellite_tools/reposync.py:151
 #, python-format
 msgid "%s sync. report from %s"
 msgstr ""
 
-#: ../satellite_tools/reposync.py:151
+#: ../satellite_tools/reposync.py:161
 msgid "+++ email requested, but there is nothing to send +++"
 msgstr ""

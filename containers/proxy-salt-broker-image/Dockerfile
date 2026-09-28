@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 #!BuildTag: uyuni/proxy-salt-broker:latest
 
-ARG BASE=registry.suse.com/bci/bci-base:15.7
+ARG BASE=registry.suse.com/bci/bci-base:16.0
 FROM $BASE AS fat
 
 # Main packages
@@ -13,6 +13,9 @@ RUN zypper --gpg-auto-import-keys --non-interactive install --auto-agree-with-li
     zypper --non-interactive clean --all && \
     rpm -e zypper libzypp container-suseconnect && \
     rm -rf /var/log/{alternatives.log,lastlog,tallylog,suseconnect.log,zypper.log,zypp/history,YaST2}
+
+# Additional material
+COPY --chmod=555 uyuni-configure.py /usr/bin/uyuni-configure.py
 
 # LABELs
 ARG PRODUCT=Uyuni
@@ -28,10 +31,11 @@ LABEL org.opencontainers.image.created="%BUILDTIME%"
 LABEL org.opencontainers.image.vendor="${VENDOR}"
 LABEL org.opencontainers.image.url="${URL}"
 LABEL org.opencontainers.image.name=proxy-salt-broker-image
-LABEL org.opencontainers.image.version=5.2.4
+LABEL org.opencontainers.image.version=5.3.1
 LABEL org.openbuildservice.disturl="%DISTURL%"
 LABEL org.opensuse.reference="${REFERENCE_PREFIX}/proxy-salt-broker:${PRODUCT_VERSION}.%RELEASE%"
 # endlabelprefix
+LABEL io.artifacthub.package.readme-url="%SOURCEURL_WITH(README.md)%"
 LABEL org.uyuni.version="${PRODUCT_VERSION}"
 
 # Salt
@@ -40,4 +44,4 @@ EXPOSE 4506/tcp
 
 VOLUME "/etc/uyuni"
 
-CMD salt-broker
+CMD uyuni-configure.py && salt-broker

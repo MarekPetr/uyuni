@@ -26,8 +26,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import javax.servlet.ServletRequest;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * A simple class that assists with Servlet-related activities
@@ -44,16 +45,14 @@ public class ServletUtils {
      */
     public static String getRequestPath(HttpServletRequest req) {
         try {
-            String requestUri =
-                (String)req.getAttribute("javax.servlet.forward.request_uri");
+            String requestUri = (String) req.getAttribute(RequestDispatcher.FORWARD_REQUEST_URI);
             if (StringUtils.isBlank(requestUri)) {
                 requestUri = new URL(req.getRequestURL().toString()).getPath();
             }
             return requestUri;
         }
         catch (Exception e) {
-            throw new IllegalArgumentException("Unable to parse url: " +
-                                               req.getRequestURL());
+            throw new IllegalArgumentException("Unable to parse url: " + req.getRequestURL());
         }
     }
 
@@ -132,7 +131,7 @@ public class ServletUtils {
      */
     public static String requestParamsToQueryString(ServletRequest request) {
 
-        StringBuffer queryString = new StringBuffer();
+        StringBuilder queryString = new StringBuilder();
 
         String paramName;
         String paramValue;
@@ -165,7 +164,7 @@ public class ServletUtils {
         return URLEncoder.encode(string, StandardCharsets.UTF_8);
     }
 
-    private static boolean endsWith(StringBuffer buffer, char c) {
+    private static boolean endsWith(StringBuilder buffer, char c) {
         if (buffer.length() == 0) {
             return false;
         }

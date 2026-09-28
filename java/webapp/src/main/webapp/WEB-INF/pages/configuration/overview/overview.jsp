@@ -1,8 +1,8 @@
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
+<%@ taglib uri="jakarta.tags.functions" prefix="fn" %>
 
 
 <html>
@@ -22,7 +22,7 @@
   <!-- TODO: fix these first two tables when the new list constructs come out. -->
 
   <!-- simple summary table -->
-  <div class="row-0">
+  <div class="row">
     <div class="col-md-6">
       <div class="panel panel-default">
         <%@ include file="/WEB-INF/pages/common/fragments/configuration/overview/summary.jspf" %>

@@ -16,7 +16,7 @@
     <parent>
         <groupId>org.uyuni-project</groupId>
         <artifactId>spacewalk-java</artifactId>
-        <version>5.2.7</version>
+        <version>5.3.1</version>
     </parent>
 
     <groupId>org.uyuni-project.spacewalk-java</groupId>
@@ -34,24 +34,12 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>suse</groupId>
+            <groupId>org.uyuni-project.dependencies</groupId>
             <artifactId>struts</artifactId>
         </dependency>
         <dependency>
-            <groupId>suse</groupId>
+            <groupId>org.uyuni-project.dependencies</groupId>
             <artifactId>sitemesh</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.taglibs</groupId>
-            <artifactId>taglibs-standard-impl</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.taglibs</groupId>
-            <artifactId>taglibs-standard-jstlel</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.taglibs</groupId>
-            <artifactId>taglibs-standard-spec</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -261,7 +249,7 @@
                     <plugin>
                         <groupId>org.eclipse.jetty</groupId>
                         <artifactId>jetty-jspc-maven-plugin</artifactId>
-                        <version>9.4.26.v20200117</version>
+                        <version>11.0.26</version>
                         <executions>
                             <execution>
                                 <id>jspc</id>

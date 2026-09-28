@@ -20,6 +20,7 @@ $PODMAN_CMD run --cap-add AUDIT_CONTROL \
     -v /tmp/testing/ssl:/ssl:z \
     --name=ssl-generator \
     --network network \
+    --pull missing \
     ghcr.io/$UYUNI_PROJECT/uyuni/ci-test-server-all-in-one-dev:$UYUNI_VERSION \
     bash -xc "/testsuite/podman_runner/generate_certificates.sh"
 
@@ -32,7 +33,7 @@ $PODMAN_CMD secret create uyuni-db-cert /tmp/testing/ssl/reportdb.crt
 $PODMAN_CMD secret create uyuni-db-key /tmp/testing/ssl/reportdb.key
 echo -n "admin" | $PODMAN_CMD secret create uyuni-db-user -
 echo -n "spacewalk" | $PODMAN_CMD secret create uyuni-db-pass -
-echo -n "dbadmin" | $PODMAN_CMD secret create uyuni-db-admin-user -
+echo -n "postgres" | $PODMAN_CMD secret create uyuni-db-admin-user -
 echo -n "dbpass" | $PODMAN_CMD secret create uyuni-db-admin-pass -
 echo -n "pythia_susemanager" | $PODMAN_CMD secret create uyuni-reportdb-user -
 echo -n "pythia_susemanager" | $PODMAN_CMD secret create uyuni-reportdb-pass -
@@ -46,6 +47,7 @@ $PODMAN_CMD run \
     --hostname uyuni-db.mgr.internal \
     --network-alias db \
     --network-alias reportdb \
+    --pull missing \
     --secret uyuni-db-ca,type=mount,target=/etc/pki/trust/anchors/DB-RHN-ORG-TRUSTED-SSL-CERT \
     --secret uyuni-db-key,type=mount,uid=999,mode=0400,target=/etc/pki/tls/private/pg-spacewalk.key \
     --secret uyuni-db-cert,type=mount,target=/etc/pki/tls/certs/spacewalk.crt \
@@ -84,6 +86,8 @@ if [ "$iteration" -eq "$max_iterations" ]; then
   exit 1
 fi
 
+$PODMAN_CMD exec uyuni-db bash -c "echo host all all all scram-sha-256 > /var/lib/pgsql/data/pg_hba_custom.conf"
+$PODMAN_CMD exec uyuni-db su postgres -c "/usr/bin/pg_ctl reload"
 
 # Run the setup container
 setup_pm_path=`$PODMAN_CMD run -ti ghcr.io/$UYUNI_PROJECT/uyuni/ci-test-server-all-in-one-dev:$UYUNI_VERSION sh -c 'rpm -ql spacewalk-setup | grep Setup.pm' | tr -d '\r'`
@@ -121,7 +125,6 @@ $PODMAN_CMD run --cap-add AUDIT_CONTROL \
     -v ${src_dir}:/manager \
     -v ${src_dir}/schema/spacewalk/spacewalk-schema-upgrade:/usr/bin/spacewalk-schema-upgrade \
     -v ${src_dir}/testsuite:/testsuite \
-    -v ${src_dir}/schema/reportdb/upgrade/:/usr/share/susemanager/db/reportdb-schema-upgrade/ \
     -v ${src_dir}/web:/web \
     -v ${src_dir}/.npmrc:/.npmrc \
     -v ${src_dir}/package.json:/package.json \
@@ -131,7 +134,8 @@ $PODMAN_CMD run --cap-add AUDIT_CONTROL \
     -v ${src_dir}/client:/client \
     -v ${src_dir}/susemanager-utils:/susemanager-utils \
     -v ${src_dir}/susemanager:/susemanager \
-    -v ${src_dir}/susemanager/bin/mgr-setup:/usr/lib/susemanager/bin/mgr-setup \
+    -v ${src_dir}/containers/server-image/root/docker-entrypoint-init.d:/docker-entrypoint-init.d \
+    -v ${src_dir}/containers/server-image/root/usr/lib/entrypoint-lib.sh:/usr/lib/entrypoint-lib.sh \
     -v ${src_dir}/spacewalk/setup/share/tomcat_java_opts.conf:/etc/tomcat/conf.d/tomcat_java_opts.conf \
     -v ${src_dir}/spacewalk/setup/share/tomcat_java_opts_suse.conf:/etc/tomcat/conf.d/tomcat_java_opts_suse.conf \
     -v ${src_dir}/java/conf/default/rhn_taskomatic_daemon.conf:/usr/share/rhn/config-defaults/rhn_taskomatic_daemon.conf \
@@ -151,7 +155,7 @@ $PODMAN_CMD run --cap-add AUDIT_CONTROL \
     --secret uyuni-cert,type=mount,target=/etc/pki/tls/certs/spacewalk.crt \
     --secret uyuni-key,type=mount,target=/etc/pki/tls/private/spacewalk.key \
     --secret uyuni-db-ca,type=mount,target=/etc/pki/trust/anchors/DB-RHN-ORG-TRUSTED-SSL-CERT \
-    -e UYUNI_FQDN="server"  \
+    -e UYUNI_HOSTNAME="server"  \
     -e MANAGER_ADMIN_EMAIL="a@b.com"  \
     -e MANAGER_MAIL_FROM="a@b.com"  \
     -e MANAGER_ENABLE_TFTP="n"  \
@@ -162,18 +166,24 @@ $PODMAN_CMD run --cap-add AUDIT_CONTROL \
     -e REPORT_DB_PORT="5432"  \
     -e REPORT_DB_NAME="reportdb"  \
     -e EXTERNALDB_PROVIDER=""  \
-    -e ISS_PARENT=""  \
     -e SCC_USER="test"  \
     -e SCC_PASS="test"  \
+    -e ORG_NAME='SUSE Test'  \
+    -e ADMIN_USER="admin"  \
+    -e ADMIN_PASS="admin"  \
+    -e ADMIN_FIRST_NAME="Admin"  \
+    -e ADMIN_LAST_NAME="Admin"  \
+    -e NO_SSL="N"  \
     --cgroupns=host \
     -h server \
-    --name=server-setup \
+    --name=uyuni-server \
     --network network \
     ghcr.io/$UYUNI_PROJECT/uyuni/ci-test-server-all-in-one-dev:$UYUNI_VERSION \
     bash -xc "/testsuite/podman_runner/provide-db-schema.sh && \
              cp /manager/spacewalk/config/var/lib/rhn/rhn-satellite-prep/etc/rhn/rhn.conf /var/lib/rhn/rhn-satellite-prep/etc/rhn/rhn.conf && \
-             /usr/lib/susemanager/bin/mgr-setup && \
+             /docker-entrypoint-init.d/00-mgrSetup.sh && \
              /usr/bin/spacewalk-schema-upgrade -y && \
+             /usr/bin/spacewalk-schema-upgrade --reportdb -y && \
              /testsuite/podman_runner/run_db_migrations.sh susemanager-schema && \
              /testsuite/podman_runner/run_db_migrations.sh uyuni-reportdb-schema && \
              /testsuite/podman_runner/setup_missing_folders.sh" 

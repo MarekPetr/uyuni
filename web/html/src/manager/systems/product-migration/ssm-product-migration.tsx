@@ -114,7 +114,6 @@ export const SSMProductMigration: FC<Props> = ({
   function renderProductDetails(system: MigrationSystemData): ReactNode {
     return (
       <LinkButton
-        className={system.installedProduct !== null ? "btn-link" : "btn-link disabled"}
         icon="fa-1-5x fa-list"
         title={t("Show product details")}
         handler={() => setInstalledProductData(system)}
@@ -144,7 +143,7 @@ export const SSMProductMigration: FC<Props> = ({
         {system.reason ?? t("The products installed on this system can be migrated.")}
         {system.details !== null && (
           <LinkButton
-            className="btn-link px-2 py-0"
+            className="px-2 py-0"
             handler={() => setStatusDetailsData(system)}
             text={"[" + t("show details") + "]"}
           />
@@ -267,9 +266,11 @@ export const SSMProductMigration: FC<Props> = ({
         <MigrationConfirmScheduleForm
           systemsData={systemsData}
           actionChains={actionChains ?? []}
+          migrationSource={migrationSource}
           migrationTarget={selectedTarget!.targetProduct}
           migrationChannels={selectedChannelTree!}
           allowVendorChange={allowVendorChange}
+          hasDryRunCapability={selectedTarget!.hasDryRunCapability}
           onBack={() => setMigrationStep(MigrationStep.ChannelsSelection)}
           onConfirm={performMigration}
         />

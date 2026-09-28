@@ -237,6 +237,8 @@ class CVEAudit extends Component<Props, State> {
 
     if (dataSources.length === 0) {
       return t("Unknown patch status");
+    } else if (dataSources.indexOf("OVAL_UNSUPPORTED") !== -1) {
+      return t("OVAL audit not supported for this system's OS");
     } else if (dataSources.indexOf("OVAL") === -1) {
       return t("OVAL data out of sync. Potential missed vulnerabilities");
     } else if (dataSources.indexOf("CHANNELS") === -1) {
@@ -327,7 +329,7 @@ class CVEAudit extends Component<Props, State> {
               />
             </div>
             <div className="action-button-wrapper">
-              <a
+              <LinkButton
                 href={
                   "/rhn/manager/api/audit/cve.csv?cveIdentifier=CVE-" +
                   this.state.cveYear +
@@ -338,12 +340,11 @@ class CVEAudit extends Component<Props, State> {
                   "&statuses=" +
                   this.state.statuses
                 }
-                data-senna-off="true"
+                text={t("Download CSV")}
+                disableSenna
                 className="btn btn-default"
-              >
-                <IconTag type="item-download-csv" />
-                {t("Download CSV")}
-              </a>
+                icon="spacewalk-icon-download-csv"
+              />
             </div>
           </div>
           {this.state.auditExecuted && (
@@ -394,12 +395,14 @@ class CVEAudit extends Component<Props, State> {
                     className={"fa fa-big " + PATCH_STATUS_LABEL[row.patchStatus].className}
                     title={PATCH_STATUS_LABEL[row.patchStatus].description}
                   />
-                  {row.patchStatus !== UNKNOWN && row.scanDataSources && row.scanDataSources.length < 2 && (
-                    <i
-                      className={"fa fa-big fa-dot-circle-o text-secondary"}
-                      title={this.getPatchStatusAccuracyWarning(row)}
-                    />
-                  )}
+                  {row.patchStatus !== UNKNOWN &&
+                    row.scanDataSources &&
+                    (row.scanDataSources.length < 2 || row.scanDataSources.indexOf("OVAL_UNSUPPORTED") !== -1) && (
+                      <i
+                        className={"fa fa-big fa-dot-circle-o text-secondary"}
+                        title={this.getPatchStatusAccuracyWarning(row)}
+                      />
+                    )}
                 </div>
               )}
             />

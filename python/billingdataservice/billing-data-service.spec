@@ -1,7 +1,7 @@
 #
 # spec file for package billing-data-service
 #
-# Copyright (c) 2025 SUSE LLC
+# Copyright (c) 2026 SUSE LLC
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -17,7 +17,7 @@
 
 
 Name:           billing-data-service
-Version:        5.2.1
+Version:        5.3.1
 Release:        0
 Summary:        Server to request billing information
 License:        GPL-2.0-only
@@ -29,7 +29,7 @@ Requires:       apache2
 Requires:       python3-Flask
 Requires:       spacewalk-backend-sql
 Requires:       spacewalk-taskomatic
-Requires:       tomcat
+Requires:       tomcat11
 Recommends:     csp-billing-adapter-service
 BuildArch:      noarch
 

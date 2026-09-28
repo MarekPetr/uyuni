@@ -310,23 +310,9 @@
         </context-group>
         <target>Adreces</target>
       </trans-unit>
-      <trans-unit id="address type B" xml:space="preserve">
-        <source>Billing Address</source>
-        <target>Adreça de facturació</target>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/users/Addresses</context>
-        </context-group>
-      </trans-unit>
       <trans-unit id="address type M" xml:space="preserve">
         <source>Mailing Address</source>
         <target>Adreça de correu</target>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/users/Addresses</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="address type S" xml:space="preserve">
-        <source>Shipping Address</source>
-        <target>Adreça d'enviament</target>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/users/Addresses</context>
         </context-group>
@@ -2790,13 +2776,6 @@ lt;/divgt;
       <trans-unit id="activation_key_admin" xml:space="preserve">
         <source>Activation Key Administrator</source>
         <target state="translated">Administrador de claus d'activació</target>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/account/UserDetails</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="Admin Access" xml:space="preserve">
-        <source>Admin Access</source>
-        <target state="translated">Accés a administrador</target>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/account/UserDetails</context>
         </context-group>
@@ -6515,13 +6494,6 @@ Seguiu aquesta url per veure la llista completa de sistemes inactius:
           <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="kickstart.schedule.noup2date" xml:space="preserve">
-        <source>An autoinstallation was not scheduled for &lt;strong&gt;&lt;a href="/rhn/systems/details/Overview.do?sid={0}"&gt;{1}&lt;/a&gt;&lt;/strong&gt; because the package profile did not contain the 'up2date' package. An update of that system's package profile may be required.</source>
-        <target state="translated">No s'ha programat una autoinstal·lació per a lt;stronggt;lt;a href."/rhn/systems/details/Overview.do?sid.{0}"gt;{1}lt;/agt;lt;/stronggt; perquè el perfil del paquet no conté el paquet «up2date». És possible que es requereixi una actualització del perfil de paquet d'aquest sistema.</target>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
-        </context-group>
-      </trans-unit>
       <trans-unit id="kickstart.session.newsession" xml:space="preserve">
         <source>A new autoinstall session was initiated for this system.</source>
         <target state="translated">S'ha iniciat una nova sessió d'autoinstal·lació per a aquest sistema.</target>
@@ -6553,13 +6525,6 @@ Seguiu aquesta url per veure la llista completa de sistemes inactius:
       <trans-unit id="kickstart.session.newprofile" xml:space="preserve">
         <source>Profile for autoinstall session {0}.</source>
         <target state="translated">Perfil per a la sessió d'autoinstal·lació {0}.</target>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="kickstart.schedule.noup2dateinchannel" xml:space="preserve">
-        <source>We require version {0} or greater of up2date in order to kickstart a system. &lt;strong&gt;{2}&lt;/strong&gt; has {1} installed but we could not find a version of up2date in this system's channels to upgrade it to the required version or above.</source>
-        <target state="translated">Es requereix la versió {0} o superior d'actualitzada per tal d'arrencar un sistema. lt;stronggt;{2}lt;/stronggt; té {1} instal·lat, però no hem pogut trobar una versió d'actualització en els canals d'aquest sistema per a actualitzar-la a la versió requerida o superior.</target>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
         </context-group>
@@ -7832,11 +7797,11 @@ Seguiu aquesta url per veure la llista completa de sistemes inactius:
           <context context-type="sourcefile">/rhn/systems/provisioning/preservation/PreservationListDelete.do</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="cobbler.powermanagement.poweron" xml:space="preserve">
+      <trans-unit id="cobbler.powermanagement.power_on" xml:space="preserve">
         <source>Power On</source>
         <target state="translated">Engega</target>
       </trans-unit>
-      <trans-unit id="cobbler.powermanagement.poweroff" xml:space="preserve">
+      <trans-unit id="cobbler.powermanagement.power_off" xml:space="preserve">
         <source>Power Off</source>
         <target state="translated">Apaga</target>
       </trans-unit>
@@ -7859,8 +7824,8 @@ Seguiu aquesta url per veure la llista completa de sistemes inactius:
         </context-group>
       </trans-unit>
       <trans-unit id="cobbler.powermanagement.no_fence_agents" xml:space="preserve">
-        <source>This functionality is only available on @@PRODUCT_NAME@@ servers that have installed "fence agents," which are possibly availabe as "fence-agents", "fence-agents-all", or "fence-agents-ipmilan" packages depending on your operating system and desired power management infrastructure. Please install the fence agents. If fence agents are not available for your operating system then power management functionality is not supported.</source>
-        <target state="translated">Aquesta funcionalitat només està disponible en servidors .PRODUCTNAME. que tenen instal·lats els «agents de tanca», que possiblement estan disponibles com a «agents de tanca», «agents de tanca-tots» o «agents de tanca-ipmilan» depenent del vostre sistema operatiu i de la infraestructura de gestió d'energia desitjada. Instal·leu els agents de tanca. Si els agents de tanca no estan disponibles per al vostre sistema operatiu, la funcionalitat de gestió d'energia no és compatible.</target>
+        <source>This functionality is only available on @@PRODUCT_NAME@@ servers that have installed "fence agents," which are possibly available as "fence-agents", "fence-agents-all", or "fence-agents-ipmilan" packages depending on your operating system and desired power management infrastructure. Please install the fence agents. If fence agents are not available for your operating system then power management functionality is not supported.</source>
+        <target state="translated">Aquesta funcionalitat només està disponible als servidors @@PRODUCT_NAME@@ que tenen instal·lats els "fence agents", que possiblement estan disponibles com a paquets "fence-agents", "fence-agents-all" o "fence-agents-ipmilan" segons el vostre sistema operatiu i la infraestructura de gestió d'energia desitjada. Instal·leu els agents fence. Si els agents fence no estan disponibles per al vostre sistema operatiu, la funcionalitat de gestió d'energia no és compatible.</target>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/systems/details/kickstart/PowerManagement.do</context>
         </context-group>
@@ -10634,8 +10599,8 @@ lt;stronggt;Note:lt;/stronggt; La documentació addicional sobre l'ús de l'ISO 
         <target state="translated">El calendari amb l'identificador «{0}» no existeix</target>
       </trans-unit>
       <trans-unit id="maintenance.action.reschedule.error.cancel" xml:space="preserve">
-        <source>An error occured trying to cancel affected actions for schedule '{0}'</source>
-        <target state="translated">S'ha produït un error en intentar cancel·lar les accions afectades per a la planificació «{0}»</target>
+        <source>An error occurred trying to cancel affected actions for schedule '{0}'</source>
+        <target state="translated">S'ha produït un error en intentar cancel·lar les accions afectades per a la programació {0}</target>
       </trans-unit>
       <trans-unit id="maintenance.action.reschedule.error.fail" xml:space="preserve">
         <source>Operation could not be performed. There are scheduled actions on systems</source>
@@ -11915,7 +11880,7 @@ Per a esmenar aquesta situació, afegiu credencials SCC lt;a href""/rhn/admin/se
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/users/Addresses</context>
         </context-group>
-        <target state="translated">Afegeix una adreça</target>
+        <target state="translated">Afegeix-hi una adreça</target>
       </trans-unit>
       <trans-unit id="Edit" xml:space="preserve">
         <source>Edit</source>
@@ -12117,6 +12082,169 @@ Per a esmenar aquesta situació, afegiu credencials SCC lt;a href""/rhn/admin/se
           <context context-type="sourcefile">Navigation Menu</context>
         </context-group>
         <target state="translated">Control d'accés</target>
+      </trans-unit>
+      <trans-unit id="pxeeventfailed" xml:space="preserve">
+        <source>PXE Event Failed</source>
+        <target state="translated">L'esdeveniment de PXE ha fallat</target>
+      </trans-unit>
+      <trans-unit id="ARMHF Debian" xml:space="preserve">
+        <source>ARMHF Debian</source>
+        <target>ARMHF Debian</target>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="diskcheckwarning" xml:space="preserve">
+        <source>Disk Check</source>
+        <target state="translated">Comprovació del disc</target>
+      </trans-unit>
+      <trans-unit id="notification.diskcheck.summary" xml:space="preserve">
+        <source>You are running out of space on your @@PRODUCT_NAME@@ {0}. This is {1}</source>
+        <target state="translated">Us quedeu sense espai a @@PRODUCT_NAME@@ {0}. Això és {1}</target>
+      </trans-unit>
+      <trans-unit id="notification.diskcheck.details" xml:space="preserve">
+        <source>You are running out of space on your @@PRODUCT_NAME@@ {0}. This is {1}. If you run out of disk space, @@PRODUCT_NAME@@ will stop running, and this could lead to a loss of data. @@PRODUCT_NAME@@ will shutdown automatically.</source>
+        <target state="translated">Us quedeu sense espai a @@PRODUCT_NAME@@ {0}. Això és {1}. Si us quedeu sense espai al disc, @@PRODUCT_NAME@@ deixarà de funcionar i això podria provocar una pèrdua de dades. @@PRODUCT_NAME@@ s'apagarà automàticament.</target>
+      </trans-unit>
+      <trans-unit id="SCAP Policies" xml:space="preserve">
+        <source>SCAP Policies</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">Navigation Menu</context>
+        </context-group>
+        <target state="translated">Polítiques d'SCAP</target>
+      </trans-unit>
+      <trans-unit id="SCAP Content" xml:space="preserve">
+        <source>SCAP Content</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">Navigation Menu</context>
+        </context-group>
+        <target state="translated">Contingut d'SCAP</target>
+      </trans-unit>
+      <trans-unit id="Tailoring Files" xml:space="preserve">
+        <source>Tailoring Files</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">Navigation Menu</context>
+        </context-group>
+        <target state="translated">Fitxers de personalització</target>
+      </trans-unit>
+      <trans-unit id="distupgrade.sles16.migration.success" xml:space="preserve">
+        <source>SLES 16 migration completed successfully.{0}</source>
+        <target state="translated">Migració a SLES 16 completada correctament.{0}</target>
+      </trans-unit>
+      <trans-unit id="distupgrade.sles16.migration.success.post_steps" xml:space="preserve">
+        <source>Recommended post-migration steps:
+- Check for orphaned/unneeded packages: zypper packages --orphaned --unneeded
+- Check for updated config files: find /etc/ -name '*.rpmnew' -o -name '*.rpmsave'</source>
+        <target state="translated">Passos recomanats després de la migració:
+- Comprovació de paquets orfes/no necessaris: zypper packages --orphaned --unneeded
+- Comprovació de fitxers de configuració actualitzats: find /etc/ -name '*.rpmnew' -o -name '*.rpmsave'</target>
+      </trans-unit>
+      <trans-unit id="distupgrade.sles16.migration.failed" xml:space="preserve">
+        <source>SLES 16 migration failed or result not found.{0}</source>
+        <target state="translated">La migració de SLES 16 ha fallat o no s'ha trobat el resultat.{0}</target>
+      </trans-unit>
+      <trans-unit id="user.admin.access" xml:space="preserve">
+        <source>Admin Access</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/account/UserDetails</context>
+        </context-group>
+        <target state="translated">Accés d'administració</target>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z16.description" xml:space="preserve">
+        <source>KVM on IBM z16 series</source>
+        <target state="translated">KVM a la sèrie IBM z16</target>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z16.label" xml:space="preserve">
+        <source>KVM on IBM z16 series</source>
+        <target state="translated">KVM a la sèrie IBM z16</target>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z17.description" xml:space="preserve">
+        <source>KVM on IBM z17 series</source>
+        <target state="translated">KVM a la sèrie IBM z17</target>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z17.label" xml:space="preserve">
+        <source>KVM on IBM z17 series</source>
+        <target state="translated">KVM a la sèrie IBM z17</target>
+      </trans-unit>
+      <trans-unit id="coco.resultType.ibm_pvattest.description" xml:space="preserve">
+        <source>IBM Secure Execution (IBM SEL)</source>
+        <target state="translated">Execució segura d'IBM (IBM SEL)</target>
+      </trans-unit>
+      <trans-unit id="coco.resultType.ibm_pvattest.label" xml:space="preserve">
+        <source>IBM SEL PVATTEST</source>
+        <target state="translated">IBM SEL PVATTEST</target>
+      </trans-unit>
+      <trans-unit id="coco.status.requested.description" xml:space="preserve">
+        <source>Requested</source>
+        <target state="translated">Sol·licitat</target>
+      </trans-unit>
+      <trans-unit id="coco.status.queued.description" xml:space="preserve">
+        <source>Queued</source>
+        <target state="translated">A la cua</target>
+      </trans-unit>
+      <trans-unit id="coco.status.submitted.description" xml:space="preserve">
+        <source>Submitted</source>
+        <target state="translated">Enviat</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.missing_input_data" xml:space="preserve">
+        <source>The mandatory input data is missing</source>
+        <target state="translated">Falten les dades d'entrada obligatòries.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_missing" xml:space="preserve">
+        <source>The secure execution header is missing.</source>
+        <target state="translated">Falta la capçalera d'execució segura.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_wrong_format" xml:space="preserve">
+        <source>The secure execution header is not a valid Base64 string.</source>
+        <target state="translated">La capçalera d'execució segura no és una cadena Base64 vàlida.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_empty" xml:space="preserve">
+        <source>The secure execution header is empty.</source>
+        <target state="translated">La capçalera d'execució segura està buida.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_too_short" xml:space="preserve">
+        <source>The secure execution header is too short.</source>
+        <target state="translated">La capçalera d'execució segura és massa curta.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_invalid_header" xml:space="preserve">
+        <source>The secure execution header does not start with the expected byte sequence.</source>
+        <target state="translated">La capçalera d'execució segura no comença amb la seqüència de bytes esperada.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_size_mismatch" xml:space="preserve">
+        <source>The secure execution header size does not match the expected value.</source>
+        <target state="translated">La mida de la capçalera d'execució segura no coincideix amb el valor esperat.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_wrong_format" xml:space="preserve">
+        <source>The host key document is not a valid string.</source>
+        <target state="translated">El document de la clau de l'amfitrió no és una cadena de caràcters vàlida.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_not_valid_yet" xml:space="preserve">
+        <source>The host key document is not valid yet.</source>
+        <target state="translated">El document de la clau de l'amfitrió encara no és vàlid.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_expired" xml:space="preserve">
+        <source>The host key document has expired.</source>
+        <target state="translated">El document de la clau de l'amfitrió ha caducat.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_failed" xml:space="preserve">
+        <source>The host key document is not a valid PEM certificate.</source>
+        <target state="translated">El document de la clau de l'amfitrió no és un certificat PEM vàlid.</target>
+      </trans-unit>
+      <trans-unit id="contentmanagement.invalid_issue_date" xml:space="preserve">
+        <source>Invalid date format. It must follow ISO 8601 offset format (e.g. 2026-06-04T22:00:00Z).</source>
+        <target state="translated">Format de data no vàlid. Ha de seguir el format de desplaçament ISO 8601 (per exemple, 2026-06-04T22:00:00Z).</target>
+      </trans-unit>
+      <trans-unit id="edit_address.jsp.country.select" xml:space="preserve">
+        <source>-- Select Country --</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/users/EditAddress</context>
+        </context-group>
+        <target state="translated">-- Seleccioneu l'estat --</target>
+      </trans-unit>
+      <trans-unit id="system.entitle.added.peripheral_server" xml:space="preserve">
+        <source>&lt;strong&gt;Peripheral server&lt;/strong&gt; type has been applied.</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/systems/details/Overview.do</context>
+        </context-group>
+        <target state="translated">S'ha aplicat el tipus &lt;strong&gt;servidor perifèric&lt;/strong&gt;.</target>
       </trans-unit>
     </body>
   </file>

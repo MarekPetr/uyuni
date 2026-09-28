@@ -1,6 +1,6 @@
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
 <%@ taglib uri="http://rhn.redhat.com/tags/list" prefix="rl" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 
@@ -21,7 +21,7 @@
 
         <div class="panel panel-default">
             <div class="panel-body">
-                <div class="row-0">
+                <div class="row">
                     <div class="col-md-3">
                         <bean:message key="cloneerrata.jsp.viewapplicableerrata"/>:
                     </div>
@@ -36,7 +36,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="row-0">
+                <div class="row">
                     <div class="col-md-offset-3 offset-md-3 col-md-5">
                         <div class="checkbox">
                             <label>
@@ -51,7 +51,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="row-0">
+                <div class="row">
                     <div class="col-md-offset-3 offset-md-3 col-md-5">
                         <html:submit styleClass="btn btn-default">
                             <bean:message key="cloneerrata.jsp.view"/>

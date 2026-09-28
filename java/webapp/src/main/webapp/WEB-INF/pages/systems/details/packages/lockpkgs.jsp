@@ -1,4 +1,4 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="jakarta.tags.core" prefix="c"%>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn"%>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html"%>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean"%>
@@ -69,7 +69,7 @@
 
         <div class="form-horizontal">
             <rhn:hidden name="schedule_type" value="date"/>
-            <div class="form-group">
+            <div class="row">
                 <label class="col-md-3 control-label" for="radio_use_date_now"> <bean:message
                         key="schedule.jsp.at" />:
                 </label>
@@ -79,7 +79,7 @@
                     </jsp:include>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="row">
                 <div class="col-md-offset-3 offset-md-3 col-md-9">
                     <rhn:submitted />
                     <button type="submit" class="btn btn-default" name="dispatch"

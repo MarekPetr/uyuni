@@ -1,4 +1,30 @@
 -------------------------------------------------------------------
+Wed Aug 05 16:58:32 CEST 2026 - antonio.garofalo@suse.com
+
+- version 5.3.1-0
+  * Bump version to 5.3.0
+
+-------------------------------------------------------------------
+Fri May 22 08:28:37 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.5-0
+  * Enable build on openSUSE Leap 16
+  * Remove legacy md5/sha1 fallback imports from checksum
+    module; use hashlib directly
+
+-------------------------------------------------------------------
+Thu Apr 16 14:34:19 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.4-0
+  * Build uyuni-common-libs noarch
+
+-------------------------------------------------------------------
+Mon Mar 02 13:24:56 CET 2026 - michael.calmer@suse.com
+
+- version 5.2.3-0
+  * Disable build for SLES 16
+
+-------------------------------------------------------------------
 Tue Jan 27 09:31:28 WET 2026 - psuarezhernandez@suse.com
 
 - version 5.2.2-0

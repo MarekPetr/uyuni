@@ -17,11 +17,11 @@ package com.redhat.rhn.testing;
 import com.redhat.rhn.common.conf.ConfigDefaults;
 import com.redhat.rhn.domain.channel.Channel;
 import com.redhat.rhn.domain.channel.ChannelFactory;
+import com.redhat.rhn.domain.channel.ChannelFactoryTest;
 import com.redhat.rhn.domain.channel.DistChannelMap;
-import com.redhat.rhn.domain.channel.test.ChannelFactoryTest;
 import com.redhat.rhn.domain.user.User;
 import com.redhat.rhn.manager.channel.ChannelManager;
-import com.redhat.rhn.manager.rhnpackage.test.PackageManagerTest;
+import com.redhat.rhn.manager.rhnpackage.PackageManagerTest;
 
 
 /**
@@ -41,9 +41,7 @@ public class ChannelTestUtils {
      * @throws Exception if error
      */
     public static Channel createBaseChannel(User creator) throws Exception {
-        Channel retval = ChannelFactoryTest.createBaseChannel(creator);
-        retval = TestUtils.reload(retval);
-        return retval;
+        return ChannelFactoryTest.createBaseChannel(creator);
     }
 
     /**
@@ -73,10 +71,9 @@ public class ChannelTestUtils {
             throw new IllegalArgumentException("baseChannel is not a base channel");
         }
 
-        Channel retval = ChannelFactoryTest.createTestChannel(user);
-        retval.setParentChannel(baseChannel);
-        ChannelFactory.save(retval);
-        return retval;
+        Channel channel = ChannelFactoryTest.createTestChannel(user);
+        channel.setParentChannel(baseChannel);
+        return ChannelFactory.save(channel);
     }
 
     /**

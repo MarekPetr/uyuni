@@ -21,10 +21,10 @@ import static com.suse.manager.webui.services.SaltConstants.SUMA_STATE_FILES_ROO
 import com.redhat.rhn.common.hibernate.HibernateFactory;
 import com.redhat.rhn.common.localization.LocalizationService;
 import com.redhat.rhn.domain.action.Action;
-import com.redhat.rhn.domain.action.ActionFactory;
-import com.redhat.rhn.domain.action.ActionType;
+import com.redhat.rhn.domain.action.ActionTypeEnum;
 import com.redhat.rhn.domain.action.salt.ApplyStatesAction;
 import com.redhat.rhn.domain.action.server.ServerAction;
+import com.redhat.rhn.domain.action.server.ServerActionFactory;
 import com.redhat.rhn.domain.product.SUSEProduct;
 import com.redhat.rhn.domain.product.SUSEProductFactory;
 import com.redhat.rhn.domain.product.Tuple2;
@@ -175,7 +175,7 @@ public class SaltUtils {
                 () -> false,
                 results -> results.entrySet().stream()
                     .anyMatch(result -> extractFunction(result.getKey())
-                        .map(fn -> fn.equals("mgrcompat.module_run") ?
+                        .map(fn -> fn.equals("module.run") ?
                             result.getValue().getName()
                                     .map(x -> x.fold(Arrays::asList, List::of))
                                     .orElseGet(ArrayList::new)
@@ -349,7 +349,7 @@ public class SaltUtils {
         List<StateApplyResult<JsonElement>> collect =
                 apply.entrySet().stream()
                         .flatMap(e -> extractFunction(e.getKey()).<Stream<StateApplyResult<JsonElement>>>map(fn -> {
-                    if (fn.equals("mgrcompat.module_run")) {
+                    if (fn.equals("module.run")) {
                         StateApplyResult<JsonElement> ap = Json.GSON.fromJson(
                                 e.getValue(),
                                 new TypeToken<StateApplyResult<JsonElement>>() {
@@ -485,6 +485,24 @@ public class SaltUtils {
                 serverAction.setResultMsg(output);
                 return;
             }
+
+            // Log detailed error messages from failed Salt states
+            Map<String, String> failedStates = getFailedStateErrors(jsonResult);
+            if (!failedStates.isEmpty()) {
+                int total = failedStates.size();
+                int i = 1;
+
+                for (Map.Entry<String, String> entry : failedStates.entrySet()) {
+                    LOG.error("Salt action {} failed for server {} (jid: {}) - Failure {}/{} - State '{}': {}",
+                            serverAction.getParentAction().getId(),
+                            serverAction.getServer().getId(),
+                            jid,
+                            i++,
+                            total,
+                            entry.getKey(),
+                            entry.getValue());
+                }
+            }
         }
         else {
             serverAction.setStatusCompleted();
@@ -498,6 +516,28 @@ public class SaltUtils {
         action.handleUpdateServerAction(serverAction, jsonResult, auxArgs);
 
         LOG.debug("Finished update server action for action {}", action.getId());
+    }
+
+    /**
+     * Extract error messages from failed Salt states in a state.apply result.
+     * Returns a map of state IDs to their error messages (comment if available, or generic message).
+     *
+     * @param jsonResult the JSON result from Salt state.apply
+     * @return Map of state ID to error message for all failed states
+     */
+    public static Map<String, String> getFailedStateErrors(JsonElement jsonResult) {
+        return jsonEventToStateApplyResults(jsonResult)
+                .stream()
+                .flatMap(map -> map.entrySet().stream())
+                .filter(entry -> entry.getValue() != null && !entry.getValue().isResult())
+                .collect(Collectors.toUnmodifiableMap(
+                        Map.Entry::getKey,
+                        entry ->
+                                StringUtils.defaultIfBlank(
+                                        entry.getValue().getComment(),
+                                        "State failed without error message")
+                        )
+                );
     }
 
     /**
@@ -817,8 +857,8 @@ public class SaltUtils {
         minion.setLastBoot(bootTime.getTime() / 1000);
 
         // cleanup old reboot actions
-        List<ServerAction> serverActions = ActionFactory.listServerActionsForServerAndTypes(minion,
-                List.of(ActionFactory.TYPE_REBOOT));
+        List<ServerAction> serverActions =
+                ServerActionFactory.listServerActionsForServer(minion, ActionTypeEnum.TYPE_REBOOT);
         int actionsChanged = 0;
         for (ServerAction sa : serverActions) {
             Action action = sa.getParentAction();
@@ -827,7 +867,7 @@ public class SaltUtils {
                 sa.setCompletionTime(new Date());
                 sa.setResultMsg("Reboot completed.");
                 sa.setResultCode(0L);
-                ActionFactory.save(sa);
+                ServerActionFactory.save(sa);
                 actionsChanged += 1;
             }
         }
@@ -843,11 +883,11 @@ public class SaltUtils {
      * @param systemId system id
      * @return true if there's prerequisite action of the given type in the completed state
      */
-    public static boolean prerequisiteIsCompleted(Action action, Optional<ActionType> prereqType, long systemId) {
+    public static boolean prerequisiteIsCompleted(Action action, Optional<ActionTypeEnum> prereqType, long systemId) {
         if (action == null) {
             return false;
         }
-        if ((prereqType.isEmpty() || prereqType.get().equals(action.getActionType())) &&
+        if ((prereqType.isEmpty() || prereqType.get().equalsType(action.getActionType())) &&
                 action.getServerActions().stream()
                         .filter(sa -> sa.getServer().getId() == systemId)
                         .anyMatch(ServerAction::isStatusCompleted)) {

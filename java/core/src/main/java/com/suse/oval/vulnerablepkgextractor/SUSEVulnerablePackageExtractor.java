@@ -15,15 +15,16 @@
 
 package com.suse.oval.vulnerablepkgextractor;
 
+import com.redhat.rhn.domain.rhnpackage.PackageEvr;
+
 import com.suse.oval.OsFamily;
 import com.suse.oval.cpe.Cpe;
 import com.suse.oval.cpe.CpeBuilder;
-import com.suse.oval.manager.OVALLookupHelper;
+import com.suse.oval.manager.OVALResourcesCache;
 import com.suse.oval.ovaltypes.BaseCriteria;
 import com.suse.oval.ovaltypes.CriteriaType;
 import com.suse.oval.ovaltypes.CriterionType;
 import com.suse.oval.ovaltypes.DefinitionType;
-import com.suse.oval.ovaltypes.EVRType;
 import com.suse.oval.ovaltypes.LogicOperatorType;
 import com.suse.oval.ovaltypes.ObjectType;
 import com.suse.oval.ovaltypes.StateType;
@@ -42,20 +43,20 @@ import java.util.regex.Pattern;
 public class SUSEVulnerablePackageExtractor extends CriteriaTreeBasedExtractor {
     private static final Pattern RELEASE_PACKAGE_REGEX = Pattern.compile(
             "^\\s*(?<releasePackage>[-a-zA-Z_0-9]+) is\\s*(==|>=)\\s*(?<releasePackageVersion>[0-9.]+)\\s*$");
-    private final OVALLookupHelper ovalLookupHelper;
+    private final OVALResourcesCache ovalResourcesCache;
 
     /**
      * Standard constructor
      *
      * @param vulnerabilityDefinitionIn the vulnerability definition to extract vulnerable packages from
-     * @param ovalLookupHelperIn        the oval lookup helper
-     */
+     * @param ovalResourcesCacheIn      the oval lookup helper
+     * */
     public SUSEVulnerablePackageExtractor(DefinitionType vulnerabilityDefinitionIn,
-                                          OVALLookupHelper ovalLookupHelperIn) {
+                                          OVALResourcesCache ovalResourcesCacheIn) {
         super(vulnerabilityDefinitionIn);
-        Objects.requireNonNull(ovalLookupHelperIn);
+        Objects.requireNonNull(ovalResourcesCacheIn);
 
-        this.ovalLookupHelper = ovalLookupHelperIn;
+        this.ovalResourcesCache = ovalResourcesCacheIn;
     }
 
     @Override
@@ -80,17 +81,17 @@ public class SUSEVulnerablePackageExtractor extends CriteriaTreeBasedExtractor {
             String comment = packageCriterion.getComment();
             String testId = packageCriterion.getTestRef();
 
-            TestType packageTest = ovalLookupHelper.lookupTestById(testId)
+            TestType packageTest = ovalResourcesCache.lookupTestById(testId)
                     .orElseThrow(() -> new IllegalStateException("Referenced package test is not found: " + testId));
 
             String objectId = packageTest.getObjectRef();
             String stateId = packageTest.getStateRef()
                     .orElseThrow(() -> new IllegalStateException("Unexpected empty package state in SUSE OVAL"));
 
-            ObjectType packageObject = ovalLookupHelper.lookupObjectById(objectId)
+            ObjectType packageObject = ovalResourcesCache.lookupObjectById(objectId)
                     .orElseThrow(() -> new IllegalStateException("Referenced package object not found: " + objectId));
 
-            StateType packageState = ovalLookupHelper.lookupStateById(stateId)
+            StateType packageState = ovalResourcesCache.lookupStateById(stateId)
                     .orElseThrow(() -> new IllegalStateException("Referenced package state not found: " + stateId));
 
             String packageName = packageObject.getPackageName();
@@ -99,8 +100,8 @@ public class SUSEVulnerablePackageExtractor extends CriteriaTreeBasedExtractor {
             vulnerablePackage.setName(packageName);
 
             if (comment.endsWith("is installed")) {
-                String evr = packageState.getPackageEVR().map(EVRType::getValue).orElse("");
-                vulnerablePackage.setFixVersion(evr);
+                vulnerablePackage.setFixVersion(packageState.getPackageEVR().map(
+                        evr -> PackageEvr.parseRpm(evr.getValue())).orElse(null));
             }
             else if (comment.endsWith("is affected")) {
                 // Affected packages don't have a fix version yet.
@@ -110,7 +111,7 @@ public class SUSEVulnerablePackageExtractor extends CriteriaTreeBasedExtractor {
                 // Package 'is not affected' implies that the vulnerability is too old that all supported products
                 // have the fixed package version or that a fix was backported to vulnerable products. Hence,
                 // the fix versionis 0.
-                vulnerablePackage.setFixVersion("0:0-0");
+                vulnerablePackage.setFixVersion(new PackageEvr("0", "0", "0", "rpm"));
                 continue;
             }
 
@@ -121,11 +122,11 @@ public class SUSEVulnerablePackageExtractor extends CriteriaTreeBasedExtractor {
         for (CriterionType productCriterion : productCriterions) {
             String comment = productCriterion.getComment();
             String productUserFriendlyName = comment.replace(" is installed", "");
-            TestType productTest = ovalLookupHelper.lookupTestById(productCriterion.getTestRef()).orElseThrow();
+            TestType productTest = ovalResourcesCache.lookupTestById(productCriterion.getTestRef()).orElseThrow();
 
             ProductVulnerablePackages vulnerableProduct = new ProductVulnerablePackages();
             vulnerableProduct.setSingleCve(definition.getSingleCve().orElseThrow());
-            vulnerableProduct.setProductCpe(deriveCpe(productTest).asString());
+            vulnerableProduct.setProductCpe(deriveCpe(productCriterion, productTest).asString());
             vulnerableProduct.setProductUserFriendlyName(productUserFriendlyName);
             vulnerableProduct.setVulnerablePackages(vulnerablePackages);
 
@@ -162,37 +163,85 @@ public class SUSEVulnerablePackageExtractor extends CriteriaTreeBasedExtractor {
         return productCriterions.stream()
                 .map(CriterionType::getComment)
                 .anyMatch(comment -> comment.startsWith("SUSE Linux Enterprise") ||
+                        comment.startsWith("SUSE Linux Micro") ||
+                        comment.startsWith("SUSE Liberty Linux") ||
                         comment.startsWith("openSUSE Leap"));
     }
 
-    private Cpe deriveCpe(TestType productTest) {
+    private Cpe deriveCpe(CriterionType productCriterion, TestType productTest) {
         OsFamily osProduct = definition.getOsFamily();
         if (osProduct == OsFamily.LEAP) {
             return deriveOpenSUSELeapCpe();
         }
-        else if (osProduct == OsFamily.LEAP_MICRO) {
-            return deriveOpenSUSELeapMicroCpe();
-        }
         else if (osProduct == OsFamily.SUSE_LINUX_ENTERPRISE_MICRO) {
             return deriveSUSEMicroCpe();
         }
+        else if (osProduct == OsFamily.SUSE_LIBERTY_LINUX) {
+            return deriveSUSELibertyCpe();
+        }
         else {
-            return deriveFromProductOVALTest(productTest);
+            try {
+                return deriveFromProductOVALTest(productTest);
+            }
+            catch (IllegalStateException e) {
+                return deriveFromProductCriterionComment(productCriterion);
+            }
         }
     }
 
-    private Cpe deriveOpenSUSELeapMicroCpe() {
+    private Cpe deriveFromProductCriterionComment(CriterionType productCriterion) {
+        String comment = productCriterion.getComment();
+        String commentLower = comment.toLowerCase();
+
+        String productPart = "sles";
+        if (commentLower.contains("desktop")) {
+            productPart = "sled";
+        }
+        else if (commentLower.contains("suse linux enterprise server")) {
+            productPart = "sles";
+        }
+        else if (commentLower.contains("suse linux enterprise desktop")) {
+            productPart = "sled";
+        }
+
+        String versionPart = "12";
+        Pattern versionPattern = Pattern.compile("\\b(12|15|16)\\b");
+        Matcher versionMatcher = versionPattern.matcher(comment);
+        if (versionMatcher.find()) {
+            versionPart = versionMatcher.group(1);
+        }
+
+        String updatePart = null;
+        Pattern spPattern = Pattern.compile("sp(\\d+)", Pattern.CASE_INSENSITIVE);
+        Matcher spMatcher = spPattern.matcher(comment);
+        if (spMatcher.find()) {
+            updatePart = "sp" + spMatcher.group(1);
+        }
+
         return new CpeBuilder()
-                .withVendor("opensuse")
-                .withProduct("leap-micro")
+                .withVendor("suse")
+                .withProduct(productPart)
+                .withVersion(versionPart)
+                .withUpdate(updatePart)
+                .build();
+    }
+
+    private Cpe deriveSUSELibertyCpe() {
+        return new CpeBuilder()
+                .withVendor("suse")
+                .withProduct("sll")
                 .withVersion(definition.getOsVersion())
                 .build();
     }
 
     private Cpe deriveSUSEMicroCpe() {
+        String product = "sle-micro";
+        if (definition.getOsVersion() != null && definition.getOsVersion().startsWith("6.")) {
+            product = "sl-micro";
+        }
         return new CpeBuilder()
                 .withVendor("suse")
-                .withProduct("sle-micro")
+                .withProduct(product)
                 .withVersion(definition.getOsVersion())
                 .build();
     }
@@ -250,10 +299,10 @@ public class SUSEVulnerablePackageExtractor extends CriteriaTreeBasedExtractor {
     public boolean isValidDefinition(DefinitionType definitionTypeIn) {
         OsFamily osFamily = definitionTypeIn.getOsFamily();
         boolean definitionFromASupportedFamily = osFamily == OsFamily.LEAP ||
-                osFamily == OsFamily.LEAP_MICRO ||
                 osFamily == OsFamily.SUSE_LINUX_ENTERPRISE_SERVER ||
                 osFamily == OsFamily.SUSE_LINUX_ENTERPRISE_DESKTOP ||
-                osFamily == OsFamily.SUSE_LINUX_ENTERPRISE_MICRO;
+                osFamily == OsFamily.SUSE_LINUX_ENTERPRISE_MICRO ||
+                osFamily == OsFamily.SUSE_LIBERTY_LINUX;
 
         return super.isValidDefinition(definitionTypeIn) && definitionFromASupportedFamily;
     }

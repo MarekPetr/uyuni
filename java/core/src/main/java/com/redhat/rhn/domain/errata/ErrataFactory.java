@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2019--2026 SUSE LLC
  * Copyright (c) 2009--2018 Red Hat, Inc.
  *
  * This software is licensed to you under the GNU General Public License,
@@ -11,9 +12,6 @@
  * Red Hat trademarks are not licensed under GPLv2. No permission is
  * granted to use or replicate Red Hat trademarks that are incorporated
  * in this software or its documentation.
- */
-/*
- * Copyright (c) 2010 SUSE LLC
  */
 package com.redhat.rhn.domain.errata;
 
@@ -32,7 +30,11 @@ import com.redhat.rhn.domain.common.ChecksumFactory;
 import com.redhat.rhn.domain.org.Org;
 import com.redhat.rhn.domain.product.Tuple2;
 import com.redhat.rhn.domain.rhnpackage.Package;
+import com.redhat.rhn.domain.rhnpackage.PackageArch;
+import com.redhat.rhn.domain.rhnpackage.PackageEvr;
 import com.redhat.rhn.domain.rhnpackage.PackageFactory;
+import com.redhat.rhn.domain.rhnpackage.PackageName;
+import com.redhat.rhn.domain.server.Server;
 import com.redhat.rhn.domain.user.User;
 import com.redhat.rhn.frontend.dto.ErrataOverview;
 import com.redhat.rhn.frontend.dto.ErrataPackageFile;
@@ -42,8 +44,6 @@ import com.redhat.rhn.frontend.xmlrpc.InvalidChannelException;
 import com.redhat.rhn.manager.channel.ChannelManager;
 import com.redhat.rhn.manager.errata.ErrataManager;
 import com.redhat.rhn.manager.errata.cache.ErrataCacheManager;
-
-import com.suse.utils.Opt;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -64,7 +64,7 @@ import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.stream.Collectors;
 
-import javax.persistence.Tuple;
+import jakarta.persistence.Tuple;
 
 /**
  * ErrataFactory - the singleton class used to fetch and store
@@ -228,7 +228,7 @@ public class ErrataFactory extends HibernateFactory {
                                             User user, boolean inheritPackages, boolean performPostActions) {
         List<com.redhat.rhn.domain.errata.Errata> toReturn = new ArrayList<>();
         for (Errata errata : errataList) {
-            errata.addChannel(chan);
+            chan.addErrata(errata);
             ErrataManager.replaceChannelNotifications(errata.getId(), chan.getId(), new Date());
 
             Set<Package> packagesToPush = new HashSet<>();
@@ -255,13 +255,12 @@ public class ErrataFactory extends HibernateFactory {
 
             for (PackageOverview packOver : packs) {
                 //lookup the Package object
-                Package pack = PackageFactory.lookupByIdAndUser(
-                        packOver.getId(), user);
+                Package pack = PackageFactory.lookupByIdAndUser(packOver.getId(), user);
                 packagesToPush.add(pack);
             }
 
-            Errata e = addErrataPackagesToChannel(errata, chan, user, packagesToPush);
-            toReturn.add(e);
+            addErrataPackagesToChannel(errata, chan, user, packagesToPush);
+            toReturn.add(errata);
         }
         if (performPostActions) {
             ChannelManager.refreshWithNewestPackages(chan, "java::addErrataPackagesToChannel");
@@ -277,20 +276,18 @@ public class ErrataFactory extends HibernateFactory {
      * @param chan channel to add it to
      * @param user the user doing the adding
      * @param packages the packages to add
-     * @return the added errata
      */
-    public static Errata addToChannel(Errata errata, Channel chan, User user,
+    public static void addToChannel(Errata errata, Channel chan, User user,
                                       Set<Package> packages) {
-        errata.addChannel(chan);
-        errata = addErrataPackagesToChannel(errata, chan, user, packages);
+        chan.addErrata(errata);
+        addErrataPackagesToChannel(errata, chan, user, packages);
         ChannelManager.refreshWithNewestPackages(chan, "java::addErrataPackagesToChannel");
-        return errata;
     }
 
     /**
      * Private helper method that pushes errata packages to a channel
      */
-    private static Errata addErrataPackagesToChannel(Errata errata,
+    private static void addErrataPackagesToChannel(Errata errata,
                                                      Channel chan, User user, Set<Package> packages) {
         // Much quicker to push all packages at once
         List<Long> pids = new ArrayList<>();
@@ -305,18 +302,15 @@ public class ErrataFactory extends HibernateFactory {
                     " has NULL path, please run spacewalk-data-fsck");
             }
 
-            Optional<ErrataFile> fileOpt =
-                    ErrataFactory.lookupErrataFile(errata.getId(), pack.getPath());
+            ErrataFile errataFile = ErrataFactory.lookupErrataFile(errata.getId(), pack.getPath())
+                .map(ef -> addErrataFile(ef, pack, chan))
+                .orElseGet(() -> createErrataFile(pack, errata, chan));
 
-            singleton.saveObject(Opt.fold(fileOpt, () -> createErrataFile(pack, errata, chan),
-                    ef -> addErrataFile(ef, pack, chan)));
-
+            singleton.saveObject(errataFile);
         }
         ChannelFactory.save(chan);
 
         ErrataCacheManager.insertCacheForChannelErrataAsync(List.of(chan.getId()), errata);
-
-        return errata;
     }
 
     /**
@@ -477,17 +471,7 @@ public class ErrataFactory extends HibernateFactory {
      * @return Errata if found, otherwise null
      */
     public static Errata lookupErrataById(Long id) {
-        Errata retval;
-        try {
-            retval = getSession().createQuery("FROM Errata AS e WHERE e.id = :id", Errata.class)
-                    .setParameter("id", id, StandardBasicTypes.LONG)
-                    .uniqueResult();
-        }
-        catch (HibernateException he) {
-            log.error("Error loading Errata from DB", he);
-            throw new HibernateRuntimeException("Error loading Errata from db");
-        }
-        return retval;
+        return getSession().find(Errata.class, id);
     }
 
     /**
@@ -688,10 +672,12 @@ public class ErrataFactory extends HibernateFactory {
 
     /**
      * Insert or Update a Errata.
+     *
      * @param errataIn Errata to be stored in database.
+     * @return the managed {@link Errata} instance
      */
-    public static void save(Errata errataIn) {
-        singleton.saveObject(errataIn);
+    public static Errata save(Errata errataIn) {
+        return singleton.saveObject(errataIn);
     }
 
     /**
@@ -800,6 +786,10 @@ public class ErrataFactory extends HibernateFactory {
                                 WHERE pid IN (:pids) AND sid IN (:sids)
                                 """,
                         Tuple.class)
+                .addSynchronizedEntityClass(Package.class)
+                .addSynchronizedEntityClass(Server.class)
+                .addSynchronizedEntityClass(Channel.class)
+                .addSynchronizedEntityClass(Errata.class)
                 .addScalar("pid", StandardBasicTypes.LONG)
                 .addScalar("sid", StandardBasicTypes.LONG)
                 .setParameter("pids", pids)
@@ -835,6 +825,13 @@ public class ErrataFactory extends HibernateFactory {
                                 AND sid IN (:sids)
                                 """,
                         Tuple.class)
+                .addSynchronizedEntityClass(Package.class)
+                .addSynchronizedEntityClass(PackageEvr.class)
+                .addSynchronizedEntityClass(PackageName.class)
+                .addSynchronizedEntityClass(PackageArch.class)
+                .addSynchronizedEntityClass(Server.class)
+                .addSynchronizedEntityClass(Channel.class)
+                .addSynchronizedEntityClass(Errata.class)
                 .addScalar("pid", StandardBasicTypes.LONG)
                 .addScalar("sid", StandardBasicTypes.LONG)
                 .setParameter("nevras", nevras)
@@ -875,6 +872,9 @@ public class ErrataFactory extends HibernateFactory {
                                     (SELECT channel_id FROM rhnAvailableChannels WHERE org_id = :org_id)
                                 """,
                         Tuple.class)
+                .addSynchronizedEntityClass(Errata.class)
+                .addSynchronizedEntityClass(Keyword.class)
+                .addSynchronizedEntityClass(Channel.class)
                 .addScalar("id", StandardBasicTypes.LONG) //0
                 .addScalar("advisory", StandardBasicTypes.STRING) //1
                 .addScalar("advisoryName", StandardBasicTypes.STRING) //2
@@ -946,6 +946,10 @@ public class ErrataFactory extends HibernateFactory {
                                 ORDER BY e.id
                                 """,
                         Tuple.class)
+                .addSynchronizedEntityClass(Errata.class)
+                .addSynchronizedEntityClass(Keyword.class)
+                .addSynchronizedEntityClass(Package.class)
+                .addSynchronizedEntityClass(PackageName.class)
                 .addScalar("id", StandardBasicTypes.LONG) //0
                 .addScalar("advisory", StandardBasicTypes.STRING) //1
                 .addScalar("advisoryName", StandardBasicTypes.STRING) //2
@@ -1045,6 +1049,11 @@ public class ErrataFactory extends HibernateFactory {
                                 ORDER BY e.id
                                 """,
                         Tuple.class)
+                .addSynchronizedEntityClass(Errata.class)
+                .addSynchronizedEntityClass(Keyword.class)
+                .addSynchronizedEntityClass(Package.class)
+                .addSynchronizedEntityClass(PackageName.class)
+                .addSynchronizedEntityClass(Channel.class)
                 .addScalar("id", StandardBasicTypes.LONG) //0
                 .addScalar("advisory", StandardBasicTypes.STRING) //1
                 .addScalar("advisoryName", StandardBasicTypes.STRING) //2
@@ -1094,7 +1103,7 @@ public class ErrataFactory extends HibernateFactory {
         cloned.setAdvisoryStatus(original.getAdvisoryStatus());
 
         // Copy the packages
-        cloned.setPackages(new HashSet<>(original.getPackages()));
+        cloned.replacePackages(new HashSet<>(original.getPackages()));
 
         // Copy the keywords
         original.getKeywords().forEach(k -> cloned.addKeyword(k));
@@ -1148,6 +1157,10 @@ public class ErrataFactory extends HibernateFactory {
                                         AND ce.channel_id = ac.channel_id
                                         AND ac.org_id = :orgId))
                         """, Tuple.class)
+                .addSynchronizedEntityClass(Errata.class)
+                .addSynchronizedEntityClass(ClonedErrata.class)
+                .addSynchronizedEntityClass(Org.class)
+                .addSynchronizedEntityClass(Channel.class)
                 .addEntity("e", Errata.class)
                 .setParameter("orgId", orgId)
                 .setParameterList("eids", ids)

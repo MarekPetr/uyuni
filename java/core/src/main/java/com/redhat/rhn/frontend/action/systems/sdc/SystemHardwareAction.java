@@ -34,6 +34,8 @@ import com.redhat.rhn.manager.system.SystemManager;
 import com.redhat.rhn.taskomatic.TaskomaticApi;
 import com.redhat.rhn.taskomatic.TaskomaticApiException;
 
+import com.suse.manager.webui.services.pillar.MinionPillarManager;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -51,8 +53,8 @@ import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.stream.Collectors;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * SystemHardwareAction handles the interaction of the ChannelDetails page.
@@ -89,6 +91,8 @@ public class SystemHardwareAction extends RhnAction {
             if (ctx.hasParam("update_networking_properties")) {
                 server.setPrimaryInterfaceWithName(form.get("primaryInterface").toString());
                 server.setPrimaryFQDNWithName(form.get("primaryFQDN").toString());
+                server.asMinionServer().ifPresent(m -> MinionPillarManager.INSTANCE.generatePillar(m,
+                                                  false, MinionPillarManager.PillarSubset.GENERAL));
                 createSuccessMessage(request, "message.interfaceSet", null);
             }
             else {
@@ -182,10 +186,7 @@ public class SystemHardwareAction extends RhnAction {
         switch (d.getDeviceClass()) {
             case "HD":
                 break;
-            case "VIDEO":
-            case "USB":
-            case "AUDIO":
-            case "CAPTURE":
+            case "VIDEO", "USB", "AUDIO", "CAPTURE":
                 return d.getDeviceClass();
             default:
                 if (!d.getBus().equals("MISC")) {

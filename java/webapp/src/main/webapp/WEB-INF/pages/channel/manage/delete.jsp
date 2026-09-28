@@ -1,4 +1,4 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
@@ -17,7 +17,7 @@
                 <p><bean:message key="channel.delete.jsp.introparagraph"/></p>
                 <p><bean:message key="channel.delete.jsp.state.scheduled.info"/></p>
 
-                <div class="form-group">
+                <div class="row">
                     <label class="col-lg-3 control-label">
                         <bean:message key="channel.edit.jsp.name"/>:
                     </label>
@@ -27,7 +27,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="form-group">
+                <div class="row">
                     <label class="col-lg-3 control-label">
                         <bean:message key="channel.edit.jsp.parent"/>:
                     </label>
@@ -44,7 +44,7 @@
                 </div>
 
                 <!-- Architecture -->
-                <div class="form-group">
+                <div class="row">
                     <label class="col-lg-3 control-label">
                         <bean:message key="channel.delete.jsp.arch"/>
                     </label>
@@ -56,7 +56,7 @@
                 </div>
 
                 <!-- Total Packages -->
-                <div class="form-group">
+                <div class="row">
                     <label class="col-lg-3 control-label">
                         <bean:message key="channel.delete.jsp.totalpackages"/>
                     </label>
@@ -68,7 +68,7 @@
                 </div>
 
                 <!-- Subscribed Systems -->
-                <div class="form-group">
+                <div class="row">
                     <label class="col-lg-3 control-label">
                         <bean:message key="channel.delete.jsp.systemssubscribed"/>
                     </label>
@@ -80,7 +80,7 @@
                 </div>
 
                 <!-- Summary -->
-                <div class="form-group">
+                <div class="row">
                     <label class="col-lg-3 control-label">
                         <bean:message key="channel.edit.jsp.summary"/>:
                     </label>
@@ -92,7 +92,7 @@
                 </div>
 
                 <!-- Description -->
-                <div class="form-group">
+                <div class="row">
                     <label class="col-lg-3 control-label">
                         <bean:message key="channel.edit.jsp.description"/>:
                     </label>
@@ -115,7 +115,7 @@
                 <p><bean:message key="channel.delete.jsp.orgsparagraph" arg0="<strong>${channel.name}</strong>"/></p>
 
                     <!-- Organizations Affected -->
-                <div class="form-group">
+                <div class="row">
                     <label class="col-lg-3 control-label">
                         <bean:message key="channel.delete.jsp.orgsaffected"/>
                     </label>
@@ -127,7 +127,7 @@
                 </div>
 
                     <!-- Trusted Systems Affected -->
-                <div class="form-group">
+                <div class="row">
                     <label class="col-lg-3 control-label">
                         <bean:message key="channel.delete.jsp.systemssubscribed"/>
                     </label>
@@ -138,12 +138,28 @@
                     </div>
                 </div>
 
+                <!-- Activation Keys -->
+                <h2><bean:message key="channel.delete.jsp.actkeysheader"/></h2>
+                <p><bean:message key="channel.delete.jsp.actkeysparagraph" arg0="<strong>${channel.name}</strong>"/></p>
+
+                <!-- Activation Keys Affected -->
+                <div class="form-group">
+                    <label class="col-lg-3 control-label">
+                        <bean:message key="channel.delete.jsp.actkeysaffected"/>
+                    </label>
+                    <div class="col-lg-6">
+                        <div class="well well-sm">
+                            <c:out value="${activationKeysCount}"/>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Unsubscribe Option -->
                 <h2><bean:message key="channel.delete.jsp.unsubheader"/></h2>
                 <p><bean:message key="channel.delete.jsp.unsubparagraph" arg0="<strong>${channel.name}</strong>"/></p>
 
                     <!-- Unsubscribe option -->
-                <div class="form-group">
+                <div class="row">
                     <div class="col-lg-offset-3 offset-lg-3 col-lg-6">
                         <div class="checkbox">
                             <label>
@@ -153,7 +169,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="form-group">
+                <div class="row">
                     <div class="col-lg-offset-3 offset-lg-3 col-lg-6">
                         <c:choose>
                             <c:when test="${empty requestScope.disableDelete}">

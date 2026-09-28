@@ -19,20 +19,21 @@ package com.redhat.rhn.domain.user.legacy;
 import com.redhat.rhn.domain.user.RhnTimeZone;
 import com.redhat.rhn.domain.user.User;
 
-import org.hibernate.annotations.Type;
+import org.hibernate.type.YesNoConverter;
 
 import java.io.Serializable;
 import java.util.Date;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.MapsId;
-import javax.persistence.OneToOne;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 
 /**
  * UserInfo represents the bean version of the DB table
@@ -44,7 +45,7 @@ public class UserInfo extends AbstractUserChild implements Serializable {
 
     @Id
     @Column(name = "user_id")
-    private long id;
+    private Long id;
 
     @Column(name = "page_size")
     private int pageSize;
@@ -53,11 +54,11 @@ public class UserInfo extends AbstractUserChild implements Serializable {
     private int emailNotify;
 
     @Column(name = "tasko_notify", nullable = false)
-    @Type(type = "yes_no")
+    @Convert(converter = YesNoConverter.class)
     private boolean taskoNotify;
 
     @Column(name = "use_pam_authentication")
-    @Type(type = "yes_no")
+    @Convert(converter = YesNoConverter.class)
     private boolean usePamAuthentication;
 
     @Column(name = "show_system_group_list")
@@ -86,6 +87,10 @@ public class UserInfo extends AbstractUserChild implements Serializable {
 
     @Column(name = "web_theme")
     private String webTheme;
+
+    @Column(name = "beta_features_enabled", nullable = false)
+    @Convert(converter = YesNoConverter.class)
+    private boolean betaFeaturesEnabled;
 
     /**
      * Create a new empty user
@@ -277,5 +282,21 @@ public class UserInfo extends AbstractUserChild implements Serializable {
      */
     public void setWebTheme(String webThemeIn) {
         this.webTheme = webThemeIn;
+    }
+
+    /**
+     * Getter for betaFeaturesEnabled
+     * @return the betaFeaturesEnabled
+     */
+    public boolean getBetaFeaturesEnabled() {
+        return this.betaFeaturesEnabled;
+    }
+
+    /**
+     * Setter for betaFeaturesEnabled
+     * @param betaFeaturesEnabledIn the betaFeaturesEnabled to set
+     */
+    public void setBetaFeaturesEnabled(boolean betaFeaturesEnabledIn) {
+        this.betaFeaturesEnabled = betaFeaturesEnabledIn;
     }
 }

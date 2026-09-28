@@ -1,4 +1,4 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
@@ -15,24 +15,24 @@
                 <h2><bean:message key="channel.edit.jsp.basicchanneldetails"/></h2>
             </div>
             <div class="panel-body">
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.edit.jsp.name"/>
                     </label>
                     <div class="col-lg-6">
                         <c:out value="${channel.name}" />
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.edit.jsp.label"/>
                     </label>
                     <div class="col-lg-6">
                         <c:out value="${channel.label}"/>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.jsp.parentchannel"/>
                     </label>
                     <div class="col-lg-6">
@@ -46,8 +46,8 @@
                         </c:if>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.edit.jsp.checksum"/>
                     </label>
                     <div class="col-lg-6">
@@ -59,24 +59,24 @@
                         </c:if>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="packagelist.jsp.packagearch"/>
                     </label>
                     <div class="col-lg-6">
                         <c:out value="${channel.channelArch.name}" />
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.jsp.summary"/>
                     </label>
                     <div class="col-lg-6">
                         <c:out value="${channel.summary}" />
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="details.jsp.description"/>
                     </label>
                     <div class="col-lg-6">
@@ -88,24 +88,24 @@
                         </c:if>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.jsp.chanent"/>
                     </label>
                     <div class="col-lg-6">
                         <c:out value="${channel.channelFamily.name}" />
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channelfiles.jsp.lastmod"/>
                     </label>
                     <div class="col-lg-6">
                         <c:out value="${channel_last_modified}" />
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.jsp.repolastbuild"/>
                     </label>
                     <div class="col-lg-6">
@@ -119,16 +119,34 @@
                         </c:choose>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
+                        <bean:message key="channel.jsp.repoautosync"/>
+                    </label>
+                    <div class="col-lg-6">
+                        <c:choose>
+                            <c:when test="${channel.autoSync == true}">
+                                <bean:message key="channel.jsp.repoautosync.true"/>
+                            </c:when>
+                            <c:when test="${channel.autoSync == false}">
+                                <bean:message key="channel.jsp.repoautosync.false"/>
+                            </c:when>
+                            <c:otherwise>
+                                (none)
+                            </c:otherwise>
+                        </c:choose>
+                    </div>
+                </div>
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.jsp.repodata"/>
                     </label>
                     <div class="col-lg-6">
                         <c:out value="${repo_status}" />
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="header.jsp.packages"/>
                     </label>
                     <div class="col-lg-6">
@@ -137,8 +155,8 @@
                         </a>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.edit.jsp.perusersub"/>
                     </label>
                     <div class="col-lg-6">
@@ -157,7 +175,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="form-group">
+                <div class="row">
                     <div class="col-lg-offset-3 offset-lg-3 col-lg-6">
                         <div class="checkbox">
                             <label>
@@ -174,8 +192,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.jsp.systemssubsribed"/>
                     </label>
                     <div class="col-lg-6">
@@ -184,8 +202,8 @@
                         </a>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.jsp.appstreams"/>
                     </label>
                     <div class="col-lg-6">
@@ -201,16 +219,16 @@
                 <h2><bean:message key="channel.edit.jsp.contactsupportinfo"/></h2>
             </div>
             <div class="panel-body">
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                             <bean:message key="channel.edit.jsp.maintainername"/>
                     </label>
                     <div class="col-lg-6">
                         <c:out value="${channel.maintainerName}" />
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.edit.jsp.maintainercontactinfo"/>
                     </label>
                     <div class="col-lg-6">
@@ -224,7 +242,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="form-group">
+                <div class="row">
                     <div class="col-lg-offset-3 offset-lg-3 col-lg-6">
                         <div class="input-group">
                             <span class="input-group-addon input-group-text">
@@ -236,8 +254,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.edit.jsp.supportpolicy"/>
                     </label>
                     <div class="col-lg-6">
@@ -252,8 +270,8 @@
                 <h2><bean:message key="channel.edit.jsp.security.gpg"/></h2>
             </div>
             <div class="panel-body">
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.edit.jsp.gpgkeyurl"/>
                     </label>
                     <div class="col-lg-6">
@@ -267,8 +285,8 @@
                         </c:choose>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.edit.jsp.gpgkeyid"/>
                     </label>
                     <div class="col-lg-6">
@@ -282,8 +300,8 @@
                         </c:choose>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.edit.jsp.gpgkeyfingerprint"/>
                     </label>
                     <div class="col-lg-6">
@@ -297,8 +315,8 @@
                         </c:choose>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-lg-3 control-label">
+                <div class="row">
+                    <label class="col-lg-3 text-end">
                         <bean:message key="channel.jsp.gpgcheck"/>
                     </label>
                     <div class="col-lg-6">
@@ -316,7 +334,7 @@
         </div>
 
         <c:if test="${has_access}">
-            <div class="form-group">
+            <div class="row">
                 <div class="col-lg-offset-3 offset-lg-3 col-lg-6">
                     <html:submit property="Update" styleClass="btn btn-primary">
                         <bean:message key="message.Update"/>

@@ -14,7 +14,7 @@ mgr_deploy_customer_gpg_key:
     - mode: 644
 
 mgr_trust_customer_gpg_key:
-  mgrcompat.module_run:
+  module.run:
     - name: pkg.add_repo_key
     - path: /etc/pki/rpm-gpg/mgr-gpg-pub.key
     - onchanges:
@@ -116,9 +116,9 @@ mgr_deploy_{{ keyname }}:
 {%- if args['gpgkeyurl'] is defined %}
 {%- set keys = args['gpgkeyurl'].split(' ') %}
 {%- for gpgkey in keys %}
-{%- set keyexists = gpgkey.startswith('file://') and salt['file.file_exists'](gpgkey[7:]) or gpgkey.startswith('http') %}
+{%- set is_valid_url = gpgkey.startswith('file://') or gpgkey.startswith('http') %}
 {%- set gpgkey = gpgkey|replace(pillar.get('mgr_origin_server', 'no-replace-origin-not-found'), pillar.get('mgr_server', '')) %}
-{%- if keyexists and gpgkey not in gpg_urls %}
+{%- if is_valid_url and gpgkey not in gpg_urls %}
 {{ gpg_urls.append(gpgkey) | default("", True) }}
 {%- endif %}
 {%- endfor %}
@@ -127,7 +127,12 @@ mgr_deploy_{{ keyname }}:
 
 {% for url in gpg_urls %}
 {{ url | replace(':', '_') }}:
-  mgrcompat.module_run:
+  module.run:
     - name: pkg.add_repo_key
     - path: {{ url }}
+    {%- if url.startswith('file://') %}
+    - onlyif:
+      - fun: file.file_exists
+        path: {{ url[7:] }}
+    {%- endif %}
 {%- endfor %}

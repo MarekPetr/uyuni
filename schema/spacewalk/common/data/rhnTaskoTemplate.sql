@@ -338,13 +338,6 @@ INSERT INTO rhnTaskoTemplate (id, bunch_id, task_id, ordering, start_if)
 
 INSERT INTO rhnTaskoTemplate (id, bunch_id, task_id, ordering, start_if)
              VALUES (sequence_nextval('rhn_tasko_template_id_seq'),
-                    (SELECT id FROM rhnTaskoBunch WHERE name='custom-gpg-key-import-bunch'),
-                    (SELECT id FROM rhnTaskoTask WHERE name='custom-gpg-key-import'),
-                    0,
-                    null);
-
-INSERT INTO rhnTaskoTemplate (id, bunch_id, task_id, ordering, start_if)
-            VALUES (sequence_nextval('rhn_tasko_template_id_seq'),
                     (SELECT id FROM rhnTaskoBunch WHERE name = 'errata-advisory-map-sync-bunch'),
                     (SELECT id FROM rhnTaskoTask WHERE name = 'errata-advisory-map-sync'),
                     0,
@@ -357,4 +350,17 @@ INSERT INTO rhnTaskoTemplate (id, bunch_id, task_id, ordering, start_if)
                         0,
                         null);
 
+INSERT INTO rhnTaskoTemplate (id, bunch_id, task_id, ordering, start_if)
+             VALUES (sequence_nextval('rhn_tasko_template_id_seq'),
+                        (SELECT id FROM rhnTaskoBunch WHERE name='diskcheck-task-bunch'),
+                        (SELECT id FROM rhnTaskoTask WHERE name='diskcheck-task'),
+                        0,
+                        null);
+
+INSERT INTO rhnTaskoTemplate (id, bunch_id, task_id, ordering, start_if)
+             VALUES (sequence_nextval('rhn_tasko_template_id_seq'),
+                        (SELECT id FROM rhnTaskoBunch WHERE name='clm-diff-bunch'),
+                        (SELECT id FROM rhnTaskoTask WHERE name='clm-diff'),
+                        0,
+                        null);
 commit;

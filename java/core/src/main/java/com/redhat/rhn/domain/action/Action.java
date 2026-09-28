@@ -19,6 +19,7 @@ import com.redhat.rhn.common.localization.LocalizationService;
 import com.redhat.rhn.common.util.StringUtil;
 import com.redhat.rhn.domain.BaseDomainHelper;
 import com.redhat.rhn.domain.action.server.ServerAction;
+import com.redhat.rhn.domain.action.server.ServerActionFactory;
 import com.redhat.rhn.domain.org.Org;
 import com.redhat.rhn.domain.server.MinionServerFactory;
 import com.redhat.rhn.domain.server.MinionSummary;
@@ -54,25 +55,25 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.DiscriminatorColumn;
-import javax.persistence.DiscriminatorType;
-import javax.persistence.DiscriminatorValue;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Inheritance;
-import javax.persistence.InheritanceType;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
-import javax.persistence.Transient;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.DiscriminatorType;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * Action - Class representation of the table rhnAction.
@@ -309,6 +310,22 @@ public class Action extends BaseDomainHelper implements Serializable, WebSocketA
     }
 
     /**
+     * Retrieve the server action for the specified server, if present
+     * @param serverId the server id
+     * @return the {@link ServerAction}, or null if no server action is found for the given server
+     */
+    public ServerAction getServerAction(Long serverId) {
+        if (serverId == null || serverActions == null || serverActions.isEmpty()) {
+            return null;
+        }
+
+        return serverActions.stream()
+                .filter(sa -> serverId.equals(sa.getServerId()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
     * Set the Scheduler User who scheduled this Action
     * @param schedulerIn the User who did the scheduling
     */
@@ -367,7 +384,7 @@ public class Action extends BaseDomainHelper implements Serializable, WebSocketA
     // Get the number of ServerAction objects that match
     // the passed in ActionStatus
     private long getActionStatusCount(ActionStatus status) {
-        return ActionFactory.getServerActionCountByStatus(this, status);
+        return ServerActionFactory.getServerActionCountByStatus(this, status);
     }
 
     /**
@@ -392,14 +409,10 @@ public class Action extends BaseDomainHelper implements Serializable, WebSocketA
         return new EqualsBuilder().append(this.getId(), castOther.getId())
                                   .append(this.getOrg(), castOther.getOrg())
                                   .append(this.getName(), castOther.getName())
-                                  .append(this.getEarliestAction(),
-                                          castOther.getEarliestAction())
+                                  .append(this.getEarliestAction(), castOther.getEarliestAction())
                                   .append(this.getVersion(), castOther.getVersion())
                                   .append(this.getArchived(), castOther.getArchived())
-                                  .append(this.getCreated(), castOther.getCreated())
-                                  .append(this.getModified(), castOther.getModified())
-                                  .append(this.getPrerequisite(),
-                                          castOther.getPrerequisite())
+                                  .append(this.getPrerequisite(), castOther.getPrerequisite())
                                   .append(this.getActionType(), castOther.getActionType())
                                   .isEquals();
     }
@@ -414,8 +427,6 @@ public class Action extends BaseDomainHelper implements Serializable, WebSocketA
                                     .append(this.getEarliestAction())
                                     .append(this.getVersion())
                                     .append(this.getArchived())
-                                    .append(this.getCreated())
-                                    .append(this.getModified())
                                     .append(this.getPrerequisite())
                                     .append(this.getActionType()).toHashCode();
     }
@@ -578,7 +589,7 @@ public class Action extends BaseDomainHelper implements Serializable, WebSocketA
             LOG.error("To manage BYOS or DC servers from SUSE Multi-Linux Manager PAYG, SCC credentials must be " +
                     "in place.");
             Object[] args = {formatByosListToStringErrorMsg(byosMinions)};
-            ActionFactory.rejectScheduledActions(List.of(getId()),
+            ServerActionFactory.rejectScheduledActions(List.of(getId()),
                     LocalizationService.getInstance()
                             .getMessage("task.action.rejection.notcompliantPaygByos", args));
             return true;
@@ -665,6 +676,15 @@ public class Action extends BaseDomainHelper implements Serializable, WebSocketA
      */
     public boolean clientExecutionReturnsYamlFormat() {
         return false; //default
+    }
+
+    /**
+     * checks whether the action is ready to run: if not, the action execution will be postponed by some seconds
+     * see MinionActionExecutor.execute()
+     * @return true if the action is ready to run
+     */
+    public boolean isReadyToRun() {
+        return true; //default
     }
 
 }

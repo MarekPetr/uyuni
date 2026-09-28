@@ -1,6 +1,6 @@
 import "./formula-form.css";
 
-import { Component, Fragment } from "react";
+import { type ReactNode, Component } from "react";
 
 import { productName } from "core/user-preferences";
 
@@ -147,7 +147,7 @@ class EditGroup extends Component<EditGroupProps, EditGroupState> {
         </div>
         <div>
           {this.state.visible ? (
-            <Fragment>
+            <>
               {"$help" in this.props.element ? <p>{this.props.element.$help}</p> : null}
               <Component
                 handleRemoveItem={this.handleRemoveItem}
@@ -160,7 +160,7 @@ class EditGroup extends Component<EditGroupProps, EditGroupState> {
                 setSectionsExpanded={this.props.setSectionsExpanded}
                 formulaForm={this.props.formulaForm}
               />
-            </Fragment>
+            </>
           ) : null}
         </div>
       </div>
@@ -185,7 +185,7 @@ class EditPrimitiveGroup extends Component<EditPrimitiveGroupProps> {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   simpleWrapper = (name, required, element, help = null) => {
     return (
-      <Fragment>
+      <>
         <div className="col-lg-3">{element}</div>
         {required ? (
           <span className="required-form-field" style={{ float: "left", paddingRight: "10px" }}>
@@ -193,19 +193,19 @@ class EditPrimitiveGroup extends Component<EditPrimitiveGroupProps> {
           </span>
         ) : null}
         <HelpIcon text={this.props.element["$help"]} />
-      </Fragment>
+      </>
     );
   };
 
   render() {
-    const elements: React.ReactNode[] = [];
+    const elements: ReactNode[] = [];
     for (const i in this.props.value) {
       if (i === "$meta") {
         continue;
       }
       const id = this.props.id + "#" + i;
       elements.push(
-        <div className="form-group" id={id} key={id}>
+        <div className="row" id={id} key={id}>
           {generateFormulaComponentForId(
             this.props.element.$prototype,
             this.props.value[i],
@@ -253,7 +253,7 @@ class EditPrimitiveDictionaryGroup extends Component<EditPrimitiveDictionaryGrou
   }
 
   render() {
-    const elements: React.ReactNode[] = [];
+    const elements: ReactNode[] = [];
 
     for (const i in this.props.value) {
       if (i === "$meta") {
@@ -261,7 +261,7 @@ class EditPrimitiveDictionaryGroup extends Component<EditPrimitiveDictionaryGrou
       }
       const id = this.props.id + "#" + i;
       elements.push(
-        <div className="form-group" id={id} key={id}>
+        <div className="row" id={id} key={id}>
           {generateFormulaComponentForId(
             this.props.element.$prototype.$key,
             this.props.value[i][0],
@@ -350,7 +350,7 @@ class EditDictionaryGroup extends Component<EditDictionaryGroupProps, EditDictio
 
   wrapKeyGroup(element_name, required, innerHTML) {
     return (
-      <div className="form-group" key={element_name}>
+      <div className="row" key={element_name}>
         <label className="col-lg-3 control-label">
           {element_name}
           <span className="required-form-field"> *</span>:
@@ -392,14 +392,14 @@ class EditDictionaryGroup extends Component<EditDictionaryGroupProps, EditDictio
   }
 
   render() {
-    const elements: React.ReactNode[] = [];
+    const elements: ReactNode[] = [];
     for (const i in this.props.value) {
       if (i === "$meta") {
         continue;
       }
       const id = this.props.id + "#" + i;
 
-      const item_elements: React.ReactNode[] = [];
+      const item_elements: ReactNode[] = [];
       for (const element_name in this.props.element.$prototype) {
         if (element_name.startsWith("$") && element_name !== "$key") continue;
         item_elements.push(

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009--2014 Red Hat, Inc.
+ * Copyright (c) 2026 SUSE LLC
  *
  * This software is licensed to you under the GNU General Public License,
  * version 2 (GPLv2). There is NO WARRANTY for this software, express or
@@ -7,11 +7,8 @@
  * FOR A PARTICULAR PURPOSE. You should have received a copy of GPLv2
  * along with this software; if not, see
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
- *
- * Red Hat trademarks are not licensed under GPLv2. No permission is
- * granted to use or replicate Red Hat trademarks that are incorporated
- * in this software or its documentation.
  */
+
 package com.redhat.rhn.common.hibernate;
 
 import com.redhat.rhn.common.db.DatabaseException;
@@ -28,6 +25,7 @@ import org.apache.logging.log4j.Logger;
 import org.hibernate.Hibernate;
 import org.hibernate.HibernateException;
 import org.hibernate.MappingException;
+import org.hibernate.NonUniqueResultException;
 import org.hibernate.Session;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.query.Query;
@@ -41,7 +39,6 @@ import java.sql.Blob;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,12 +48,12 @@ import java.util.function.BinaryOperator;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
-import javax.persistence.FlushModeType;
-import javax.persistence.LockModeType;
-import javax.persistence.Tuple;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaDelete;
-import javax.persistence.criteria.Root;
+import jakarta.persistence.FlushModeType;
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.Tuple;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaDelete;
+import jakarta.persistence.criteria.Root;
 
 /**
  * HibernateFactory - Helper superclass that contains methods for fetching and
@@ -73,11 +70,8 @@ public abstract class HibernateFactory {
 
     public static final String ROLLBACK_MSG = "Error during transaction. Rolling back";
 
-    protected HibernateFactory() {
-    }
-
     /**
-     * Set a new conntionManager instance
+     * Set a new connectionManager instance
      * @param conMgr the new connection manager
      */
     protected static void setConnectionManager(ConnectionManager conMgr) {
@@ -92,6 +86,29 @@ public abstract class HibernateFactory {
      */
     public static void addConfigurator(Configurator c) {
         connectionManager.addConfigurator(c);
+    }
+
+    /**
+     * add a listener
+     * @param l the listener to be added
+     */
+    public static void addCommitListener(HibernateCommitListener l) {
+        connectionManager.addCommitListener(l);
+    }
+
+    /**
+     * removes a particular listener
+     * @param l the listener to be removed
+     */
+    public static void removeCommitListener(HibernateCommitListener l) {
+        connectionManager.removeCommitListener(l);
+    }
+
+    /**
+     * removes all listeners
+     */
+    public static void removeAllCommitListeners() {
+        connectionManager.removeAllCommitListeners();
     }
 
     /**
@@ -117,14 +134,6 @@ public abstract class HibernateFactory {
     }
 
     /**
-     * Register Prometheus Statistics Collector component name
-     * @param componentName Name of the application component which will be added to the metric as the `unit` label
-     */
-    public static void registerComponentName(String componentName) {
-        connectionManager.setComponentName(componentName);
-    }
-
-    /**
      * Get the Logger for the derived class so log messages show up on the
      * correct class
      * @return Logger for this class.
@@ -134,23 +143,6 @@ public abstract class HibernateFactory {
     /**
      * Finds a single instance of a persistent object, given one parameter of type long
      * This convenience method is aimed at replacing simple named queries on a single parameter
-     * e.g. an environment like:
-     *
-     * ActionType-xbm.xml:
-     *      <query name="ActionType.findById">
-     *         <![CDATA[from com.redhat.rhn.domain.action.ActionType as t where t.id = :id]]>
-     *     </query>
-     * Anywhere in the code:
-     *     ActionType actType =
-     *          hibernateFactory.lookupObjectByNamedQuery("ActionType.findById", Map.of("id", id), true);
-     *
-     * can be substituted with
-     *
-     * ActionType-xbm.xml:
-     *      .... removed! .....
-     * Anywhere in the code:
-     *      ActionType actType = hibernateFactory.lookupObjectByParam("id", id, ActionType.class, true);
-     *
      * @param paramName the parameter name (e.g. "label", "name", "id" etc.)
      * @param paramValue the parameter actual value
      * @param objClass class of the query object
@@ -168,9 +160,14 @@ public abstract class HibernateFactory {
                     .setCacheable(cacheable)
                     .uniqueResult();
         }
-        catch (HibernateException he) {
+        catch (NonUniqueResultException e) {
+            throw new HibernateRuntimeException(
+                "lookupObjectByParam with param [%s]=[%s] on class [%s] expected only one result"
+                    .formatted(paramName, paramValue.toString(), objClass.getSimpleName()), e);
+        }
+        catch (HibernateException | IllegalArgumentException e) {
             throw new HibernateRuntimeException("lookupObjectByParam failed with param [%s]=[%s] on class [%s]"
-                    .formatted(paramName, paramValue.toString(), objClass.getSimpleName()), he);
+                    .formatted(paramName, paramValue.toString(), objClass.getSimpleName()), e);
         }
     }
 
@@ -178,170 +175,34 @@ public abstract class HibernateFactory {
         return lookupObjectByParam(objClass, paramName, paramValue, false);
     }
 
-    /**
-     * Binds the values of the map to a named query parameter, whose value
-     * matches the key in the given Map, guessing the Hibernate type from the
-     * class of the given object.
-     * @param query Query to be modified.
-     * @param parameters named query parameters to be bound.
-     * @throws HibernateException if there is a problem with updating the Query.
-     * @throws ClassCastException if the key in the given Map is NOT a String.
+     /**
+     * Saves the given object to the database using Hibernate
+     * @param entity Object to be persisted.
+     * @return A managed entity
+     * @param <T> type of the entity
      */
-    private <T> void bindParameters(Query<T> query, Map<String, Object> parameters)
-        throws HibernateException {
-        if (parameters == null) {
-            return;
-        }
+     protected <T> T saveObject(T entity) {
+         var session = getSession();
 
-        for (Map.Entry<String, Object> entry: parameters.entrySet()) {
-            if (entry.getValue() instanceof Collection c) {
-                if (c.size() > 1000) {
-                    LOG.error("Query executed with Collection larger than 1000");
-                }
-                query.setParameterList(entry.getKey(), c);
-            }
-            else {
-                query.setParameter(entry.getKey(), entry.getValue());
-            }
-        }
-    }
+         // if the entity happens to be already managed, return it
+         if (session.contains(entity)) {
+             return entity;
+         }
 
-    /**
-     * Finds a single instance of a persistent object given a named query.
-     * @param qryName The name of the query used to find the persistent object.
-     * It should be formulated to ensure a single object is returned or an error
-     * will occur.
-     * @param qryParams Map of named bind parameters whose keys are Strings. The
-     * map can also be null.
-     * @return Object found by named query or null if nothing found.
-     */
-    protected <T> T lookupObjectByNamedQuery(String qryName, Map<String, Object> qryParams) {
-        return lookupObjectByNamedQuery(qryName, qryParams, false);
-    }
+         Object id = session.getEntityManagerFactory().getPersistenceUnitUtil().getIdentifier(entity);
+         T managed = entity;
 
-    /**
-     * Finds a single instance of a persistent object given a named query.
-     * @param qryName The name of the query used to find the persistent object.
-     * It should be formulated to ensure a single object is returned or an error
-     * will occur.
-     * @param qryParams Map of named bind parameters whose keys are Strings. The
-     * map can also be null.
-     * @param cacheable if we should cache the results of this object
-     * @return Object found by named query or null if nothing found.
-     */
-    @SuppressWarnings("unchecked")
-    protected <T> T lookupObjectByNamedQuery(String qryName, Map<String, Object> qryParams,
-            boolean cacheable) {
-        try {
-            Session session = HibernateFactory.getSession();
+         if (id == null) {
+             // new entity - use persist() to avoid cascading issues
+             session.persist(entity);
+         }
+         else {
+             // detached entity - use merge() and return managed instance
+             managed = session.merge(entity);
+         }
 
-            Query<T> query = session.getNamedQuery(qryName).setCacheable(cacheable);
-            bindParameters(query, qryParams);
-            return query.uniqueResult();
-        }
-        catch (MappingException me) {
-            throw new HibernateRuntimeException("Mapping not found for " + qryName, me);
-        }
-        catch (HibernateException he) {
-            throw new HibernateRuntimeException("Executing query " + qryName +
-                    " with params " + qryParams + " failed", he);
-        }
-    }
-
-    /**
-     * Using a named query, find all the objects matching the criteria within.
-     * Warning: This can be very expensive if the returned list is large. Use
-     * only for small tables with static data
-     * @param qryName Named query to use to find a list of objects.
-     * @param qryParams Map of named bind parameters whose keys are Strings. The
-     * map can also be null.
-     * @return List of objects returned by named query, or null if nothing
-     * found.
-     */
-    protected <T> List<T> listObjectsByNamedQuery(String qryName, Map<String, Object> qryParams) {
-        return listObjectsByNamedQuery(qryName, qryParams, false);
-    }
-
-    /**
-     * Using a named query, find all the objects matching the criteria within.
-     * Warning: This can be very expensive if the returned list is large. Use
-     * only for small tables with static data
-     * @param qryName Named query to use to find a list of objects.
-     * @param qryParams Map of named bind parameters whose keys are Strings. The
-     * map can also be null.
-     * @param col the collection to use as an inclause
-     * @param colLabel the label the collection will have
-     * @return List of objects returned by named query, or null if nothing
-     * found.
-     */
-    protected <T> List<T> listObjectsByNamedQuery(String qryName, Map<String, Object> qryParams,
-                                        Collection<Long> col, String colLabel) {
-
-        if (col.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        List<Long> tmpList = new ArrayList<>(col);
-        List<T> toRet = new ArrayList<>();
-
-        for (int i = 0; i < col.size();) {
-            int fin = Math.min(i + 500, col.size());
-            List<Long> sublist = tmpList.subList(i, fin);
-
-            Map<String, Object> params = new HashMap<>(qryParams);
-            params.put(colLabel, sublist);
-            toRet.addAll(listObjectsByNamedQuery(qryName, params, false));
-            i = fin;
-        }
-        return toRet;
-    }
-
-
-
-    /**
-     * Using a named query, find all the objects matching the criteria within.
-     * Warning: This can be very expensive if the returned list is large. Use
-     * only for small tables with static data
-     * @param qryName Named query to use to find a list of objects.
-     * @param qryParams Map of named bind parameters whose keys are Strings. The
-     * map can also be null.
-     * @param cacheable if we should cache the results of this query
-     * @return List of objects returned by named query, or null if nothing
-     * found.
-     */
-    @SuppressWarnings("unchecked")
-    protected <T> List<T> listObjectsByNamedQuery(String qryName, Map<String, Object> qryParams, boolean cacheable) {
-        Session session = HibernateFactory.getSession();
-        Query<T> query = session.getNamedQuery(qryName);
-        query.setCacheable(cacheable);
-        bindParameters(query, qryParams);
-        return query.list();
-    }
-
-    /**
-     * Saves the given object to the database using Hibernate.
-     * @param toSave Object to be persisted.
-     * @param saveOrUpdate true if saveOrUpdate should be called, false if
-     * save() is to be called directly.
-     */
-    protected void saveObject(Object toSave, boolean saveOrUpdate) {
-        Session session = null;
-        session = HibernateFactory.getSession();
-        if (saveOrUpdate) {
-            session.saveOrUpdate(toSave);
-        }
-        else {
-            session.persist(toSave);
-        }
-    }
-
-    /**
-     * Saves the given object to the database using Hibernate.
-     * @param toSave Object to be persisted.
-     */
-    protected void saveObject(Object toSave) {
-        saveObject(toSave, true);
-    }
+         return managed;
+     }
 
     /**
      * Remove a Session from the DB
@@ -376,7 +237,7 @@ public abstract class HibernateFactory {
         CriteriaDelete<T> delete = builder.createCriteriaDelete(clazz);
         Root<T> root = delete.from(clazz);
         delete.where(root.in(objects));
-        return getSession().createQuery(delete).executeUpdate();
+        return getSession().createMutationQuery(delete).executeUpdate();
     }
 
     /**
@@ -519,7 +380,8 @@ public abstract class HibernateFactory {
     }
 
     /**
-     * Util to reload an object using Hibernate
+     * Util to reload an object using Hibernate.
+     * Any changes to the object before calling this method will be lost.
      * @param obj to be reloaded
      * @return Object found if not, null
      * @throws HibernateException if something bad happens.
@@ -527,16 +389,13 @@ public abstract class HibernateFactory {
      */
     public static <T> T reload(T obj) throws HibernateException {
         Session session = getSession();
-        Serializable id = (Serializable) session.getEntityManagerFactory().getPersistenceUnitUtil().getIdentifier(obj);
         session.flush();
-        session.evict(obj);
-        /*
-         * In hibernate 3, the following doesn't work:
-         * session.getReference(obj.getClass(), id)
-         * load returns the proxy class instead of the persisted class, ie,
-         * Filter$$EnhancerByCGLIB$$9bcc734d_2 instead of Filter.
-         * session.get is set to not return the proxy class, so that is what we'll use.
-         */
+
+        if (session.contains(obj)) {
+            session.detach(obj);
+        }
+
+        Serializable id = (Serializable) session.getEntityManagerFactory().getPersistenceUnitUtil().getIdentifier(obj);
         return (T) session.find(obj.getClass(), id);
     }
 
@@ -614,8 +473,7 @@ public abstract class HibernateFactory {
         if (data.length == 0) {
             return null;
         }
-        return Hibernate.getLobCreator(getSession()).createBlob(data);
-
+        return Hibernate.getLobHelper().createBlob(data);
     }
 
     /**

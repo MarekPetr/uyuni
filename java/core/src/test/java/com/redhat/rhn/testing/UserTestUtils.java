@@ -136,20 +136,19 @@ public class UserTestUtils {
 
     /**
      * Create a dummy address to test against
-     *
-     * @param user the User we want to be the parent of this Address.
-     * @return A dummy address to test against.
+     * @return The address
      */
-    public static Address createTestAddress(User user) {
-        user.setAddress1("444 Castro");
-        user.setAddress2("#1");
-        user.setCity("Mountain View");
-        user.setState("CA");
-        user.setZip("94043");
-        user.setCountry("US");
-        user.setPhone("650-555-1212");
-        user.setFax("650-555-1212");
-        return user.getEnterpriseUser().getAddress();
+    public static Address createTestAddress() {
+        Address address = UserFactory.createAddress();
+        address.setAddress1("444 Castro");
+        address.setAddress2("#1");
+        address.setCity("Mountain View");
+        address.setState("CA");
+        address.setZip("94043");
+        address.setCountry("US");
+        address.setPhone("650-555-1212");
+        address.setFax("650-555-1212");
+        return address;
     }
 
     /**
@@ -222,7 +221,7 @@ public class UserTestUtils {
         EntitlementServerGroup sg =
                 ServerGroupTestUtils.createEntitled(orgIn,
                         ServerConstants.getServerGroupTypeVirtualizationEntitled());
-        TestUtils.saveAndFlush(sg);
+        TestUtils.saveAndFlush(sg); //reassign variable if still needed
     }
 
     /**
@@ -236,7 +235,7 @@ public class UserTestUtils {
         if (retval == null) {
             retval = new UserTestUtils.UserBuilder().orgId(orgIn.getId()).build();
             UserTestUtils.addUserRole(retval, RoleFactory.ORG_ADMIN);
-            TestUtils.saveAndFlush(orgIn);
+            TestUtils.saveAndFlush(orgIn); //reassign variable if still needed
         }
         return retval;
     }
@@ -322,23 +321,22 @@ public class UserTestUtils {
             Long resolvedOrgId = Optional.ofNullable(orgId)
                     .orElse(new OrgBuilder().orgName(orgName).orgObjectSuffix(orgObjectSuffix).build().getId());
 
-            User user = createUserInternal(userName);
-            Address address = createTestAddress(user);
+            User userInternal = createUserInternal(userName);
+            Address address = createTestAddress();
 
-            user = UserFactory.saveNewUser(user, address, resolvedOrgId);
+            User user = UserFactory.saveNewUser(userInternal, address, resolvedOrgId);
             UserFactory.IMPLIEDROLES.forEach(user::addPermanentRole);
             assertTrue(user.getId() > 0);
 
             if (orgAdmin) {
                 user.getAccessGroups().addAll(List.of(
-                        AccessGroupFactory.CHANNEL_ADMIN,
-                        AccessGroupFactory.SYSTEM_GROUP_ADMIN,
-                        AccessGroupFactory.IMAGE_ADMIN,
-                        AccessGroupFactory.ACTIVATION_KEY_ADMIN,
-                        AccessGroupFactory.CONFIG_ADMIN)
+                        AccessGroupFactory.getChannelAdmin(),
+                        AccessGroupFactory.getSystemGroupAdmin(),
+                        AccessGroupFactory.getImageAdmin(),
+                        AccessGroupFactory.getActivationKeyAdmin(),
+                        AccessGroupFactory.getConfigAdmin())
                 );
                 user.addPermanentRole(RoleFactory.ORG_ADMIN);
-                UserFactory.save(user);
             }
             return user;
         }

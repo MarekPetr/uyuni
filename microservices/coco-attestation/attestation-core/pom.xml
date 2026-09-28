@@ -17,7 +17,7 @@
     <parent>
         <groupId>org.uyuni-project</groupId>
         <artifactId>coco-attestation</artifactId>
-        <version>5.2.3</version>
+        <version>5.3.1</version>
     </parent>
 
     <groupId>org.uyuni-project.coco-attestation</groupId>
@@ -72,6 +72,10 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.mybatis</groupId>
+            <artifactId>mybatis</artifactId>
+        </dependency>
 
         <!-- Runtime -->
         <dependency>
@@ -79,6 +83,27 @@
             <artifactId>log4j-core</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <dependency>
+            <groupId>com.ongres.scram</groupId>
+            <artifactId>scram-client</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.ongres.scram</groupId>
+            <artifactId>scram-common</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.ongres.stringprep</groupId>
+            <artifactId>stringprep</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.ongres.stringprep</groupId>
+            <artifactId>saslprep</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- This runtime dependency is just for development purpose -->
         <dependency>
             <groupId>org.uyuni-project.coco-attestation.module</groupId>
@@ -90,6 +115,13 @@
         <dependency>
             <groupId>org.uyuni-project.coco-attestation.module</groupId>
             <artifactId>attestation-module-secureboot</artifactId>
+            <version>${project.version}</version>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.uyuni-project.coco-attestation.module</groupId>
+            <artifactId>attestation-module-pvattest</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
             <optional>true</optional>

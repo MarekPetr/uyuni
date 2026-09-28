@@ -18,29 +18,31 @@ import com.redhat.rhn.domain.rhnpackage.PackageArch;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.hibernate.annotations.Type;
+import org.hibernate.type.YesNoConverter;
 
 import java.io.Serializable;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 
 /**
  * POJO for a suseProducts row.
@@ -48,6 +50,9 @@ import javax.persistence.Table;
 @Entity
 @Table(name = "suseProducts")
 public class SUSEProduct extends BaseDomainHelper implements Serializable {
+
+    // product names used for migration from 15 to 16
+    private static final List<String> SLE_PRODUCT_NAMES = List.of("sles", "sles_sap", "sle_rt");
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "suse_product_seq")
@@ -81,11 +86,11 @@ public class SUSEProduct extends BaseDomainHelper implements Serializable {
     private ChannelFamily channelFamily;
 
     @Column(name = "base", nullable = false)
-    @Type(type = "yes_no")
+    @Convert(converter = YesNoConverter.class)
     private boolean base;
 
     @Column(name = "free", nullable = false)
-    @Type(type = "yes_no")
+    @Convert(converter = YesNoConverter.class)
     private boolean free;
 
     @Enumerated(EnumType.STRING)
@@ -283,6 +288,23 @@ public class SUSEProduct extends BaseDomainHelper implements Serializable {
         this.base = baseIn;
     }
 
+    /**
+     * Helper to determine if this product represents SLES 16.x
+     * @return true if this is a SLES 16 base product
+     */
+    public boolean isSle16() {
+        return isBase() && SLE_PRODUCT_NAMES.contains(getName()) &&
+               getVersion() != null && getVersion().startsWith("16");
+    }
+
+    /**
+     * Helper to determine if this product represents SLES 15.x
+     * @return true if this is a SLES 15 base product
+     */
+    public boolean isSle15() {
+        return isBase() && SLE_PRODUCT_NAMES.contains(getName()) &&
+               getVersion() != null && getVersion().startsWith("15");
+    }
     /**
      * Is the product free?
      * @return the state of the free flag

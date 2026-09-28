@@ -19,10 +19,12 @@ import com.redhat.rhn.common.validator.ValidatorException;
 import com.redhat.rhn.common.validator.ValidatorResult;
 import com.redhat.rhn.domain.user.User;
 import com.redhat.rhn.manager.channel.CreateChannelCommand;
+import com.redhat.rhn.manager.contentmgmt.ContentManagementUtils;
 import com.redhat.rhn.manager.contentmgmt.ContentManager;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.time.format.DateTimeParseException;
 import java.util.regex.Pattern;
 
 /**
@@ -49,21 +51,23 @@ public class ContentPropertiesValidator {
         if (StringUtils.isEmpty(label)) {
             result.addFieldError("label", "contentmanagement.label_required");
         }
-
-        if (!isLabelValid(label)) {
-            result.addFieldError("label", "contentmanagement.label_invalid");
+        else {
+            if (label.length() > 24) {
+                result.addFieldError("label", "contentmanagement.project_label_too_long");
+            }
         }
 
-        if (label.length() > 24) {
-            result.addFieldError("label", "contentmanagement.project_label_too_long");
+        if ((null != label) && (!isLabelValid(label))) {
+            result.addFieldError("label", "contentmanagement.label_invalid");
         }
 
         if (StringUtils.isEmpty(name)) {
             result.addFieldError("name", "contentmanagement.name_required");
         }
-
-        if (name.length() > 128) {
-            result.addFieldError("name", "contentmanagement.project_name_too_long");
+        else {
+            if (name.length() > 128) {
+                result.addFieldError("name", "contentmanagement.project_name_too_long");
+            }
         }
 
         ContentManager.lookupProjectByNameAndOrg(name, user).ifPresent(cp -> {
@@ -90,21 +94,23 @@ public class ContentPropertiesValidator {
         if (StringUtils.isEmpty(label)) {
             result.addFieldError("label", "contentmanagement.label_required");
         }
+        else {
+            if (label.length() > 16) {
+                result.addFieldError("label", "contentmanagement.environment_lbl_too_long");
+            }
+        }
 
         if (StringUtils.isEmpty(name)) {
             result.addFieldError("name", "contentmanagement.name_required");
         }
+        else {
+            if (name.length() > 128) {
+                result.addFieldError("name", "contentmanagement.environment_name_too_long");
+            }
+        }
 
-        if (!isLabelValid(label)) {
+        if ((null != label) && (!isLabelValid(label))) {
             result.addFieldError("label", "contentmanagement.label_invalid");
-        }
-
-        if (label.length() > 16) {
-            result.addFieldError("label", "contentmanagement.environment_lbl_too_long");
-        }
-
-        if (name.length() > 128) {
-            result.addFieldError("name", "contentmanagement.environment_name_too_long");
         }
 
         if (result.hasErrors()) {
@@ -125,7 +131,7 @@ public class ContentPropertiesValidator {
             result.addFieldError("filter_name", "contentmanagement.name_required");
         }
 
-        if (name.length() > 128) {
+        if ((null != name) && (name.length() > 128)) {
             result.addFieldError("filter_name", "contentmanagement.filter_name_too_long");
         }
 
@@ -142,5 +148,27 @@ public class ContentPropertiesValidator {
     public static boolean isLabelValid(String label) {
         return Pattern.compile(CreateChannelCommand.CHANNEL_LABEL_REGEX).matcher(label).find() &&
                 Pattern.compile(CreateChannelCommand.CHANNEL_NAME_REGEX).matcher(label).find();
+    }
+
+    /**
+     * Validate an issue_date and build_date filter value.
+     *
+     * @param field the filter field
+     * @param value the filter value
+     */
+    public static void validateDateCriteria(String field, String value) throws ValidatorException {
+
+        if (!ContentManagementUtils.isDateCriteria(field, value)) {
+            return;
+        }
+
+        try {
+            ContentManagementUtils.parseDateCriteria(value);
+        }
+        catch (DateTimeParseException e) {
+            ValidatorResult result = new ValidatorResult();
+            result.addFieldError(field, "contentmanagement.invalid_issue_date");
+            throw new ValidatorException(result);
+        }
     }
 }

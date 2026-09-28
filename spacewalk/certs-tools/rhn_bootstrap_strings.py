@@ -20,7 +20,6 @@
 from spacewalk.common.rhnConfig import isUyuni, cfg_component
 import os.path
 
-
 _header = """\
 #!/bin/bash
 
@@ -416,7 +415,7 @@ function setup_bootstrap_repo() {{
 
     if [ -n "$CLIENT_REPO_URL" ]; then
         echo " adding client software repository at $repourl"
-        cat <<EOF >"$repopath"
+        repo_cmd="cat <<EOF >$repopath
 [$reponame]
 name=$reponame
 baseurl=$repourl
@@ -424,7 +423,15 @@ enabled=1
 autorefresh=1
 keeppackages=0
 gpgcheck=0
-EOF
+EOF"
+        if [[ "$Z_CLIENT_CODE_BASE" = "slmicro" && \
+              "$Z_CLIENT_CODE_VERSION" = "6" && \
+              "$Z_CLIENT_CODE_PATCHLEVEL" -ge "2" ]]
+        then
+            call_tukit "$repo_cmd"
+        else
+            bash <<< "$repo_cmd"
+        fi
     fi
 
     # Avoid modularity failsafe mechanism in dnf 4.2.7 or greater
@@ -820,7 +827,11 @@ if [ ! -z "$ORG_GPG_KEY" ]; then
            apt-get --yes install --no-install-recommends gnupg
            apt-key add $GPG_KEY
         else
-           rpm --import $GPG_KEY
+            if [ -z "$SNAPSHOT_ID" ]; then
+                rpm --import $GPG_KEY
+            else
+                call_tukit "rpm --import $GPG_KEY"
+            fi
         fi
         rm -f ${GPG_KEY}
     done
@@ -914,7 +925,7 @@ echo
         # we need to copy certificate to the trustroot outside of transaction for zypper
         cp "$ORG_CA_CERT" /etc/pki/trust/anchors/
         call_tukit "test -d '$CERT_DIR' || mkdir -p '$CERT_DIR'"
-        call_tukit "cp '/etc/pki/trust/anchors/$ORG_CA_CERT' '${CERT_DIR}/${CERT_FILE}'"
+        call_tukit "cp '$ORG_CA_CERT' '${CERT_DIR}/${CERT_FILE}'"
     else
         test -d "$CERT_DIR" || mkdir -p "$CERT_DIR"
         mv "$ORG_CA_CERT" "${CERT_DIR}/${CERT_FILE}"
@@ -944,7 +955,11 @@ if [[ $ACTIVATION_KEYS =~ , ]]; then
 fi
 
 SNAPSHOT_PREFIX=""
-if [ -n "$SNAPSHOT_ID" ]; then
+if [[ "$Z_CLIENT_CODE_BASE" = "slmicro" && \
+      "$Z_CLIENT_CODE_VERSION" = "6" && \
+      "$Z_CLIENT_CODE_PATCHLEVEL" -lt "2" ]]
+then
+    # SLM 6.1 and older requires writing to snapshot
     SNAPSHOT_PREFIX="/var/lib/overlay/$SNAPSHOT_ID"
 fi
 
@@ -960,6 +975,14 @@ if [ $VENV_ENABLED -eq 1 ]; then
     MINION_CONFIG_DIR="${{SNAPSHOT_PREFIX}}/etc/venv-salt-minion/minion.d"
     SUSEMANAGER_MASTER_FILE="${{MINION_CONFIG_DIR}}/susemanager.conf"
     MINION_SERVICE="venv-salt-minion"
+fi
+
+if [[ "$Z_CLIENT_CODE_BASE" = "slmicro" && \
+      "$Z_CLIENT_CODE_VERSION" = "6" && \
+      "$Z_CLIENT_CODE_PATCHLEVEL" -ge "2" ]]
+then
+    # TU minion writing to /etc, create /etc directories
+    mkdir -p $MINION_CONFIG_DIR
 fi
 
 if [ $REGISTER_THIS_BOX -eq 1 ]; then
@@ -1071,9 +1094,7 @@ else
     /sbin/chkconfig --add $MINION_SERVICE
 fi
 echo "-bootstrap complete-"
-""".format(
-        productName=productName
-    )
+""".format(productName=productName)
 
 
 # pylint: disable-next=invalid-name

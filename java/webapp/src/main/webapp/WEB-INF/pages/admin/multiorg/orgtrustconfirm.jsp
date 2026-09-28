@@ -1,5 +1,5 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+<%@ taglib uri="jakarta.tags.core" prefix="c"%>
+<%@ taglib uri="jakarta.tags.functions" prefix="fn"%>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn"%>
 <%@ taglib uri="http://rhn.redhat.com/tags/list" prefix="rl"%>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean"%>
@@ -56,7 +56,7 @@
       <button type="button" onClick="location.href='${parentUrl}'" class="btn btn-default">
          ${rhn:localize('org.trust.cancel')}
       </button>
-      <button type="submit" name ="dispatch" class="btn btn-default">
+      <button type="submit" name ="dispatch" value="dispatch" class="btn btn-default">
          ${rhn:localize('confirm')}
       </button>
    </div>

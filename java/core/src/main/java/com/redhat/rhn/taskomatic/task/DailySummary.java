@@ -36,18 +36,17 @@ import com.redhat.rhn.frontend.dto.OrgIdWrapper;
 import com.redhat.rhn.frontend.dto.ReportingUser;
 
 import com.suse.cloud.CloudPaygManager;
-import com.suse.manager.maintenance.BaseProductManager;
 import com.suse.manager.utils.MailHelper;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.StopWatch;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.quartz.JobExecutionContext;
 
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Period;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.HashMap;
@@ -65,14 +64,12 @@ import java.util.TreeMap;
  */
 public class DailySummary extends RhnJavaJob {
 
-    private static final Logger LOGGER = LogManager.getLogger(DailySummary.class);
-
     private static final int HEADER_SPACER = 10;
     private static final int ERRATA_SPACER = 4;
     private static final String ERRATA_UPDATE = "Errata Update";
     private static final String ERRATA_INDENTION = StringUtils.repeat(" ", ERRATA_SPACER);
 
-    private static final BaseProductManager END_OF_LIFE_MANAGER = new BaseProductManager();
+    private static final Period END_OF_LIFE_NOTIFICATION_PERIOD = Period.ofMonths(6);
     private static final CloudPaygManager CLOUD_PAYG_MANAGER = GlobalInstanceHolder.PAYG_MANAGER;
 
     @Override
@@ -95,22 +92,32 @@ public class DailySummary extends RhnJavaJob {
     }
 
     private void processEndOfLifeNotification() {
-        if (ConfigDefaults.get().isUyuni()) {
-            // No end of life for Uyuni
-            return;
-        }
-
         // Notify only on the first day of the month
         final LocalDate today = LocalDate.now();
         if (today.getDayOfMonth() != 1) {
             return;
         }
 
-        if (END_OF_LIFE_MANAGER.isNotificationPeriod(today)) {
-            NotificationMessage notification = UserNotificationFactory.createNotificationMessage(
-                new EndOfLifePeriod(END_OF_LIFE_MANAGER.getEndOfLifeDate()));
-            UserNotificationFactory.storeNotificationMessageFor(notification, RoleFactory.ORG_ADMIN);
-        }
+        // The product end of life date is only set for products that have an end of life.
+        ConfigDefaults.get().getProductEndOfLifeDate()
+            .filter(endOfLife -> isEndOfLifeNotificationPeriod(endOfLife, today))
+            .ifPresent(endOfLife -> {
+                NotificationMessage notification = UserNotificationFactory.createNotificationMessage(
+                    new EndOfLifePeriod(endOfLife));
+                UserNotificationFactory.storeNotificationMessageFor(notification, RoleFactory.ORG_ADMIN);
+            });
+    }
+
+    /**
+     * Checks whether a given date is inside the period during which we notify about the product
+     * end of life.
+     *
+     * @param endOfLife the product end of life date
+     * @param onDate    the date to check
+     * @return true if onDate is within the notification period before the end of life, or after it
+     */
+    static boolean isEndOfLifeNotificationPeriod(LocalDate endOfLife, LocalDate onDate) {
+        return endOfLife.minus(END_OF_LIFE_NOTIFICATION_PERIOD).isBefore(onDate);
     }
 
     private void  processSubscriptionWarningNotification() {
@@ -513,8 +520,8 @@ public class DailySummary extends RhnJavaJob {
 
         // wow, what an ugly @$$ hack, but this requires rewriting
         // the email templating engine which kinda sucks.
-        msg = StringUtils.replace(msg, "<login />", login);
-        return StringUtils.replace(msg, "<email-address />", email);
+        msg = Strings.CS.replace(msg, "<login />", login);
+        return Strings.CS.replace(msg, "<email-address />", email);
     }
 
     private String getHostname() {

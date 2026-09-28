@@ -29,10 +29,10 @@ import com.redhat.rhn.domain.config.ConfigurationFactory;
 import com.redhat.rhn.domain.org.Org;
 import com.redhat.rhn.domain.server.Server;
 import com.redhat.rhn.domain.server.ServerConstants;
-import com.redhat.rhn.domain.server.test.ServerFactoryTest;
+import com.redhat.rhn.domain.server.ServerFactoryTest;
 import com.redhat.rhn.domain.user.User;
 import com.redhat.rhn.manager.system.SystemManager;
-import com.redhat.rhn.manager.system.test.SystemManagerTest;
+import com.redhat.rhn.manager.system.SystemManagerTest;
 
 import com.suse.manager.webui.services.ConfigChannelSaltManager;
 
@@ -59,15 +59,8 @@ public class ConfigTestUtils  {
      */
     public static ConfigChannel createConfigChannel(Org org, String name, String label,
                                                     ConfigChannelType type) {
-        ConfigChannel cc = ConfigurationFactory.newConfigChannel();
-        cc.setConfigChannelType(type);
-        cc.setOrg(org);
-        cc.setName(name);
-        cc.setLabel(label);
-        cc.setDescription("test-config-channel-description-" + TestUtils.randomString());
-        cc.setCreated(new Date());
-        cc.setModified(new Date());
-        ConfigurationFactory.saveNewConfigChannel(cc);
+        ConfigChannel cc = ConfigurationFactory.createNewConfigChannel(org, type, name, label,
+                "test-config-channel-description-" + TestUtils.randomString());
         assertTrue(cc.getId() > 0L);
         return cc;
     }

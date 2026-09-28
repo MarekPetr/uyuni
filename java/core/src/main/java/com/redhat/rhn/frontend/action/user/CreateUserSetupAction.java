@@ -28,8 +28,8 @@ import org.apache.struts.action.ActionForward;
 import org.apache.struts.action.ActionMapping;
 import org.apache.struts.action.DynaActionForm;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * CreateUserSetupAction
@@ -50,11 +50,8 @@ public class CreateUserSetupAction extends BaseUserSetupAction {
         // if we set them on the request itself and validation fails.
         request.setAttribute("availablePrefixes",
                                   UserActionHelper.getPrefixes());
-        request.setAttribute("countries",
-                                  UserActionHelper.getCountries());
 
         if (!RhnValidationHelper.getFailedValidation(request)) {
-            form.set("country", "US");
             form.set("contact_email", Boolean.TRUE);
             form.set("contact_partner", Boolean.TRUE);
             form.set("prefix",

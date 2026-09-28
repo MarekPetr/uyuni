@@ -35,8 +35,8 @@ import org.apache.struts.action.ActionMapping;
 
 import java.util.List;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * XccdfDetailsAction
@@ -59,6 +59,7 @@ public class XccdfDetailsAction extends RhnAction implements Listable<XccdfRuleR
         XccdfTestResult testResult = ScapFactory.lookupTestResultByIdAndSid(xid, server.getId());
         request.setAttribute("testResult", testResult);
         request.setAttribute("system", server);
+        request.setAttribute("user", user);
 
         ListHelper helper = new ListHelper(this, request);
         helper.execute();

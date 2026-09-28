@@ -47,8 +47,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.servlet.http.HttpServletRequest;
-
+import jakarta.servlet.http.HttpServletRequest;
 import redstone.xmlrpc.XmlRpcException;
 import redstone.xmlrpc.XmlRpcFault;
 
@@ -161,7 +160,7 @@ public class SystemSearchAction extends BaseSearchAction implements Listable<Sys
                  }
              }
 
-            // TODO: Set up combined-form validator
+            // OLDTODO: Set up combined-form validator
 //              errs.add(RhnValidationHelper.validateDynaActionForm(this, daForm))
         addErrors(request, errs);
 

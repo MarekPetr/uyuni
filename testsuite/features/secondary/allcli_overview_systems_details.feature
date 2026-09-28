@@ -2,12 +2,13 @@
 # Licensed under the terms of the MIT license.
 
 @scope_visualization
+@skip_if_github_validation
 Feature: The system details of each minion and client provides an overview of the system
 
   Scenario: Log in as org admin user
     Given I am authorized
 
-@sle_minion
+  @sle_minion
   Scenario: SLE minion hardware refresh
     Given I navigate to the Systems overview page of this "sle_minion"
     When I follow "Hardware"
@@ -16,7 +17,7 @@ Feature: The system details of each minion and client provides an overview of th
     When I wait until event "Hardware List Refresh scheduled" is completed
     And I wait until there is no Salt job calling the module "hardware.profileupdate" on "sle_minion"
 
-@sle_minion
+  @sle_minion
   Scenario: Minion grains are displayed correctly on the details page
     Given I am on the Systems overview page of this "sle_minion"
     Then the hostname for "sle_minion" should be correct
@@ -38,7 +39,7 @@ Feature: The system details of each minion and client provides an overview of th
     And I should see a "Description" text
     And I should see a "Location" text
 
-@rhlike_minion
+  @rhlike_minion
   Scenario: Red Hat-like minion hardware refresh
     Given I am on the Systems overview page of this "rhlike_minion"
     When I follow "Hardware"
@@ -47,7 +48,7 @@ Feature: The system details of each minion and client provides an overview of th
     When I wait until event "Hardware List Refresh scheduled" is completed
     And I wait until there is no Salt job calling the module "hardware.profileupdate" on "rhlike_minion"
 
-@rhlike_minion
+  @rhlike_minion
   Scenario: Red Hat-like minion grains are displayed correctly on the details page
     Given I am on the Systems overview page of this "rhlike_minion"
     Then the hostname for "rhlike_minion" should be correct
@@ -69,7 +70,7 @@ Feature: The system details of each minion and client provides an overview of th
     And I should see a "Description" text
     And I should see a "Location" text
 
-@deblike_minion
+  @deblike_minion
   Scenario: Debian-like minion hardware refresh
     Given I am on the Systems overview page of this "deblike_minion"
     When I follow "Hardware"
@@ -78,7 +79,7 @@ Feature: The system details of each minion and client provides an overview of th
     When I wait until event "Hardware List Refresh scheduled" is completed
     And I wait until there is no Salt job calling the module "hardware.profileupdate" on "deblike_minion"
 
-@deblike_minion
+  @deblike_minion
   Scenario: Debian-like minion grains are displayed correctly on the details page
     Given I am on the Systems overview page of this "deblike_minion"
     Then the hostname for "deblike_minion" should be correct
@@ -100,25 +101,28 @@ Feature: The system details of each minion and client provides an overview of th
     And I should see a "Description" text
     And I should see a "Location" text
 
-@ssh_minion
+  @sshminion
   Scenario: SSH-managed minion hardware refresh
-    Given I am on the Systems overview page of this "ssh_minion"
+    Given I am on the Systems overview page of this "sshminion"
     When I follow "Hardware"
     And I click on "Schedule Hardware Refresh"
     Then I should see a "You have successfully scheduled a hardware profile refresh" text
-    And I wait until event "Hardware List Refresh scheduled" is completed
+    When I wait until event "Hardware List Refresh scheduled" is completed
+    And I wait until there is no Salt job calling the module "hardware.profileupdate" on "sshminion"
+    When I refresh packages list via spacecmd on "sshminion"
+    And I wait until refresh package list on "sshminion" is finished
 
-  @ssh_minion
+  @sshminion
   Scenario: SSH-managed minion grains are displayed correctly on the details page
-    Given I am on the Systems overview page of this "ssh_minion"
-    Then the hostname for "ssh_minion" should be correct
-    And the kernel for "ssh_minion" should be correct
-    And the OS version for "ssh_minion" should be correct
-    And the IPv4 address for "ssh_minion" should be correct
-    And the IPv6 address for "ssh_minion" should be correct
-    And the system ID for "ssh_minion" should be correct
-    And the system name for "ssh_minion" should be correct
-    And the uptime for "ssh_minion" should be correct
+    Given I am on the Systems overview page of this "sshminion"
+    Then the hostname for "sshminion" should be correct
+    And the kernel for "sshminion" should be correct
+    And the OS version for "sshminion" should be correct
+    And the IPv4 address for "sshminion" should be correct
+    And the IPv6 address for "sshminion" should be correct
+    And the system ID for "sshminion" should be correct
+    And the system name for "sshminion" should be correct
+    And the uptime for "sshminion" should be correct
     And I should see a "UUID" text
     And I should see a "Virtualization" text
     And I should see a "Installed Products" text

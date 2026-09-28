@@ -106,7 +106,7 @@ Feature: Action chains on Salt minions
     And I follow "Action Chain Channel"
     And I follow "List/Remove Files"
     And I follow "/etc/action-chain.cnf"
-    And I follow "Download File"
+    And I download the file by following "Download File"
     And I wait until file "/tmp/downloads/action-chain.cnf" exists on "localhost"
     Then file "/tmp/downloads/action-chain.cnf" should contain "Testchain=YES_PLEASE" on "localhost"
 
@@ -183,6 +183,9 @@ Feature: Action chains on Salt minions
     And I click on "Save and Schedule"
     Then I should see a "Action Chain salt_minion_action_chain has been scheduled for execution." text
     When I wait for "virgo-dummy" to be installed on "sle_minion"
+    Given I am on the Systems overview page of this "sle_minion"
+    And I wait at most 600 seconds until the event "Remote Command on" is picked up
+    And I wait at most 300 seconds until the event "Remote Command on" is completed in the history
     And I wait at most 300 seconds until file "/tmp/action_chain_one_system_done" exists on "sle_minion"
 
   # previous, completed, action chain will no longer be available

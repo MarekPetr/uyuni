@@ -27,8 +27,8 @@ import org.apache.struts.action.DynaActionForm;
 import java.util.Collections;
 import java.util.Iterator;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * BaseSetListAction - extension of BaseListAction that includes necessary
@@ -85,8 +85,8 @@ public abstract class BaseSetListAction extends BaseListAction {
     protected void processForm(RequestContext rctx, ActionForm form) {
         super.processForm(rctx, form);
 
-        if (form instanceof DynaActionForm) {
-            if (!isSubmitted((DynaActionForm) form)) {
+        if (form instanceof DynaActionForm dynaActionForm) {
+            if (!isSubmitted(dynaActionForm)) {
                 Iterator itr = getSelectedItemsIterator(rctx, form);
                 if (itr != null && itr.hasNext()) {
                     populateNewSet(rctx, itr);

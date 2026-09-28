@@ -49,8 +49,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
 
-import javax.servlet.http.HttpServletRequest;
-
+import jakarta.servlet.http.HttpServletRequest;
 import redstone.xmlrpc.XmlRpcClient;
 import redstone.xmlrpc.XmlRpcFault;
 
@@ -304,7 +303,7 @@ public class ErrataSearchAction extends BaseSearchAction {
             // small number of Errata to operate on.
             for (ErrataOverview eo : unsorted) {
                 DataResult<CVE> dr = ErrataManager.errataCVEs(eo.getId());
-                eo.setCves(dr);
+                eo.setCves(dr.stream().map(CVE::getName).toList());
             }
         }
         List<ErrataOverview> filtered = new ArrayList<>();
@@ -327,7 +326,7 @@ public class ErrataSearchAction extends BaseSearchAction {
             LOG.debug("{} records have passed being filtered and will be displayed.", filtered.size());
         }
 
-        // TODO: need to figure out a way to properly sort the
+        // OLDTODO: need to figure out a way to properly sort the
         // errata from a package search. What we get back from the
         // search server is pid, pkg-name in relevant order.
         // What we get back from searchByPackageIds, is an unsorted

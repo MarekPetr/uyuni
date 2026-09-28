@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016--2025 SUSE LLC
+ * Copyright (c) 2016--2026 SUSE LLC
  * Copyright (c) 2009--2015 Red Hat, Inc.
  *
  * This software is licensed to you under the GNU General Public License,
@@ -15,7 +15,6 @@
  */
 package com.redhat.rhn.domain.server;
 
-import static org.hibernate.annotations.CascadeType.SAVE_UPDATE;
 
 import com.redhat.rhn.common.conf.Config;
 import com.redhat.rhn.common.conf.ConfigDefaults;
@@ -62,10 +61,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.cobbler.CobblerConnection;
 import org.cobbler.SystemRecord;
-import org.hibernate.annotations.Cascade;
+import org.hibernate.annotations.CollectionType;
 import org.hibernate.annotations.ListIndexBase;
-import org.hibernate.annotations.Type;
-import org.hibernate.annotations.WhereJoinTable;
+import org.hibernate.annotations.SQLJoinTableRestriction;
+import org.hibernate.type.YesNoConverter;
 
 import java.net.IDN;
 import java.sql.Timestamp;
@@ -86,25 +85,26 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Inheritance;
-import javax.persistence.InheritanceType;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
-import javax.persistence.OrderColumn;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
-import javax.persistence.Transient;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.OrderColumn;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 
 /**
  * Server - Class representation of the table rhnServer.
@@ -122,7 +122,7 @@ public class Server extends BaseDomainHelper implements Identifiable {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "rhn_server_seq")
     @SequenceGenerator(name = "rhn_server_seq", sequenceName = "rhn_server_id_seq", allocationSize = 1,
-            initialValue = 1000010000)
+    initialValue = 1000010000)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -217,26 +217,38 @@ public class Server extends BaseDomainHelper implements Identifiable {
     @OneToMany(mappedBy = "server", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private Set<CustomDataValue> customDataValues;
 
-    @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ManyToMany(
+        fetch = FetchType.LAZY,
+        cascade = {CascadeType.MERGE, CascadeType.PERSIST, CascadeType.DETACH, CascadeType.REFRESH}
+    )
     @JoinTable(
         name = "rhnServerChannel",
         joinColumns = @JoinColumn(name = "server_id"),
         inverseJoinColumns = @JoinColumn(name = "channel_id"))
     private Set<Channel> channels = new HashSet<>();
 
-    @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ManyToMany(
+            fetch = FetchType.LAZY,
+            cascade = {CascadeType.MERGE, CascadeType.PERSIST, CascadeType.DETACH, CascadeType.REFRESH}
+    )
     @OrderColumn(name = "position")
-    @WhereJoinTable(clause = "(position > 0)")
+    @SQLJoinTableRestriction(value = "(position > 0)")
     @JoinTable(
             name = "rhnServerConfigChannel",
             joinColumns = @JoinColumn(name = "server_id"),
             inverseJoinColumns = @JoinColumn(name = "config_channel_id")
     )
     @ListIndexBase(1)
+    @CollectionType(
+            type = com.redhat.rhn.common.hibernate.ForceRecreationListType.class
+    )
     private List<ConfigChannel> configChannels = new ArrayList<>();
 
-    @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @WhereJoinTable(clause = "(position is null)")
+    @ManyToMany(
+            fetch = FetchType.LAZY,
+            cascade = {CascadeType.MERGE, CascadeType.PERSIST, CascadeType.DETACH, CascadeType.REFRESH}
+    )
+    @SQLJoinTableRestriction(value = "(position is null)")
     @JoinTable(
             name = "rhnServerConfigChannel",
             joinColumns = @JoinColumn(name = "server_id"),
@@ -256,8 +268,7 @@ public class Server extends BaseDomainHelper implements Identifiable {
     @OneToMany(mappedBy = "hostSystem", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private Set<VirtualInstance> virtualGuests = new HashSet<>();
 
-    @OneToOne(mappedBy = "guestSystem", fetch = FetchType.LAZY)
-    @Cascade(SAVE_UPDATE)
+    @OneToOne(mappedBy = "guestSystem", fetch = FetchType.LAZY, cascade = { CascadeType.MERGE, CascadeType.PERSIST })
     private VirtualInstance virtualInstance;
 
     @OneToOne(mappedBy = "server", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
@@ -286,7 +297,10 @@ public class Server extends BaseDomainHelper implements Identifiable {
     @OneToMany(mappedBy = "server", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ClientCapability> capabilities = new HashSet<>();
 
-    @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ManyToMany(
+            fetch = FetchType.LAZY,
+            cascade = {CascadeType.MERGE, CascadeType.PERSIST, CascadeType.DETACH, CascadeType.REFRESH}
+    )
     @JoinTable(
             name = "suseServerInstalledProduct",
             joinColumns = @JoinColumn(name = "rhn_server_id"),
@@ -301,7 +315,7 @@ public class Server extends BaseDomainHelper implements Identifiable {
     private String hostname;
 
     @Column
-    @Type(type = "yes_no")
+    @Convert(converter = YesNoConverter.class)
     private boolean payg;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -474,7 +488,7 @@ public class Server extends BaseDomainHelper implements Identifiable {
         //if we didn't find one, we just haven't created it yet.
         ConfigChannel channel = ConfigurationFactory.createNewLocalChannel(this, cct);
 
-        //TODO: Adding the new channel to the set of local channels should
+        //OLDTODO: Adding the new channel to the set of local channels should
         //happen in the createNewLocalChannel method.  However, the way things
         //are currently set up, I have to work with the member variable, because using
         //accessors and mutators would create an infinite loop.  Fix this setup.
@@ -667,7 +681,8 @@ public class Server extends BaseDomainHelper implements Identifiable {
      * Save configuration channels to the database. Only needed if the server has been created using the constructor
      */
     public void storeConfigChannels() {
-        HibernateFactory.getSession().createNativeQuery("DELETE FROM rhnServerConfigChannel WHERE server_id = :sid ;")
+        HibernateFactory.getSession()
+                .createNativeMutationQuery("DELETE FROM rhnServerConfigChannel WHERE server_id = :sid")
                 .setParameter("sid", getId())
                 .executeUpdate();
 
@@ -678,7 +693,8 @@ public class Server extends BaseDomainHelper implements Identifiable {
                     .collect(Collectors.joining(","));
 
 
-            HibernateFactory.getSession().createNativeQuery(
+            HibernateFactory.getSession()
+                    .createNativeMutationQuery(
                             "INSERT INTO rhnServerConfigChannel (server_id, config_channel_id, position) " +
                                     "VALUES " + values + ";")
                     .executeUpdate();
@@ -2589,10 +2605,11 @@ public class Server extends BaseDomainHelper implements Identifiable {
     public boolean doesOsSupportsMonitoring() {
         return isSLES12() || isSLES15() || isSLES16() || isLeap15() || isLeap16() || isLeapMicro() ||
                 isSLEMicro5() || // Micro 6 miss the node exporter
-                isUbuntu1804() || isUbuntu2004() || isUbuntu2204() || isUbuntu2404() ||
-                isRedHat6() || isRedHat7() || isRedHat8() || isRedHat9() || // isRedHat catch also Rocky and Alma
+                isUbuntu1804() || isUbuntu2004() || isUbuntu2204() || isUbuntu2404() || isUbuntu2604() ||
+                // isRedHat catch also Rocky and Alma
+                isRedHat6() || isRedHat7() || isRedHat8() || isRedHat9() || isRedHat10() ||
                 isAlibaba2() || isAmazon2() || isAmazon2023() ||
-                isDebian10() || isDebian11() || isDebian12();
+                isDebian10() || isDebian11() || isDebian12() || isDebian13();
     }
 
     /**
@@ -2720,20 +2737,28 @@ public class Server extends BaseDomainHelper implements Identifiable {
         return ServerConstants.UBUNTU.equals(getOs()) && getRelease().equals("24.04");
     }
 
+    boolean isUbuntu2604() {
+        return ServerConstants.UBUNTU.equals(getOs()) && getRelease().equals("26.04");
+    }
+
     boolean isDebian() {
         return ServerConstants.DEBIAN.equalsIgnoreCase(getOs());
     }
 
-    boolean isDebian12() {
-        return ServerConstants.DEBIAN.equals(getOs()) && getRelease().equals("12");
+    boolean isDebian10() {
+        return ServerConstants.DEBIAN.equals(getOs()) && getRelease().equals("10");
     }
 
     boolean isDebian11() {
         return ServerConstants.DEBIAN.equals(getOs()) && getRelease().equals("11");
     }
 
-    boolean isDebian10() {
-        return ServerConstants.DEBIAN.equals(getOs()) && getRelease().equals("10");
+    boolean isDebian12() {
+        return ServerConstants.DEBIAN.equals(getOs()) && getRelease().equals("12");
+    }
+
+    boolean isDebian13() {
+        return ServerConstants.DEBIAN.equals(getOs()) && getRelease().equals("13");
     }
 
     boolean isRHEL() {
@@ -2761,6 +2786,11 @@ public class Server extends BaseDomainHelper implements Identifiable {
     boolean isRedHat9() {
         return ServerConstants.REDHAT.equals(getOsFamily()) &&
                 (getRelease().equals("9") || getRelease().startsWith("9."));
+    }
+
+    boolean isRedHat10() {
+        return ServerConstants.REDHAT.equals(getOsFamily()) &&
+                (getRelease().equals("10") || getRelease().startsWith("10."));
     }
 
     public boolean isRedHat() {
@@ -2883,13 +2913,13 @@ public class Server extends BaseDomainHelper implements Identifiable {
      * Checks if a server in convertible to a proxy.
      * Servers that are already proxies or are manager servers are not convertible.
      * For the remaining, SUSE Manager considers only:
-     * SE Micro 6.1 and SLE15 SP7.
+     * SE Micro 6.2 and SLE15 SP7.
      * @return true if the server is convertible to a proxy, false otherwise
      */
     public boolean isConvertibleToProxy() {
         return !isProxy() && !isMgrServer() && (
                 ConfigDefaults.get().isUyuni() ||
-                        (ServerConstants.SLMICRO.equalsIgnoreCase(getOs()) && getRelease().equals("6.1")) ||
+                        (ServerConstants.SLMICRO.equalsIgnoreCase(getOs()) && getRelease().equals("6.2")) ||
                         (isSLES() && getRelease().equals("15.7"))
         );
     }

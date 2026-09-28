@@ -1,4 +1,4 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
@@ -18,7 +18,7 @@
               class="form-horizontal"
               name="edit_token" method="post">
             <rhn:csrf />
-            <div class="form-group">
+            <div class="row">
                 <label class="col-lg-3 control-label">
                     <bean:message key="system.jsp.customkey.keylabel"/>:
                 </label>
@@ -29,7 +29,7 @@
                            value="<c:out value="${old_label}" />"/>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="row">
                 <label class="col-lg-3 control-label" for="descr">
                     <bean:message key="system.jsp.customkey.description"/>:
                 </label>
@@ -40,7 +40,7 @@
                               name="description"><c:out value="${old_description}" /></textarea>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="row">
                 <div class="col-lg-offset-3 offset-lg-3 col-lg-6">
                     <button type="submit" class="btn btn-primary" name="CreateKey">
                         <bean:message key="keycreate.jsp.submit" />

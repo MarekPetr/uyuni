@@ -34,8 +34,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import javax.persistence.DiscriminatorValue;
-import javax.persistence.Entity;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
 
 /**
  * VirtualInstanceRefreshAction
@@ -63,13 +63,13 @@ public class VirtualInstanceRefreshAction extends Action {
         if (!sshPushMinions.isEmpty()) {
             ret.put(State.apply(List.of(
                             ApplyStatesEventMessage.VIRTUAL_PROFILE_UPDATE),
-                    Optional.empty()), minionSummaries);
+                    Optional.empty()), sshPushMinions);
         }
         if (!regularMinions.isEmpty()) {
             ret.put(State.apply(Arrays.asList(
                             ApplyStatesEventMessage.SYNC_ALL,
                             ApplyStatesEventMessage.VIRTUAL_PROFILE_UPDATE),
-                    Optional.empty()), minionSummaries);
+                    Optional.empty()), regularMinions);
         }
 
         return ret;

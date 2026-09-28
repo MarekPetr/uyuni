@@ -175,6 +175,9 @@ public class TaskomaticApi {
      */
     public void scheduleSingleRepoSync(List<Channel> channels)
             throws TaskomaticApiException {
+        if (channels.isEmpty()) {
+            return;
+        }
         List<String> channelIds = new ArrayList<>(channels.size());
         for (Channel channel : channels) {
             channelIds.add(channel.getId().toString());
@@ -317,8 +320,8 @@ public class TaskomaticApi {
      * @throws PermissionException if there was an error
      */
     private void ensureChannelAdminRole(User user) {
-        if (!user.isMemberOf(AccessGroupFactory.CHANNEL_ADMIN)) {
-            throw new PermissionException(AccessGroupFactory.CHANNEL_ADMIN);
+        if (!user.isMemberOf(AccessGroupFactory.getChannelAdmin())) {
+            throw new PermissionException(AccessGroupFactory.getChannelAdmin());
         }
     }
 
@@ -653,7 +656,7 @@ public class TaskomaticApi {
                         FROM   ServerAction sa
                         JOIN   sa.server s
                         WHERE  type(s) = com.redhat.rhn.domain.server.MinionServer
-                        AND    action_id = :id
+                        AND    sa.parentAction.id = :id
                         """, Long.class)
                     .setParameter("id", action.getId())
                     .setMaxResults(1)
@@ -968,18 +971,6 @@ public class TaskomaticApi {
         Map<String, Object> paramList = new HashMap<>();
         paramList.put("filename_to_root_ca_cert_map", filenameToRootCaCertMap);
         invoke(SCHEDULE_SINGLE_SAT_BUNCH_RUN, "root-ca-cert-update-bunch", paramList);
-    }
-
-    /**
-     * Schedule an import of a GPG key.
-     * @param gpgKey the GPG key (armored text)
-     * @throws TaskomaticApiException if there was an error
-     */
-    public void scheduleSingleGpgKeyImport(String gpgKey) throws TaskomaticApiException {
-        if (StringUtils.isBlank(gpgKey)) {
-            return;
-        }
-        invoke(SCHEDULE_SINGLE_SAT_BUNCH_RUN, "custom-gpg-key-import-bunch", Map.of("gpg-key", gpgKey));
     }
 
     /**

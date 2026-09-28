@@ -17,13 +17,14 @@
 package com.redhat.rhn.frontend.struts;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.struts.action.ActionMessage;
 import org.apache.struts.action.ActionMessages;
 import org.apache.struts.action.DynaActionForm;
 
 import java.util.List;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 
 /**
@@ -35,14 +36,8 @@ public class RhnHelper {
     /** The key used on RHN Requests to store the User */
     public static final String TARGET_USER = "targetuser";
 
-    /** The key used on RHN Requests to store the Marketing Address */
-    public static final String TARGET_ADDRESS_MARKETING = "addressMarketing";
-
-    /** The key used on RHN Requests to store the Billing Address */
-    public static final String TARGET_ADDRESS_BILLING = "addressBilling";
-
-    /** The key used on RHN Requests to store the Shipping Address */
-    public static final String TARGET_ADDRESS_SHIPPING = "addressShipping";
+    /** The key used on RHN Requests to store the Address */
+    public static final String TARGET_ADDRESS = "address";
 
     /** The key for the default struts forward */
     public static final String DEFAULT_FORWARD = "default";
@@ -134,7 +129,7 @@ public class RhnHelper {
         for (String pairIn : pairs) {
             String[] param = StringUtils.split(pairIn, "=");
             String iname = param[0];
-            if (StringUtils.equals(name, iname) && param.length > 1) {
+            if (Strings.CS.equals(name, iname) && param.length > 1) {
                 return param[1];
             }
         }

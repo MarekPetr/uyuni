@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2025 SUSE LLC.
+# Copyright (c) 2020-2026 SUSE LLC.
 # Licensed under the terms of the MIT license.
 
 @<client>
@@ -64,9 +64,15 @@ Feature: Smoke tests for <client>
     And I should see a "Location" text
     And I should see a "UUID" text
 
+# Patches are available for Ubuntu and Debian, but they are delivered through package updates rather than standalone patch files.
+# The RHEL clients have no relevant patch either: they are containers built from the current UBI images, so every package they carry is already at its newest version.
 @skip_for_debian
-@skip_for_rocky9
-@skip_for_alma9
+@skip_for_amazon2023
+@skip_for_ubuntu
+@skip_for_rhel7
+@skip_for_rhel8
+@skip_for_rhel9
+@skip_for_rhel10
   Scenario: Install a patch on the <client>
     Given I am on the Systems overview page of this "<client>"
     When I follow "Software" in the content area
@@ -136,6 +142,7 @@ Feature: Smoke tests for <client>
     And I reboot the "<client>" if it is a transactional system
 
 @skip_for_transactional_minion
+@skip_for_rhel_container
   Scenario: Reboot the <client> and wait until reboot is completed
     Given I am on the Systems overview page of this "<client>"
     When I follow first "Schedule System Reboot"
@@ -198,6 +205,7 @@ Feature: Smoke tests for <client>
     Then I should see a "Formula saved" text
 
 @skip_for_transactional_minion
+@skip_for_rhel10_like
   Scenario: Enable Prometheus Apache and Postgres exporter formula on the <client>
     Given I am on the Systems overview page of this "<client>"
     When I follow "Formulas" in the content area
@@ -229,6 +237,7 @@ Feature: Smoke tests for <client>
     And I visit "Prometheus node exporter" endpoint of this "<client>"
 
 @skip_for_transactional_minion
+@skip_for_rhel10_like
   Scenario: Visit Apache and Postgres monitoring endpoint on the <client>
     When I wait until "apache" exporter service is active on "<client>"
     And I visit "Prometheus apache exporter" endpoint of this "<client>"

@@ -14,6 +14,7 @@
  */
 package com.redhat.rhn.manager.kickstart.tree;
 
+import com.redhat.rhn.common.hibernate.HibernateFactory;
 import com.redhat.rhn.domain.kickstart.KickstartFactory;
 import com.redhat.rhn.domain.user.User;
 import com.redhat.rhn.manager.kickstart.cobbler.CobblerCommand;
@@ -42,8 +43,10 @@ public class TreeEditOperation extends BaseTreeEditOperation {
      */
     public TreeEditOperation(Long treeId, User userIn) {
         super(userIn);
-        this.tree = KickstartFactory.
-            lookupKickstartTreeByIdAndOrg(treeId, userIn.getOrg());
+        this.tree = KickstartFactory.lookupKickstartTreeByIdAndOrg(treeId, userIn.getOrg());
+
+        // Detach this instance to ensure changes are not auto-flushed until we merge it
+        HibernateFactory.getSession().detach(this.tree);
     }
 
 

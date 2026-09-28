@@ -47,6 +47,7 @@ type ActionScheduleState = {
 
 class ActionSchedule extends Component<ActionScheduleProps, ActionScheduleState> {
   newActionChainOpt = { id: Number(0), text: t("new action chain") };
+  private isUnmounted = false;
 
   constructor(props: ActionScheduleProps) {
     super(props);
@@ -81,6 +82,10 @@ class ActionSchedule extends Component<ActionScheduleProps, ActionScheduleState>
       };
       Network.post("/rhn/manager/api/maintenance/upcoming-windows", postData)
         .then((data) => {
+          if (this.isUnmounted) {
+            return;
+          }
+
           const multiMaintWindows = data.data.maintenanceWindowsMultiSchedules;
           const maintenanceWindows = data.data.maintenanceWindows;
 
@@ -114,7 +119,15 @@ class ActionSchedule extends Component<ActionScheduleProps, ActionScheduleState>
     }
   };
 
+  componentWillUnmount() {
+    this.isUnmounted = true;
+  }
+
   handleResponseError = (jqXHR) => {
+    if (this.isUnmounted) {
+      return;
+    }
+
     Loggerhead.error(Network.responseErrorMessage(jqXHR));
     this.setState({ loading: false });
   };
@@ -233,7 +246,7 @@ class ActionSchedule extends Component<ActionScheduleProps, ActionScheduleState>
     const renderRadioBtn = this.state.actionChains && this.state.actionChain;
 
     return (
-      <div className="form-group">
+      <div className="row">
         <div className="col-sm-3 control-label">
           {renderRadioBtn && (
             <input
@@ -264,7 +277,7 @@ class ActionSchedule extends Component<ActionScheduleProps, ActionScheduleState>
 
   renderActionChainPicker = () => {
     return (
-      <div className="form-group">
+      <div className="row">
         <div className="col-sm-3 control-label">
           <input
             type="radio"

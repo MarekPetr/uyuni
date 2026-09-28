@@ -48,7 +48,7 @@ public class ErrataHelper {
      * Perform a check to see if the user can modify channels, throws an
      *          PermissionException if the user does not have permission
      * @param user the user to check
-     * @param cid TODO
+     * @param cid
      *
      */
     public static void checkPermissions(User user, Long cid) {
@@ -110,7 +110,7 @@ public class ErrataHelper {
         clone.getCves().addAll(original.getCves());
         clone.setSeverity(original.getSeverity());
 
-        clone.setPackages(new HashSet<>(original.getPackages()));
+        clone.replacePackages(new HashSet<>(original.getPackages()));
 
 
         for (Keyword k : original.getKeywords()) {

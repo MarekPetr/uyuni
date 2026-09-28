@@ -21,12 +21,12 @@ import com.redhat.rhn.domain.rhnpackage.Package;
 import com.redhat.rhn.domain.rhnpackage.PackageCapability;
 import com.redhat.rhn.domain.rhnpackage.PackageEvr;
 import com.redhat.rhn.domain.rhnpackage.PackageEvrFactory;
+import com.redhat.rhn.domain.rhnpackage.PackageNameTest;
 import com.redhat.rhn.domain.rhnpackage.PackageProvides;
 import com.redhat.rhn.domain.rhnpackage.PackageRequires;
+import com.redhat.rhn.domain.rhnpackage.PackageTest;
 import com.redhat.rhn.domain.rhnpackage.PackageType;
 import com.redhat.rhn.domain.rhnpackage.SpecialCapabilityNames;
-import com.redhat.rhn.domain.rhnpackage.test.PackageNameTest;
-import com.redhat.rhn.domain.rhnpackage.test.PackageTest;
 import com.redhat.rhn.domain.server.InstalledPackage;
 import com.redhat.rhn.domain.server.Server;
 import com.redhat.rhn.domain.user.User;
@@ -222,8 +222,8 @@ public class PackageTestUtils {
         addRequiresHeader(ptfPackage, findOrCreateCapability(masterPtfPackage.getPackageName().getName(),
             masterPtfPackage.getPackageEvr().getVersion() + "-0"), 8L);
 
-        TestUtils.saveAndFlush(masterPtfPackage);
-        TestUtils.saveAndFlush(ptfPackage);
+        TestUtils.saveAndFlush(masterPtfPackage); //reassign variable if still needed
+        TestUtils.saveAndFlush(ptfPackage); //reassign variable if still needed
     }
 
     /**
@@ -237,7 +237,7 @@ public class PackageTestUtils {
         packageProvides.setCapability(capability);
         packageProvides.setPack(pack);
         packageProvides.setSense(sense);
-        TestUtils.saveAndFlush(packageProvides);
+        TestUtils.saveAndFlush(packageProvides); //reassign variable if still needed
     }
 
     /**
@@ -251,7 +251,7 @@ public class PackageTestUtils {
         packageProvides.setCapability(capability);
         packageProvides.setPack(pack);
         packageProvides.setSense(sense);
-        TestUtils.saveAndFlush(packageProvides);
+        TestUtils.saveAndFlush(packageProvides); //reassign variable if still needed
     }
 
     /**
@@ -281,8 +281,7 @@ public class PackageTestUtils {
                           pc.setCreated(new Date());
                           pc.setModified(new Date());
 
-                          TestUtils.saveAndFlush(pc);
-                          return pc;
+                          return TestUtils.saveAndFlush(pc);
                       });
     }
 }

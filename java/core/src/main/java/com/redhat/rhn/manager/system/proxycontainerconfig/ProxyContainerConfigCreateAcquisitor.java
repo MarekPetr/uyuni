@@ -70,10 +70,13 @@ public class ProxyContainerConfigCreateAcquisitor implements ProxyContainerConfi
             context.setProxySshKey(proxySshKey);
         }
 
+        Set<String> fqdns = new HashSet<>();
+        fqdns.add(context.getProxyFqdn());
+
         //config.yaml
         SSLCertPair proxyPair = context.getProxyCertKey();
         String rootCaCert = context.getRootCA();
-        if (proxyPair == null || !proxyPair.isComplete()) {
+        if (ConfigDefaults.get().isSsl() && (proxyPair == null || !proxyPair.isComplete())) {
             proxyPair = context.getCertManager().generateCertificate(
                     context.getCaPair(),
                     context.getCaPassword(),
@@ -81,21 +84,18 @@ public class ProxyContainerConfigCreateAcquisitor implements ProxyContainerConfi
             );
             rootCaCert = context.getCaPair().getCertificate();
         }
-
         context.setProxyPair(proxyPair);
         context.setRootCaCert(rootCaCert);
 
-        //httpd.yaml
-        Set<String> fqdns = new HashSet<>();
-        fqdns.add(context.getProxyFqdn());
-
-        SSLCertPair proxyCertKey = context.getProxyCertKey();
-        if (proxyCertKey != null && proxyCertKey.getCertificate() != null) {
-            // Get the cnames from the certificate using openssl
-            fqdns.addAll(context.getCertManager().getNamesFromSslCert(proxyCertKey.getCertificate()));
-        }
-        else {
-            fqdns.addAll(context.getCertData().getAllCnames());
+        if (rootCaCert != null && proxyPair != null) {
+            // Check the SSL files using mgr-ssl-cert-setup
+            try {
+                context.setCertificate(saltApi.checkSSLCert(rootCaCert, proxyPair,
+                        context.getIntermediateCAs() != null ? context.getIntermediateCAs() : List.of()));
+            }
+            catch (IllegalArgumentException err) {
+                throw new RhnRuntimeException("Certificate check failure: " + err.getMessage());
+            }
         }
 
         Server proxySystem = getOrCreateProxySystem(
@@ -109,15 +109,6 @@ public class ProxyContainerConfigCreateAcquisitor implements ProxyContainerConfi
         }
         catch (InstantiationException e) {
             raiseAndLog(this, "Failed creating client certificate: " + e.getMessage()).get();
-        }
-
-        // Check the SSL files using mgr-ssl-cert-setup
-        try {
-            context.setCertificate(saltApi.checkSSLCert(rootCaCert, proxyPair,
-                    context.getIntermediateCAs() != null ? context.getIntermediateCAs() : List.of()));
-        }
-        catch (IllegalArgumentException err) {
-            throw new RhnRuntimeException("Certificate check failure: " + err.getMessage());
         }
 
         //ssh.yaml

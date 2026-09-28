@@ -1,8 +1,8 @@
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
+<%@ taglib uri="jakarta.tags.fmt" prefix="fmt" %>
 
 
 <html>
@@ -24,7 +24,7 @@
 <bean:message key="kickstart.session_status.jsp.summary2"/>
 </p>
 
-<div class="row-0">
+<div class="row">
   <div class="col-md-6">
     <div class="panel panel-default">
       <div class="panel-heading">

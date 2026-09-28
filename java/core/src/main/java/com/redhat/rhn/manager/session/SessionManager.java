@@ -207,7 +207,7 @@ public class SessionManager extends BaseManager {
         }
 
         if (data != null && !data.equals("") &&
-                data.indexOf(SEC_PARM_TOKENIZER_CHAR) > 0) {
+                data.indexOf(SEC_PARM_TOKENIZER_CHAR) >= 1) {
             String[] vals = StringUtils.split(data, SEC_PARM_TOKENIZER_CHAR);
             if (isNonTimestampedParamString(vals)) {
                 boolean returnboolean = isValidNonTimestampedParamString(vals);
@@ -399,8 +399,11 @@ public class SessionManager extends BaseManager {
      * @param session session which lifetime should be extended
      */
     public static void extendSessionLifetime(WebSession session) {
-        session.setExpires(TimeUtils.currentTimeSeconds() +
-                SessionManager.lifetimeValue());
+        if (!WebSessionFactory.exists(session)) {
+            return;
+        }
+
+        session.setExpires(TimeUtils.currentTimeSeconds() + SessionManager.lifetimeValue());
         WebSessionFactory.save(session);
     }
 }

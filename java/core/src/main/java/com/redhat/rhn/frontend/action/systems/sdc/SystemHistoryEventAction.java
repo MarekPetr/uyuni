@@ -20,8 +20,10 @@ import com.redhat.rhn.domain.action.Action;
 import com.redhat.rhn.domain.action.ActionFactory;
 import com.redhat.rhn.domain.action.ActionFormatter;
 import com.redhat.rhn.domain.action.server.ServerAction;
+import com.redhat.rhn.domain.action.server.ServerActionFactory;
 import com.redhat.rhn.domain.server.Server;
 import com.redhat.rhn.domain.server.ServerHistoryEvent;
+import com.redhat.rhn.domain.user.User;
 import com.redhat.rhn.frontend.struts.RequestContext;
 import com.redhat.rhn.frontend.struts.RhnAction;
 import com.redhat.rhn.frontend.struts.RhnHelper;
@@ -37,8 +39,8 @@ import org.apache.struts.action.ActionForward;
 import org.apache.struts.action.ActionMapping;
 import org.apache.struts.action.DynaActionForm;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * SystemHistoryEventAction - page for displaying details about system events
@@ -60,6 +62,8 @@ public class SystemHistoryEventAction extends RhnAction {
 
         RequestContext requestContext = new RequestContext(request);
         Server server = requestContext.lookupAndBindServer();
+        User user = requestContext.getCurrentUser();
+        SdcHelper.ssmCheck(request, server.getId(), user);
         Long aid = requestContext.getRequiredParam("aid");
 
         request.setAttribute("aid", aid);
@@ -71,7 +75,7 @@ public class SystemHistoryEventAction extends RhnAction {
         ServerAction serverAction;
         try {
             action = ActionManager.lookupAction(requestContext.getCurrentUser(), aid);
-            serverAction = ActionFactory.getServerActionForServerAndAction(server, action);
+            serverAction = ServerActionFactory.getServerActionForServerAndAction(server, action);
             if (serverAction == null) {
                 throw new LookupException("Could not find server action with id: " + action.getId());
             }
@@ -128,7 +132,7 @@ public class SystemHistoryEventAction extends RhnAction {
             }
             createMessage(request, "system.event.rescheduled", action.getName(),
                     action.getId().toString());
-            ActionFactory.rescheduleSingleServerAction(action, 5L, server.getId());
+            ServerActionFactory.rescheduleSingleServerAction(action, 5L, server.getId());
             try {
                 TASKOMATIC_API.scheduleActionExecution(action);
             }

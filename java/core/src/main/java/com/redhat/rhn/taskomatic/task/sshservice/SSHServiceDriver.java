@@ -22,6 +22,7 @@ import com.redhat.rhn.common.db.datasource.SelectMode;
 import com.redhat.rhn.common.db.datasource.WriteMode;
 import com.redhat.rhn.domain.action.Action;
 import com.redhat.rhn.domain.action.ActionFactory;
+import com.redhat.rhn.domain.action.ActionTypeEnum;
 import com.redhat.rhn.taskomatic.TaskoFactory;
 import com.redhat.rhn.taskomatic.domain.TaskoSchedule;
 import com.redhat.rhn.taskomatic.task.TaskConstants;
@@ -39,7 +40,6 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -92,17 +92,9 @@ public class SSHServiceDriver extends AbstractQueueDriver<SystemSummary> {
 
     @Override
     protected List<SystemSummary> getCandidates() {
-        List<SystemSummary> candidates = new LinkedList<>();
-
-        // Find Salt systems currently rebooting,
+        // Find Salt systems currently rebooting, incl. distupgrade
         // i.e with reboot actions in status picked-up with picked-up time older than 4 minutes
-        List<SystemSummary> rebootCandidates = getRebootingMinions();
-        for (SystemSummary s : rebootCandidates) {
-            s.setRebooting(true);
-            if (!candidates.contains(s)) {
-                candidates.add(s);
-            }
-        }
+        List<SystemSummary> candidates = getRebootingMinions();
 
         // For Salt minions, check all queued actions having a completed reboot prerequisite.
         // Queued actions with a completed reboot prerequisite can appear when a reboot action completes successfully
@@ -112,7 +104,7 @@ public class SSHServiceDriver extends AbstractQueueDriver<SystemSummary> {
         for (SSHPushAction a : queuedActions) {
             Action action = ActionFactory.lookupById(a.getActionId());
 
-            if (SaltUtils.prerequisiteIsCompleted(action, Optional.of(ActionFactory.TYPE_REBOOT), a.getSystemId())) {
+            if (SaltUtils.prerequisiteIsCompleted(action, Optional.of(ActionTypeEnum.TYPE_REBOOT), a.getSystemId())) {
                 SystemSummary s = new SystemSummary(a.getSystemId(), a.getSystemName(), a.getMinionId(), true);
                 if (!candidates.contains(s)) {
                     candidates.add(s);
@@ -175,6 +167,7 @@ public class SSHServiceDriver extends AbstractQueueDriver<SystemSummary> {
 
     /**
      * Run query to find all candidates with ongoing reboot actions.
+     * Inclusive distupgrade as it also contain a reboot.
      *
      * @return list of candidates with ongoing reboot actions
      */

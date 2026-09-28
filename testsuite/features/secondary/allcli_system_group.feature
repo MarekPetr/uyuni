@@ -1,9 +1,10 @@
-# Copyright (c) 2017-2025 SUSE LLC
+# Copyright (c) 2017-2026 SUSE LLC
 # Licensed under the terms of the MIT license.
 
 @scope_ssm
 @sle_minion
 @scope_visualization
+@skip_if_github_validation
 Feature: Manage a group of systems and the Systems Set Manager
 
   Scenario: Log in as org admin user
@@ -15,6 +16,8 @@ Feature: Manage a group of systems and the Systems Set Manager
     And I refresh the metadata for "sle_minion"
     And I install old package "andromeda-dummy-1.0" on this "sle_minion"
     And I install old package "virgo-dummy-1.0" on this "sle_minion"
+    And I refresh packages list via spacecmd on "sle_minion"
+    And I wait until refresh package list on "sle_minion" is finished
 
   Scenario: Pre-requisite: ensure that fake patches are available
     When I follow the left menu "Admin > Task Schedules"
@@ -102,6 +105,13 @@ Feature: Manage a group of systems and the Systems Set Manager
     And I wait until event "Patch Update: andromeda-dummy-6789 - Test update for andromeda-dummy scheduled by admin" is completed
 
 @skip_if_github_validation
+  Scenario: Pre-requisite: re-select sle_minion in SSM for package operations
+    When I follow the left menu "Systems > System Groups"
+    And I click on "Use in SSM" in row "new-systems-group"
+    Then I should see a "Selected Systems List" text
+    And I should see "sle_minion" as link
+
+@skip_if_github_validation
   Scenario: Delete a package from systems in the SSM
     When I follow the left menu "Systems > System Set Manager > Overview"
     And I follow "Packages"
@@ -113,6 +123,13 @@ Feature: Manage a group of systems and the Systems Set Manager
     And I click on "Remove Packages"
     And I click on "Confirm"
     Then I should see a "Package removals are being scheduled, it may take several minutes for this to complete." text
+
+@skip_if_github_validation
+  Scenario: Pre-requisite: re-select sle_minion in SSM for package install
+    When I follow the left menu "Systems > System Groups"
+    And I click on "Use in SSM" in row "new-systems-group"
+    Then I should see a "Selected Systems List" text
+    And I should see "sle_minion" as link
 
 @skip_if_github_validation
   Scenario: Install a package to systems in the SSM

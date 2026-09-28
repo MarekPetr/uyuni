@@ -17,10 +17,13 @@ package com.suse.manager.attestation;
 import com.redhat.rhn.common.hibernate.LookupException;
 import com.redhat.rhn.common.security.PermissionException;
 import com.redhat.rhn.domain.action.Action;
+import com.redhat.rhn.domain.action.ActionBuilder;
 import com.redhat.rhn.domain.action.ActionChain;
 import com.redhat.rhn.domain.action.ActionChainFactory;
 import com.redhat.rhn.domain.action.ActionFactory;
+import com.redhat.rhn.domain.action.ActionTypeEnum;
 import com.redhat.rhn.domain.action.CoCoAttestationAction;
+import com.redhat.rhn.domain.action.server.ServerActionFactory;
 import com.redhat.rhn.domain.org.Org;
 import com.redhat.rhn.domain.server.MinionServer;
 import com.redhat.rhn.domain.server.Server;
@@ -33,16 +36,15 @@ import com.redhat.rhn.taskomatic.TaskomaticApiException;
 import com.suse.manager.model.attestation.AttestationFactory;
 import com.suse.manager.model.attestation.CoCoAttestationResult;
 import com.suse.manager.model.attestation.CoCoEnvironmentType;
+import com.suse.manager.model.attestation.CoCoReportStatus;
+import com.suse.manager.model.attestation.CoCoResultStatus;
 import com.suse.manager.model.attestation.ServerCoCoAttestationConfig;
 import com.suse.manager.model.attestation.ServerCoCoAttestationReport;
-import com.suse.manager.webui.services.pillar.MinionPillarManager;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.security.SecureRandom;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -144,10 +146,10 @@ public class AttestationManager {
                                                                   Set<MinionServer> minionsSet, Date earliest)
         throws TaskomaticApiException {
         CoCoAttestationAction action = createAttestationAction(userIn.orElse(null), orgIn, earliest);
-        minionsSet.forEach(minionServer -> initializeReport(action, minionServer));
+        minionsSet.forEach(minionServer -> initializeAttestation(action, minionServer));
 
         Set<Long> minionIds = minionsSet.stream().map(Server::getId).collect(Collectors.toSet());
-        ActionFactory.scheduleForExecution(action, minionIds);
+        ServerActionFactory.scheduleForExecution(action, minionIds);
 
         CoCoAttestationAction updated = (CoCoAttestationAction) ActionFactory.save(action);
         taskomaticApi.scheduleActionExecution(updated);
@@ -163,7 +165,7 @@ public class AttestationManager {
         List<CoCoAttestationAction> actionsList = new ArrayList<>();
         for (MinionServer server : minionsSet) {
             CoCoAttestationAction action = createAttestationAction(userIn.orElse(null), orgIn, earliest);
-            initializeReport(action, server);
+            initializeAttestation(action, server);
 
             ActionChainFactory.queueActionChainEntry(action, actionChain, server.getId(), nextSortOrder);
             actionsList.add(action);
@@ -173,26 +175,22 @@ public class AttestationManager {
     }
 
     private static CoCoAttestationAction createAttestationAction(User user, Org org, Date earliest) {
-        CoCoAttestationAction action = (CoCoAttestationAction) ActionFactory.createAction(
-            ActionFactory.TYPE_COCO_ATTESTATION, earliest);
-        action.setSchedulerUser(user);
-        action.setOrg(org);
-        action.setName("Confidential Compute Attestation");
+        CoCoAttestationAction action = (CoCoAttestationAction) new ActionBuilder()
+                .ofType(ActionTypeEnum.TYPE_COCO_ATTESTATION)
+                .withSchedulerUser(user)
+                .withOrg(org)
+                .withName("Confidential Compute Attestation")
+                .withEarliest(earliest)
+                .build();
+
         ActionFactory.save(action);
         return action;
     }
 
-    private void initializeReport(CoCoAttestationAction action, MinionServer minion) {
+    private void initializeAttestation(CoCoAttestationAction action, MinionServer minion) {
         ServerCoCoAttestationReport initReport = factory.createReportForServer(minion);
         initReport.setAction(action);
-        if (initReport.getEnvironmentType().isNonceRequired()) {
-            SecureRandom rand = new SecureRandom();
-            byte[] bytes = new byte[64];
-            rand.nextBytes(bytes);
-            initReport.setInData(Map.of("nonce", Base64.getEncoder().encodeToString(bytes)));
-        }
-
-        MinionPillarManager.INSTANCE.generatePillar(minion, false, MinionPillarManager.PillarSubset.GENERAL);
+        factory.initResultsForReport(initReport);
     }
 
     /**
@@ -207,19 +205,36 @@ public class AttestationManager {
                                                     boolean enabledIn) {
         return createConfig(userIn, serverIn, typeIn, enabledIn, false);
     }
-        /**
-         * Create a Attestation configuration for a given server
-         * @param userIn the user
-         * @param serverIn the server
-         * @param typeIn the environment type
-         * @param enabledIn should the config been enabled
-         * @param attestOnBootIn should the attestation be performed on system boot
-         * @return returns the configuration
-         */
+
+    /**
+     * Create a Attestation configuration for a given server
+     * @param userIn the user
+     * @param serverIn the server
+     * @param typeIn the environment type
+     * @param enabledIn should the config been enabled
+     * @param attestOnBootIn should the attestation be performed on system boot
+     * @return returns the configuration
+     */
     public ServerCoCoAttestationConfig createConfig(User userIn, Server serverIn, CoCoEnvironmentType typeIn,
                                                     boolean enabledIn, boolean attestOnBootIn) {
+        return createConfig(userIn, serverIn, typeIn, enabledIn, Map.of(), attestOnBootIn);
+    }
+
+        /**
+     * Create a Attestation configuration for a given server
+     * @param userIn the user
+     * @param serverIn the server
+     * @param typeIn the environment type
+     * @param enabledIn should the config been enabled
+     * @param inputDataIn the additional input data
+     * @param attestOnBootIn should the attestation be performed on system boot
+     * @return returns the configuration
+     */
+    public ServerCoCoAttestationConfig createConfig(User userIn, Server serverIn, CoCoEnvironmentType typeIn,
+                                                    boolean enabledIn, Map<String, Object> inputDataIn,
+                                                    boolean attestOnBootIn) {
         ensureSystemAccessible(userIn, serverIn);
-        return factory.createConfigForServer(serverIn, typeIn, enabledIn, attestOnBootIn);
+        return factory.createConfigForServer(serverIn, typeIn, enabledIn, inputDataIn, attestOnBootIn);
     }
 
 
@@ -256,7 +271,7 @@ public class AttestationManager {
     }
 
     /**
-     * Initialze the Attestation Results for a given report
+     * Initialize the Attestation Results for a given report
      * @param reportIn the report
      */
     public void initializeResults(ServerCoCoAttestationReport reportIn) {
@@ -390,6 +405,22 @@ public class AttestationManager {
         return factory.listCoCoAttestationReportsForUser(userIn, offset, limit);
     }
 
+    /**
+     * @param actionIn the action
+     * @return returns the attestation report for this server and action if available
+     */
+    public List<ServerCoCoAttestationReport> listCoCoAttestationReportsForAction(Action actionIn) {
+        return factory.listCoCoAttestationReportsForAction(actionIn);
+    }
+
+    /**
+     * @param reportIn the report to be saved
+     * @return returns the saved report
+     */
+    public ServerCoCoAttestationReport saveReport(ServerCoCoAttestationReport reportIn) {
+        return factory.save(reportIn);
+    }
+
     private void ensureSystemAccessible(User userIn, Server serverIn) {
         if (serverIn == null) {
             LOG.error("Server not found");
@@ -416,6 +447,63 @@ public class AttestationManager {
             LOG.error("Attestation disabled");
             throw new AttestationDisabledException();
         }
+    }
+
+    /**
+     * Checks if all results have their input data already computed
+     * @param report the report
+     * @return true if all results have their input data already computed
+     */
+    public boolean hasAllInputDataFromResults(ServerCoCoAttestationReport report) {
+        return report.getResults().stream()
+                .allMatch(result -> result.getStatus().hasInputData());
+    }
+
+    /**
+     * Sets failure in report and inputs not yet computed
+     * @param report the report
+     * @param failureMessage the failure message
+     */
+    public void setFailed(ServerCoCoAttestationReport report, String failureMessage) {
+        report.setStatus(CoCoReportStatus.FAILED);
+
+        report.getResults().forEach(result -> {
+            result.setStatus(CoCoResultStatus.FAILED);
+            if (result.getStatus().hasInputData()) {
+                result.setDetails(failureMessage);
+            }
+            else {
+                result.setDetails("No input data");
+            }
+        });
+    }
+
+    /**
+     * Collects and merges input data from results, stores it in report input data member
+     * @param report the report
+     */
+    public void mergeInputDataFromResults(ServerCoCoAttestationReport report) {
+        Map<String, Object> mergedInputData = report.getResults().stream()
+                .map(CoCoAttestationResult::getInData)
+                .flatMap(map -> map.entrySet().stream())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        report.setInData(mergedInputData);
+        report.getResults().forEach(result -> result.setStatus(CoCoResultStatus.SUBMITTED));
+    }
+
+    /**
+     * Sets pending status in report and in all results
+     * @param report the report
+     */
+    public void setPendingResults(ServerCoCoAttestationReport report) {
+        report.setStatus(CoCoReportStatus.PENDING);
+
+        report.getResults().stream()
+                .filter(result -> result.getStatus().hasInputData())
+                .forEach(result -> {
+                    result.setStatus(CoCoResultStatus.PENDING);
+                });
     }
 
 }

@@ -36,6 +36,7 @@ import com.redhat.rhn.common.hibernate.HibernateFactory;
 import com.redhat.rhn.common.hibernate.LookupException;
 import com.redhat.rhn.common.messaging.MessageQueue;
 import com.redhat.rhn.common.security.PermissionException;
+import com.redhat.rhn.common.util.TimeUtils;
 import com.redhat.rhn.domain.channel.Channel;
 import com.redhat.rhn.domain.channel.ChannelFactory;
 import com.redhat.rhn.domain.channel.ClonedChannel;
@@ -68,6 +69,7 @@ import com.redhat.rhn.domain.server.ServerFactory;
 import com.redhat.rhn.domain.user.User;
 import com.redhat.rhn.frontend.events.AlignSoftwareTargetAction;
 import com.redhat.rhn.frontend.events.AlignSoftwareTargetMsg;
+import com.redhat.rhn.frontend.events.AnalyzeAlignTablesMsg;
 import com.redhat.rhn.manager.EntityExistsException;
 import com.redhat.rhn.manager.EntityNotExistsException;
 import com.redhat.rhn.manager.appstreams.AppStreamsManager;
@@ -344,7 +346,7 @@ public class ContentManager {
     public int removeEnvironment(String envLabel, String projectLabel, User user) {
         ensureOrgAdmin(user);
         return lookupEnvironment(envLabel, projectLabel, user)
-                .map((env) -> {
+                .map(env -> {
                     ContentProjectFactory.removeEnvironment(env);
                     return 1;
                 })
@@ -520,6 +522,9 @@ public class ContentManager {
         });
 
         ContentPropertiesValidator.validateFilterProperties(name);
+        ContentPropertiesValidator.validateDateCriteria(
+        criteria.getField(),
+        criteria.getValue());
 
         if (ContentFilter.EntityType.MODULE.equals(entityType) && ContentFilter.Rule.DENY.equals(rule)) {
             // DENY rule is not applicable for module filters
@@ -545,6 +550,11 @@ public class ContentManager {
                 .orElseThrow(() -> new EntityNotExistsException(id));
 
         ContentPropertiesValidator.validateFilterProperties(name.orElse(filter.getName()));
+        if (criteria.isPresent()) {
+            ContentPropertiesValidator.validateDateCriteria(
+                criteria.get().getField(),
+                criteria.get().getValue());
+        }
 
         return ContentProjectFactory.updateFilter(filter, name, rule, criteria);
     }
@@ -694,15 +704,51 @@ public class ContentManager {
      */
     public void diffProject(ContentProject project) {
 
-        Optional<ContentEnvironment> env = project.getFirstEnvironmentOpt();
+        project.getEnvironmentsStream()
+                .forEach(environment ->
+                    TimeUtils.logTime(LOG, "Creating diff for Environment " + environment.getLabel(),
+                            () -> diffEnvironment(project, environment))
+                );
+    }
 
-        do {
-            ContentEnvironment currentEnv = env.orElseThrow(
-                    () -> new ContentManagementException("Environment missing"));
-            diffEnvironment(project, currentEnv);
-            env = currentEnv.getNextEnvironmentOpt();
+    /**
+     * Generate a diff of the given project, environment and channel label
+     *
+     * @param projectLabel the product label
+     * @param environmentLabel the environment label
+     * @param channelLabel the channel label
+     * @throws ContentManagementException
+     */
+    public void diffClmChannel(String projectLabel, String environmentLabel, String channelLabel) {
+        ContentProject project = ContentProjectFactory.lookupProjectByLabel(projectLabel).orElseThrow(() -> {
+            LOG.error("Project {} does not exist", projectLabel);
+            return new ContentManagementException("Project " + projectLabel + " does not exist");
+        });
+        ContentEnvironment currentEnv = ContentProjectFactory.lookupEnvironmentByLabelAndProject(
+                environmentLabel, project).orElseThrow(() -> {
+            LOG.error("Environment {} does not exist", environmentLabel);
+            return new ContentManagementException("Environment " + environmentLabel + " does not exist");
+        });
+        Channel channel = ChannelFactory.lookupByLabel(channelLabel);
+        if (channel == null) {
+            LOG.error("Channel {} does not exist", channelLabel);
+            throw new ContentManagementException("Channel " + channelLabel + " does not exist");
         }
-        while(env.isPresent());
+        if (!channel.isCloned()) {
+            throw new ContentManagementException("Channel is not a cloned channel: %s"
+                    .formatted(channelLabel));
+        }
+
+        try {
+            DependencyResolver resolver = new DependencyResolver(project, this.modulemdApi);
+            DependencyResolutionResult result = resolver.resolveFilters(project.getActiveFilters());
+
+            TimeUtils.logTime(LOG, "Creating diff for Channel " + channel,
+                    () -> diffEnvironmentChannel(project, currentEnv, channel, result.getFilters()));
+        }
+        catch (DependencyResolutionException e) {
+            throw new ContentManagementException(e);
+        }
     }
 
     /**
@@ -734,7 +780,8 @@ public class ContentManager {
                     throw new ContentManagementException("Channel is not a cloned channel: %s"
                             .formatted(channel.getLabel()));
                 }
-                diffEnvironmentChannel(project, currentEnv, channel, result.getFilters());
+                TimeUtils.logTime(LOG, "Creating diff for Channel " + channel,
+                        () -> diffEnvironmentChannel(project, currentEnv, channel, result.getFilters()));
             }
         }
         catch (DependencyResolutionException e) {
@@ -761,6 +808,8 @@ public class ContentManager {
         Channel src = channel.getOriginal();
         List<PackageFilter> packageFilters = extractFiltersOfType(filters, PackageFilter.class);
         List<ErrataFilter> errataFilters = extractFiltersOfType(filters, ErrataFilter.class);
+
+        long startPackageDiff = System.nanoTime();
 
         Set<Package> oldTgtPackages = new HashSet<>(channel.getPackages());
         Pair<Set<Package>, Set<Package>> partPackages = filterEntities(src.getPackages(), packageFilters);
@@ -799,6 +848,9 @@ public class ContentManager {
                     }
             );
         }
+        long endPackageDiff = System.nanoTime();
+        LOG.info("{} took {} seconds.", "Package Diff", (endPackageDiff - startPackageDiff) / 1e9);
+        long startErrataDiff = System.nanoTime();
 
         Set<Errata> oldTgtErrata = new HashSet<>(channel.getErratas());
         Pair<Set<Errata>, Set<Errata>> partErrata = filterEntities(src.getErratas(), errataFilters);
@@ -840,13 +892,17 @@ public class ContentManager {
                     }
             );
         }
+        long endErrataDiff = System.nanoTime();
+        LOG.info("{} took {} seconds.", "Errata Diff", (endErrataDiff - startErrataDiff) / 1e9);
 
-        Map<Boolean, Map<Pair<Long, EntryType>, ContentEnvironmentDiff>> removeOrSave = diffMap.entrySet().stream()
-                .collect(partitioningBy(e -> keep.contains(e.getKey()),
-                        Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
-        removeOrSave.get(false).values().forEach(ContentProjectFactory::remove);
+        TimeUtils.logTime(LOG, "Write diff map ", () -> {
+            Map<Boolean, Map<Pair<Long, EntryType>, ContentEnvironmentDiff>> removeOrSave = diffMap.entrySet().stream()
+                    .collect(partitioningBy(e -> keep.contains(e.getKey()),
+                            Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+            removeOrSave.get(false).values().forEach(ContentProjectFactory::remove);
 
-        removeOrSave.get(true).values().forEach(ContentProjectFactory::save);
+            removeOrSave.get(true).values().forEach(ContentProjectFactory::save);
+        });
     }
 
     // helper method to determine if given environment is BUILDING
@@ -1039,6 +1095,8 @@ public class ContentManager {
 
         // Sync GPG key info to target in case it's updated since last build
         syncGpgKeyInfo(newSource, tgt);
+        // Sync also the update tag. This should not change, but in case it does we have to promote it
+        tgt.setUpdateTag(newSource.getUpdateTag());
 
         return swTgt;
     }
@@ -1181,19 +1239,21 @@ public class ContentManager {
         alignErrata(src, tgt, errataFilters, user);
 
         // alignErrata() modifies the database directly, leaving the in-memory object with stale packages.
-        // We need to flush and manually prune these items from the list so the cache calculation
-        // reflects the actual reality of the channel.
+        // We should call getSession().refresh(tgt) but we can't since due to our ClonedChannel mapping the instance
+        // type might change and JPA does not support that. The least dangerous option is to call flush and manually
+        // prune these items from the list so the cache calculation reflects the actual reality of the channel.
         HibernateFactory.getSession().flush();
         List<Long> realIds = ChannelFactory.getPackageIds(tgt.getId());
-        tgt.getPackages().removeIf(p -> !realIds.contains(p.getId()));
+        tgt.removePackages(
+                tgt.getPackages().stream()
+                .filter(p -> !realIds.contains(p.getId()))
+                .collect(Collectors.toSet())
+        );
 
         // align the package cache
         // this must be done after aligning errata since some packages may belong to a retracted erratum and we don't
         // want them in the cache. For this we need the errata to be up-to-date in target
         alignPackageCache(tgt, oldTgtPackages);
-
-        // a lot was inserted into tables at this point. Make sure stats are up-to-date before continuing
-        analyzeAlignTables();
 
         // Also check if content of cloned errata needs alignment (advisory status etc.)
         if (user.getOrg().getOrgConfig().isClmSyncPatches()) {
@@ -1208,20 +1268,11 @@ public class ContentManager {
 
         // now request repo regen
         tgt.setLastModified(new Date());
-        HibernateFactory.getSession().saveOrUpdate(tgt);
+        tgt = HibernateFactory.getSession().merge(tgt);
         ChannelManager.queueChannelChange(tgt.getLabel(), "java::alignChannel", "Channel aligned");
-    }
 
-    /**
-     * Run database analyze in tables more affected by the CLM channel align
-     */
-    private void analyzeAlignTables() {
-        ChannelFactory.analyzeChannelPackages();
-        ChannelFactory.analyzeErrataPackages();
-        ChannelFactory.analyzeChannelErrata();
-        ChannelFactory.analyzeErrataCloned();
-        ChannelFactory.analyzeErrata();
-        ChannelFactory.analyzeServerNeededCache();
+        // Run ANALYZE once this transaction is complete to update stats after alignment.
+        MessageQueue.publish(new AnalyzeAlignTablesMsg(user));
     }
 
     private void alignPackageCache(Channel channel, Set<Package> oldChannelPackages) {
@@ -1246,10 +1297,10 @@ public class ContentManager {
     }
 
     private void alignPackages(Channel srcChannel, Channel tgtChannel, Collection<PackageFilter> filters) {
-        tgtChannel.getPackages().clear();
+        tgtChannel.clearPackages();
         LOG.debug("Filtering {} entities through {} filter(s)", srcChannel.getPackages().size(), filters.size());
         Set<Package> newPackages = filterEntities(srcChannel.getPackages(), filters).getLeft();
-        tgtChannel.getPackages().addAll(newPackages);
+        tgtChannel.addPackages(newPackages);
         ChannelFactory.save(tgtChannel);
     }
 

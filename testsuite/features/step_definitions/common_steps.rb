@@ -1,4 +1,4 @@
-# Copyright (c) 2010-2024 SUSE LLC.
+# Copyright (c) 2010-2026 SUSE LLC.
 # Licensed under the terms of the MIT license.
 
 ### This file contains all step definitions concerning general product funtionality
@@ -79,7 +79,7 @@ end
 
 Then(/^the IPv6 address for "([^"]*)" should be correct$/) do |host|
   node = get_target(host)
-  interface, code = node.run("ip -6 address show #{node.public_interface}")
+  interface, code = node.run("ip -6 address show #{node.public_interface}", runs_in_container: false)
   raise RuntimeError unless code.zero?
 
   lines = interface.lines
@@ -151,27 +151,31 @@ When(/^I wait until event "([^"]*)" is completed$/) do |event|
   step %(I wait at most #{DEFAULT_TIMEOUT} seconds until event "#{event}" is completed)
 end
 
-When(/^I wait (\d+) seconds until the event is picked up and (\d+) seconds until the event "([^"]*)" is completed$/) do |pickup_timeout, complete_timeout, event|
-  # The code below is not perfect because there might be other events with the
-  # same name in the events history - however, that's the best we have so far.
+When(/^I wait at most (\d+) seconds until the event "([^"]*)" is picked up$/) do |timeout, event|
   steps %(
     When I follow "Events"
     And I wait until I see "Pending Events" text
     And I follow "Pending"
     And I wait until I see "Pending Events" text
-    And I wait at most #{pickup_timeout} seconds until I do not see "#{event}" text, refreshing the page
-    And I follow "History"
+    And I wait at most #{timeout} seconds until I do not see "#{event}" text, refreshing the page
+  )
+end
+
+When(/^I wait at most (\d+) seconds until the event "([^"]*)" is completed in the history$/) do |timeout, event|
+  steps %(
+    When I follow "History"
     And I wait until I see "System History" text
-    And I wait until I see "#{event}" text, refreshing the page
+    And I wait at most #{timeout} seconds until I see "#{event}" text, refreshing the page
     And I follow first "#{event}"
     And I wait until I see "This action will be executed after" text
     And I wait until I see "#{event}" text
-    And I wait at most #{complete_timeout} seconds until the event is completed, refreshing the page
+    And I wait at most #{timeout} seconds until the event is completed, refreshing the page
   )
 end
 
 When(/^I wait at most (\d+) seconds until event "([^"]*)" is completed$/) do |final_timeout, event|
-  step %(I wait 180 seconds until the event is picked up and #{final_timeout} seconds until the event "#{event}" is completed)
+  step %(I wait at most #{DEFAULT_TIMEOUT} seconds until the event "#{event}" is picked up)
+  step %(I wait at most #{final_timeout} seconds until the event "#{event}" is completed in the history)
 end
 
 When(/^I wait until I see the event "([^"]*)" completed during last minute, refreshing the page$/) do |event|
@@ -201,8 +205,13 @@ When(/^I follow the event "([^"]*)" completed during last minute$/) do |event|
   current_minute = now.strftime('%H:%M')
   previous_minute = (now - 60).strftime('%H:%M')
   xpath_query = "//a[contains(text(), '#{event}')]/../..//td[4]/time[contains(text(),'#{current_minute}') or contains(text(),'#{previous_minute}')]/../../td[3]/a[1]"
-  element = find_and_wait_click(:xpath, xpath_query)
-  element.click
+  # Use a Playwright locator instead of caching a Capybara element: the events table can
+  # re-render between find and click (previous step polls until the event completes), and
+  # capybara-playwright-driver raises StaleReferenceError on a detached cached node.
+  # wait_for_page_transition replaces the Senna-transition wait that the cached element's
+  # CapybaraNodeElementExtension#click used to provide.
+  page.driver.with_playwright_page { |pw_page| pw_page.locator(xpath_query).click }
+  wait_for_page_transition
 end
 
 # spacewalk errors steps
@@ -263,11 +272,11 @@ end
 Then(/^I should see the power is "([^"]*)"$/) do |status|
   within(:xpath, '//*[@for=\'powerStatus\']/..') do
     repeat_until_timeout(message: "power is not #{status}") do
-      break if check_text_and_catch_request_timeout_popup?(status)
+      break if check_text?(status)
 
       find(:xpath, '//button[@value="Get status"]').click
     end
-    raise ScriptError, "Power status #{status} not found" unless check_text_and_catch_request_timeout_popup?(status)
+    raise ScriptError, "Power status #{status} not found" unless check_text?(status)
   end
 end
 

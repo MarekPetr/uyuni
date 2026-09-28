@@ -19,10 +19,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlType;
+import jakarta.xml.bind.annotation.XmlAccessType;
+import jakarta.xml.bind.annotation.XmlAccessorType;
+import jakarta.xml.bind.annotation.XmlElement;
+import jakarta.xml.bind.annotation.XmlType;
 
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(namespace = "http://oval.mitre.org/XMLSchema/oval-definitions-5")
@@ -35,9 +35,14 @@ public class Advisory {
 
     @XmlElement(name = "affected", namespace = "http://oval.mitre.org/XMLSchema/oval-definitions-5")
     private AdvisoryAffectedType affected;
-
-    public void setAffectedCpeList(AffectedCpeList affectedCpeListIn) {
-        this.affectedCpeList = affectedCpeListIn;
+    /**
+     * Sets the list of affected CPEs.
+     *
+     * @param affectedCpeListIn the list of affected CPEs
+     * */
+    public void setAffectedCpeList(List<String> affectedCpeListIn) {
+        this.affectedCpeList = new AffectedCpeList();
+        this.affectedCpeList.setCpeList(affectedCpeListIn);
     }
 
     public List<String> getAffectedCpeList() {

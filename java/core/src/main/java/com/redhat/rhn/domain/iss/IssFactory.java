@@ -123,7 +123,7 @@ public class IssFactory extends HibernateFactory {
      */
     public static void unmapLocalOrg(Org inOrg) {
         HibernateFactory.getSession().
-            createQuery("UPDATE IssMasterOrg mo SET mo.localOrg = null WHERE mo.localOrg = :inOrg").
+            createMutationQuery("UPDATE IssMasterOrg mo SET mo.localOrg = null WHERE mo.localOrg = :inOrg").
             setParameter("inOrg", inOrg).
             executeUpdate();
     }
@@ -138,10 +138,12 @@ public class IssFactory extends HibernateFactory {
 
     /**
      * Insert or Update an entity.
+     *
      * @param entity to be stored in database.
+     * @return managed entity
      */
-    public static void save(Object entity) {
-        singleton.saveObject(entity);
+    public static Object save(Object entity) {
+        return singleton.saveObject(entity);
     }
 
     /**

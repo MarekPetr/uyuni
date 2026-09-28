@@ -87,8 +87,7 @@ def split_host(hoststring):
     # Now parse hostport
     if hostport[0] == "[":
         # IPv6 with port
-        # pylint: disable-next=anomalous-backslash-in-string
-        host, port = re.split("(?<=\]):", hostport, 1)
+        host, port = re.split(r"(?<=\\]):", hostport, maxsplit=1)
         host = host.lstrip("[").rstrip("]")
     elif check_ipv6(hostport):
         # just IPv6
@@ -175,7 +174,7 @@ class Server:
         #
         # pylint: disable-next=singleton-comparison
         if proxy != None:
-            (ph, pp, pu, pw) = get_proxy_info(proxy)
+            ph, pp, pu, pw = get_proxy_info(proxy)
 
             if pp is not None:
                 # pylint: disable-next=consider-using-f-string
@@ -843,6 +842,6 @@ def reportError(headers):
             import base64
 
             # pylint: disable-next=consider-using-f-string
-            errmsg = "%s" % base64.decodestring(_s)
+            errmsg = "%s" % base64.b64decode(_s)
 
     return errcode, errmsg

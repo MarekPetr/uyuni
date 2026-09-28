@@ -1,7 +1,9 @@
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { Button } from "components/buttons";
 import { DateTime, DEPRECATED_Select, Form, Radio, Text } from "components/input";
+import { Messages, Utils as MessagesUtils } from "components/messages/messages";
+import { MessagesContainer } from "components/toastr/toastr";
+import { ToggleButtonGroup } from "components/toggle-button-group/toggle-button-group";
 
 import { localizedMoment } from "utils";
 import produce from "utils/produce";
@@ -67,12 +69,38 @@ const FilterForm = (props: Props) => {
         props.onChange(model);
       }}
     >
-      <Fragment>
+      <>
+        <MessagesContainer containerId="filter-modal-errors" />
         {props.editing && (
-          <div className="alert alert-info" style={{ marginTop: "0px" }}>
-            {t("Bear in mind that all the associated projects need to be rebuilt after a filter update")}
-          </div>
+          <Messages
+            key="filter-editing-messages"
+            items={MessagesUtils.info(
+              t("Bear in mind that all the associated projects need to be rebuilt after a filter update")
+            )}
+          />
         )}
+        {!props.editing ? (
+          <div className="row form-group mt-3">
+            <div className="col-md-6 col-md-offset-3 offset-md-3">
+              <ToggleButtonGroup
+                value={filterBy}
+                onChange={setFilterBy}
+                options={[
+                  {
+                    value: FilterBy.Type,
+                    label: t("Manual Filter"),
+                    icon: "fa-filter",
+                  },
+                  {
+                    value: FilterBy.Template,
+                    label: t("Use Template"),
+                    icon: "fa-file-text-o",
+                  },
+                ]}
+              />
+            </div>
+          </div>
+        ) : null}
         {filterBy === FilterBy.Type ? (
           <Text
             key="filter_name"
@@ -96,30 +124,8 @@ const FilterForm = (props: Props) => {
           />
         )}
 
-        {!props.editing ? (
-          <div className="row form-group">
-            <div className="col-md-6 col-md-offset-3 offset-md-3">
-              {filterBy === FilterBy.Type ? (
-                <Button
-                  className="btn-tertiary"
-                  handler={() => setFilterBy(FilterBy.Template)}
-                  icon="fa-file-text-o"
-                  text={t("Use a template")}
-                />
-              ) : (
-                <Button
-                  className="btn-tertiary"
-                  handler={() => setFilterBy(FilterBy.Type)}
-                  icon="fa-filter"
-                  text={t("Use a manual filter")}
-                />
-              )}
-            </div>
-          </div>
-        ) : null}
-
         {filterBy === FilterBy.Type ? (
-          <Fragment>
+          <>
             <DEPRECATED_Select
               name="type"
               label={t("Filter Type")}
@@ -201,13 +207,28 @@ const FilterForm = (props: Props) => {
             )}
 
             {clmFilterOptions.ISSUE_DATE.key === filterType && (
-              <DateTime
-                name={clmFilterOptions.ISSUE_DATE.key}
-                label={t("Issued")}
-                labelClass="col-md-3"
-                divClass="col-md-8"
-                required
-              />
+              <>
+                {filter.hasInvalidDateFormat && (
+                  <div className="col-md-8 col-md-offset-3 offset-md-3">
+                    <Messages
+                      key="filter-issue-date-messages"
+                      items={MessagesUtils.warning(
+                        t(
+                          "The stored issue date is in an invalid format. Please select a valid date and save the filter."
+                        )
+                      )}
+                    />
+                  </div>
+                )}
+
+                <DateTime
+                  name={clmFilterOptions.ISSUE_DATE.key}
+                  label={t("Issued")}
+                  labelClass="col-md-3"
+                  divClass="col-md-8"
+                  required
+                />
+              </>
             )}
 
             {clmFilterOptions.PACKAGE_BUILD_DATE.key === filterType && (
@@ -242,6 +263,7 @@ const FilterForm = (props: Props) => {
                 label={t("Advisory Keywords")}
                 labelClass="col-md-3"
                 divClass="col-md-8"
+                inline={true}
               />
             )}
 
@@ -310,11 +332,11 @@ const FilterForm = (props: Props) => {
                 divClass="col-md-8"
               />
             )}
-          </Fragment>
+          </>
         ) : null}
 
         {filterBy === FilterBy.Template ? <TemplatesForm {...props} /> : null}
-      </Fragment>
+      </>
     </Form>
   );
 };

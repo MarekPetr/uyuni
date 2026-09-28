@@ -20,6 +20,7 @@ import static spark.Spark.put;
 
 import com.redhat.rhn.common.conf.ConfigDefaults;
 import com.redhat.rhn.domain.channel.Channel;
+import com.redhat.rhn.domain.channel.ChannelFactory;
 import com.redhat.rhn.domain.credentials.CredentialsFactory;
 import com.redhat.rhn.domain.credentials.HubSCCCredentials;
 import com.redhat.rhn.domain.credentials.SCCCredentials;
@@ -27,15 +28,17 @@ import com.redhat.rhn.domain.org.Org;
 import com.redhat.rhn.domain.product.ChannelTemplate;
 import com.redhat.rhn.domain.product.SUSEProductFactory;
 import com.redhat.rhn.domain.scc.SCCRepository;
+import com.redhat.rhn.frontend.xmlrpc.sync.content.SCCContentSyncSource;
 
 import com.suse.manager.hub.RouteWithSCCAuth;
+import com.suse.manager.model.hub.ChannelInfoDetailsJson;
+import com.suse.manager.model.hub.HubFactory;
 import com.suse.manager.reactor.utils.OptionalTypeAdapterFactory;
 import com.suse.manager.webui.utils.token.DownloadTokenBuilder;
 import com.suse.manager.webui.utils.token.TokenBuildingException;
 import com.suse.scc.client.SCCClient;
 import com.suse.scc.client.SCCClientException;
 import com.suse.scc.client.SCCConfig;
-import com.suse.scc.client.SCCConfigBuilder;
 import com.suse.scc.client.SCCFileClient;
 import com.suse.scc.client.SCCWebClient;
 import com.suse.scc.model.SCCOrganizationSystemsUpdateResponse;
@@ -56,19 +59,18 @@ import org.apache.logging.log4j.Logger;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
-import javax.servlet.http.HttpServletResponse;
-
+import jakarta.servlet.http.HttpServletResponse;
 import spark.Request;
 import spark.Response;
 import spark.Route;
@@ -160,6 +162,7 @@ public class SCCEndpoints {
         get("/hub/scc/connect/organizations/subscriptions", asJson(withSCCAuth(this::subscriptions)));
         get("/hub/scc/connect/organizations/orders", asJson(withSCCAuth(this::orders)));
         get("/hub/scc/suma/product_tree.json", asJson(this::productTree));
+        get("/hub/scc/suma/hub_channels", asJson(withSCCAuth(this::hubChannels)));
         put("/hub/scc/connect/organizations/systems", asJson(withSCCAuth(this::createOrUpdateSystems)));
         delete("/hub/scc/connect/organizations/systems/:id", asJson(withSCCAuth(this::deleteSystem)));
         put("/hub/scc/connect/organizations/virtualization_hosts", asJson(withSCCAuth(this::setVirtualizationHosts)));
@@ -209,22 +212,21 @@ public class SCCEndpoints {
 
     /**
      * Build and return a short living token for a Hub repository sync
-     * @param channel the channel to the create the token for
+     * @param channelLabels the channel Labels to the create the token for
+     * @param orgId the orgId of the channels. 0 if is a vendor channel
      * @return the token
      */
-    public static Optional<String> buildHubRepositoryToken(Channel channel) {
-        String channelLabel = channel.getLabel();
+    public static Optional<String> buildHubRepositoryToken(Set<String> channelLabels, Long orgId) {
         try {
-            Long oid = Optional.ofNullable(channel.getOrg()).map(Org::getId).orElse(0L);
-            DownloadTokenBuilder builder = new DownloadTokenBuilder(oid)
+            DownloadTokenBuilder builder = new DownloadTokenBuilder(orgId)
                     .usingServerSecret()
                     // Short lived 2 day + 4 hours tokens refreshed on ever sync
                     .expiringAfterMinutes(2L * (24 + 2) * 60)
-                    .allowingOnlyChannels(Set.of(channelLabel));
+                    .allowingOnlyChannels(channelLabels);
             return Optional.of(builder.build().getSerializedForm());
         }
         catch (TokenBuildingException e) {
-            LOG.error("Error creating token for channel: {}", channelLabel, e);
+            LOG.error("Error creating token for channel: {}", channelLabels, e);
             return Optional.empty();
         }
     }
@@ -268,12 +270,42 @@ public class SCCEndpoints {
         var jsonRepos = channels.stream().map(c -> {
             Channel channel = c.getChannel();
             String label = channel.getLabel();
-            String tokenString = buildHubRepositoryToken(channel).orElse("");
+
             return SUSEProductFactory.lookupByChannelLabelFirst(label)
-                    .map(channelTemplate -> buildVendorRepoJson(channelTemplate, hostname, tokenString))
-                    .orElseGet(() -> buildCustomRepoJson(label, hostname, tokenString));
+                    .map(channelTemplate -> {
+                        Set<String> channelLabels = new HashSet<>(channelTemplate.getRepository().getChannelTemplates()
+                                .stream().map(ChannelTemplate::getChannelLabel).toList());
+                        String tokenString = buildHubRepositoryToken(channelLabels, 0L).orElse("");
+                        return buildVendorRepoJson(channelTemplate, hostname, tokenString);
+                    })
+                    .orElseGet(() -> {
+                        Long oid = Optional.ofNullable(channel.getOrg()).map(Org::getId).orElse(0L);
+                        String tokenString = buildHubRepositoryToken(Set.of(channel.getLabel()), oid).orElse("");
+                        return buildCustomRepoJson(label, hostname, tokenString);
+                    });
         }).toList();
         return gson.toJson(jsonRepos);
+    }
+
+    /**
+     * Endpoint serving ISS hub channel information to peripherals
+     *
+     * @param requestIn
+     * @param responseIn
+     * @param credentials
+     * @return return the channels
+     */
+    public String hubChannels(Request requestIn, Response responseIn, HubSCCCredentials credentials) {
+        HubFactory hubFactory = new HubFactory();
+
+        var peripheral = credentials.getIssPeripheral();
+        List<ChannelInfoDetailsJson> infoDetailsJsons = hubFactory.listIssPeripheralChannels(peripheral).stream()
+                .map(pc -> ChannelFactory.toChannelInfo(
+                        pc.getChannel(),
+                        pc.getPeripheralOrgId(),
+                        Optional.empty()))
+                .toList();
+        return gson.toJson(infoDetailsJsons);
     }
 
     /**
@@ -307,24 +339,14 @@ public class SCCEndpoints {
                         .filter(SCCCredentials::isPrimary)
                         .findFirst()
                         .map(cred -> {
-                            String username = cred.getUsername();
-                            Path path = Paths.get(SCCConfig.DEFAULT_LOGGING_DIR).resolve(username);
+                            SCCContentSyncSource contentSync = new SCCContentSyncSource(cred);
+                            SCCWebClient sccWebClient = contentSync.getClient(uuid,
+                                    Paths.get(SCCConfig.DEFAULT_LOGGING_DIR), false);
                             try {
-                                return fn.apply(new SCCFileClient(path));
+                                return fn.apply(new SCCFileClient(sccWebClient.getCacheDir()));
                             }
                             catch (SCCClientException e) {
-                                String password = cred.getPassword();
-
-                                SCCConfig config = new SCCConfigBuilder()
-                                        .setUrl(sccUrl)
-                                        .setUsername(username)
-                                        .setPassword(password)
-                                        .setUuid(uuid)
-                                        .setLoggingDir(SCCConfig.DEFAULT_LOGGING_DIR)
-                                        .setSkipOwner(false)
-                                        .createSCCConfig();
-
-                                return fn.apply(new SCCWebClient(config));
+                                return fn.apply(sccWebClient);
                             }
                         })
                 ).map(gson::toJson).orElse("[]");

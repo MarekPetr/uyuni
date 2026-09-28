@@ -1,7 +1,7 @@
 # This file describes the order of features in a normal testsuite run.
 #
 # If you create new features, please see conventions about naming of the
-# feature files in testsuite/docs/Guidelines.md in "Rules for features" chapter,
+# feature files in testsuite/documentation/guidelines.md in "Rules for features" chapter,
 # as well as guidelines about idempotency in "Idempotency" chapter.
 
 ## Secondary features BEGIN ##
@@ -21,6 +21,7 @@
 - features/secondary/srv_handle_software_channels_with_ISS_v2.feature
 - features/secondary/srv_handle_config_channels_with_ISS_v2.feature
 - features/secondary/srv_salt_git_pillar.feature
+- features/secondary/srv_admin_gpg_api.feature
 - features/secondary/buildhost_osimage_build_image.feature
 - features/secondary/allcli_reboot.feature
 - features/secondary/min_cve_audit.feature

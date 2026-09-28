@@ -41,8 +41,8 @@ import org.apache.struts.action.ActionMapping;
 
 import java.util.Map;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * SystemPendingEventsCancelAction
@@ -63,6 +63,7 @@ public class SystemPendingEventsCancelAction extends RhnAction {
         Long sid = context.getRequiredParam("sid");
         User user =  context.getCurrentUser();
         Server server = context.lookupAndBindServer();
+        SdcHelper.ssmCheck(request, sid, user);
 
         RhnSet set = RhnSetDecl.PENDING_ACTIONS_TO_DELETE.get(user);
         DataResult<SystemPendingEventDto> result = ActionManager

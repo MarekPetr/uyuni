@@ -1,0 +1,4 @@
+<multibuild>
+  <package>uyuni</package>
+  <package>mlm</package>
+</multibuild>

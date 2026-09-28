@@ -1,4 +1,4 @@
-# Copyright (c) 2010-2025 SUSE LLC.
+# Copyright (c) 2010-2026 SUSE LLC.
 # Licensed under the terms of the MIT license.
 
 ### This file contains the definitions for all steps concerning navigation through the Web UI
@@ -10,7 +10,7 @@
 
 Then(/^I should see a "(.*)" text in the content area$/) do |text|
   within('#spacewalk-content') do
-    raise ScriptError, "Text '#{text}' not found" unless check_text_and_catch_request_timeout_popup?(text)
+    raise ScriptError, "Text '#{text}' not found" unless check_text?(text)
   end
 end
 
@@ -37,7 +37,7 @@ Then(/^the current path is "([^"]*)"$/) do |arg1|
 end
 
 When(/^I wait until I see "([^"]*)" text$/) do |text|
-  raise ScriptError, "Text '#{text}' not found" unless check_text_and_catch_request_timeout_popup?(text, timeout: DEFAULT_TIMEOUT)
+  raise ScriptError, "Text '#{text}' not found" unless check_text?(text, timeout: DEFAULT_TIMEOUT)
 end
 
 When(/^I wait until I do not see "([^"]*)" text$/) do |text|
@@ -45,18 +45,33 @@ When(/^I wait until I do not see "([^"]*)" text$/) do |text|
 end
 
 When(/^I wait at most (\d+) seconds until I see "([^"]*)" text$/) do |seconds, text|
-  raise ScriptError, "Text '#{text}' not found" unless check_text_and_catch_request_timeout_popup?(text, timeout: seconds.to_i)
+  raise ScriptError, "Text '#{text}' not found" unless check_text?(text, timeout: seconds.to_i)
 end
 
-When(/^I wait until I see "([^"]*)" text or "([^"]*)" text$/) do |text1, text2|
-  raise ScriptError, "Text '#{text1}' or '#{text2}' not found" unless check_text_and_catch_request_timeout_popup?(text1, text2: text2, timeout: DEFAULT_TIMEOUT)
+When(/^I wait at most (\d+) seconds until I see "([^"]*)" text but do not see "([^"]*)" text$/) do |seconds, text, stopper|
+  raise ScriptError, "Text '#{text}' not found or '#{stopper}' appeared" unless check_text?(text, stopper: stopper, timeout: seconds.to_i)
 end
 
-When(/^I wait until I see "([^"]*)" (text|regex), refreshing the page$/) do |text, type|
+When(/^I wait until I see "([^"]*)" text or "([^"]*)" text(?:, (refreshing the page))?$/) do |text1, text2, refresh_option|
+  if refresh_option
+    # refreshing the page
+    repeat_until_timeout(message: "Couldn't find text '#{text1}' or text '#{text2}'") do
+      break if has_content?(text1) || has_content?(text2)
+
+      sleep(3)
+      refresh_page
+    end
+  else
+    raise ScriptError, "Text '#{text1}' and '#{text2}' not found" unless check_text?(text1, text2: text2, timeout: DEFAULT_TIMEOUT)
+
+  end
+end
+
+When(/^I wait (?:at most (\d+) seconds )?until I see "([^"]*)" (text|regex), refreshing the page$/) do |seconds, text, type|
   text = Regexp.new(text) if type == 'regex'
   next if has_content?(text, wait: 3)
 
-  repeat_until_timeout(message: "Couldn't find text '#{text}'") do
+  repeat_until_timeout(message: "Couldn't find text '#{text}'", timeout: seconds ? seconds.to_i : DEFAULT_TIMEOUT) do
     break if has_content?(text, wait: 3)
 
     refresh_page
@@ -106,6 +121,11 @@ When(/^I wait at most (\d+) seconds until the event is completed, refreshing the
   end
 end
 
+When(/^I wait until I see the system name of "([^"]*)"$/) do |host|
+  system_name = get_system_name(host)
+  step %(I wait until I see "#{system_name}" text)
+end
+
 When(/^I wait until I see the name of "([^"]*)", refreshing the page$/) do |host|
   raise ScriptError, 'Overview System page didn\'t load' unless has_content?('Download CSV') || has_content?('Keys')
 
@@ -147,12 +167,19 @@ Then(/^I wait until I see the (VNC|spice) graphical console$/) do |type|
 end
 
 When(/^I switch to last opened window$/) do
-  page.driver.browser.switch_to.window(page.driver.browser.window_handles.last)
+  # Playwright registers new tab handles asynchronously after a target="_blank" click.
+  # Poll briefly so windows.last is the new tab, not the current one.
+  repeat_until_timeout(message: 'No new window was opened', timeout: 10) do
+    break if windows.count > 1
+
+    sleep 0.3
+  end
+  switch_to_window(windows.last)
 end
 
 When(/^I close the last opened window$/) do
-  page.driver.browser.close
-  page.driver.browser.switch_to.window(page.driver.browser.window_handles.first)
+  current_window.close
+  switch_to_window(windows.first)
 end
 
 #
@@ -253,6 +280,12 @@ When(/^I enter "([^"]*)" as "([^"]*)"$/) do |text, field|
   fill_in(field, with: text, fill_options: { clear: :backspace })
 end
 
+When(/^I enter data from table with value as field name$/) do |table|
+  table.raw.each do |row|
+    step %(I enter "#{row.first}" as "#{row.last}")
+  end
+end
+
 When(/^I enter "([^"]*)" in the placeholder "([^"]*)"$/) do |text, placeholder|
   find("input[placeholder='#{placeholder}']").set(text)
 end
@@ -283,29 +316,38 @@ end
 
 # Go back in the browser history
 When(/^I go back$/) do
-  page.driver.go_back
+  page.go_back
 end
 
 #
-# Click on a button
+# Click on a button or a link styled as a button (e.g. <a class="btn">)
 #
 When(/^I click on "([^"]*)"$/) do |text|
-  click_button_and_wait(text, match: :first)
+  begin
+    click_button_and_wait(text, match: :first)
+  rescue Capybara::ElementNotFound
+    click_link_and_wait(text, match: :first, force: true)
+  end
 end
 
 #
-# Click on a button by nav item
+# Click on an accordion panel-heading button containing the given text.
+# Waits for the full button structure (including the chevron icon) to be present,
+# which confirms the React component is fully mounted with its onClick handler bound.
 #
-When(/^I click on a button within the item containing "([^"]*)"$/) do |text_in_item|
-  find(:xpath, "//li[.//span[text()='#{text_in_item}']]//button").click
+When(/^I click on the inventory accordion for "([^"]*)"$/) do |text|
+  xpath = "//button[contains(@class, 'panel-heading') " \
+          "and .//i[contains(@class, 'fa-chevron-right')] " \
+          "and contains(., '#{text}')]"
+  find(:xpath, xpath, wait: DEFAULT_TIMEOUT).click
 end
 
 #
 # Click on a button which appears inside of <div> with
 # the given "id"
 When(/^I click on "([^"]*)" in element "([^"]*)"$/) do |text, element_id|
-  within(:xpath, "//div[@id=\"#{element_id}\"]") do
-    click_button_and_wait(text, match: :first)
+  page.driver.with_playwright_page do |pw_page|
+    pw_page.locator("##{element_id} button:visible", hasText: text).first.click(force: true)
   end
 end
 
@@ -313,7 +355,7 @@ end
 # Click on a button and confirm in alert box
 When(/^I click on "([^"]*)" and confirm$/) do |text|
   begin
-    accept_alert do
+    accept_alert(wait: Capybara.default_max_wait_time) do
       step %(I click on "#{text}")
     end
   rescue Capybara::ModalNotFound
@@ -324,7 +366,7 @@ end
 # Click on a button and confirm in alert box
 When(/^I click on "([^"]*)" and confirm alert box$/) do |text|
   begin
-    accept_confirm do
+    accept_confirm(wait: Capybara.default_max_wait_time) do
       click_button(text)
     end
   rescue Capybara::ModalNotFound
@@ -377,8 +419,13 @@ end
 When(/^I follow "([^"]*)" on "(.*?)" row$/) do |text, host|
   system_name = get_system_name(host)
   xpath_query = "//tr[td[contains(.,'#{system_name}')]]//a[contains(., '#{text}')]"
-  element = find_and_wait_click(:xpath, xpath_query)
-  element.click
+  # Use a Playwright locator instead of caching a Capybara element: the row's table can
+  # re-render between find and click, and capybara-playwright-driver raises
+  # StaleReferenceError on a detached cached node (same root cause as BUG-026).
+  # wait_for_page_transition replaces the Senna-transition wait that the cached element's
+  # CapybaraNodeElementExtension#click used to provide.
+  page.driver.with_playwright_page { |pw_page| pw_page.locator(xpath_query).click }
+  wait_for_page_transition
 end
 
 When(/^I enter "(.*?)" in the editor$/) do |arg1|
@@ -411,8 +458,10 @@ When(/^I follow the left menu "([^"]*)"$/) do |menu_path|
 
     # open the submenu if needed
     begin
-      unless find(:xpath, target_link_path + parent_wrapper_path + parent_level_path)[:class].include?('open')
+      unless find(:xpath, target_link_path + parent_wrapper_path + parent_level_path)[:class]&.include?('open')
         find(:xpath, target_link_path + parent_wrapper_path).click
+        # wait for the 'open' class to be applied before navigating into the submenu
+        find(:xpath, "#{target_link_path}#{parent_wrapper_path}#{parent_level_path}[contains(@class,'open')]")
       end
     rescue NoMethodError
       warn 'The browser session seems broken. See debug details below:'
@@ -450,7 +499,7 @@ end
 
 Given(/^I access the host the first time$/) do
   visit Capybara.app_host
-  raise ScriptError, "Text 'Create #{product} Administrator' not found" unless check_text_and_catch_request_timeout_popup?("Create #{product} Administrator")
+  raise ScriptError, "Text 'Create #{product} Administrator' not found" unless check_text?("Create #{product} Administrator")
 end
 
 # Menu permission check
@@ -534,7 +583,7 @@ end
 Then(/^I wait until table row for "([^"]*)" contains "([^"]*)"$/) do |arg1, arg2|
   xpath_query = "//tr[.//*[contains(.,'#{arg1}')]]"
   within(:xpath, xpath_query) do
-    raise ScriptError, "xpath: #{xpath_query} has no content #{arg2}" unless check_text_and_catch_request_timeout_popup?(arg2, timeout: DEFAULT_TIMEOUT)
+    raise ScriptError, "xpath: #{xpath_query} has no content #{arg2}" unless check_text?(arg2, timeout: DEFAULT_TIMEOUT)
   end
 end
 
@@ -585,13 +634,27 @@ Given(/^I am authorized as "([^"]*)" with password "([^"]*)"$/) do |user, passwd
   rescue NoMethodError => e
     log "The browser session could not be cleaned because there is no browser available: #{e.message}"
     capybara_register_driver
+    Capybara.reset_sessions!
   rescue StandardError => e
     log "The browser session could not be cleaned for unknown issue: #{e.message}"
     capybara_register_driver
+    Capybara.reset_sessions!
   ensure
-    visit Capybara.app_host
+    begin
+      visit Capybara.app_host
+    rescue Playwright::Error => e
+      # net::ERR_ABORTED can fire when SUMA's SSE/streaming connection collides with a new
+      # page navigation. Wait briefly for connections to settle and retry once.
+      warn "Navigation to #{Capybara.app_host} aborted (#{e.message.lines.first.chomp}) — retrying once"
+      sleep 1
+      visit Capybara.app_host
+    end
   end
-  next if all(:xpath, "//header//span[text()='#{$current_user}']", wait: 0).any?
+  begin
+    next if all(:xpath, "//header//span[text()='#{$current_user}']", wait: IMMEDIATE_WAIT).any?
+  rescue NoMethodError, Capybara::NotSupportedByDriverError
+    # driver is not ready yet after session reset, proceed to full login
+  end
 
   begin
     find(:xpath, '//header//i[@class=\'fa fa-sign-out\']').click
@@ -651,7 +714,7 @@ end
 
 Then(/^I should see "([^"]*)" systems selected for SSM$/) do |arg|
   within(:xpath, '//span[@id="spacewalk-set-system_list-counter"]') do
-    raise ScriptError, "There are not #{arg} systems selected" unless check_text_and_catch_request_timeout_popup?(arg)
+    raise ScriptError, "There are not #{arg} systems selected" unless check_text?(arg)
   end
 end
 
@@ -659,53 +722,49 @@ end
 # Test for a text in the whole page
 #
 Then(/^I should see a "([^"]*)" text$/) do |text|
-  raise ScriptError, "Text '#{text}' not found" unless check_text_and_catch_request_timeout_popup?(text)
+  raise ScriptError, "Text '#{text}' not found" unless check_text?(text)
 end
 
 Then(/^I should see a "([^"]*)" text or "([^"]*)" text$/) do |text1, text2|
-  raise ScriptError, "Text '#{text1}' and '#{text2}' not found" unless check_text_and_catch_request_timeout_popup?(text1, text2: text2)
+  raise ScriptError, "Text '#{text1}' and '#{text2}' not found" unless check_text?(text1, text2: text2)
 end
 
 Then(/^I should see "([^"]*)" short hostname$/) do |host|
   system_name = get_system_name(host).partition('.').first
-  raise ScriptError, "Hostname #{system_name} is not present" unless check_text_and_catch_request_timeout_popup?(system_name)
+  raise ScriptError, "Hostname #{system_name} is not present" unless check_text?(system_name)
 end
 
 Then(/^I should see "([^"]*)" hostname$/) do |host|
   system_name = get_system_name(host)
-  raise ScriptError, "Hostname #{system_name} is not present" unless check_text_and_catch_request_timeout_popup?(system_name)
+  raise ScriptError, "Hostname #{system_name} is not present" unless check_text?(system_name)
 end
 
 Then(/^I should not see "([^"]*)" hostname$/) do |host|
   system_name = get_system_name(host)
-  raise ScriptError, "Hostname #{system_name} is present" if check_text_and_catch_request_timeout_popup?(system_name)
+  raise ScriptError, "Hostname #{system_name} is present" unless has_no_text?(system_name)
 end
 
 #
 # Test for text in a snippet textarea
 #
 Then(/^I should see "([^"]*)" in the textarea$/) do |text|
-  within('textarea') do
-    raise ScriptError, "Text '#{text}' not found" unless check_text_and_catch_request_timeout_popup?(text)
-  end
+  content = find('textarea').value.to_s
+  raise ScriptError, "Text '#{text}' not found" unless content.include?(text)
 end
 
 Then(/^I should see "([^"]*)" or "([^"]*)" in the textarea$/) do |text1, text2|
-  within('textarea') do
-    raise ScriptError, "Text '#{text1}' and '#{text2}' not found" unless check_text_and_catch_request_timeout_popup?(text1, text2: text2)
-  end
+  content = find('textarea').value.to_s
+  raise ScriptError, "Text '#{text1}' and '#{text2}' not found" unless content.include?(text1) || content.include?(text2)
 end
 
 Then(/^I should see "([^"]*)" in the ([^ ]+) textarea$/) do |text, id|
-  within(:xpath, ".//textarea[@data-testid='#{id}']") do
-    raise ScriptError, "Text '#{text}' not found" unless check_text_and_catch_request_timeout_popup?(text)
-  end
+  content = find(:xpath, ".//textarea[@data-testid='#{id}']").value.to_s
+  raise ScriptError, "Text '#{text}' not found" unless content.include?(text)
 end
 
 Then(/^I should see "([^"]*)" or "([^"]*)" in the ([^ ]+) textarea$/) do |text1, text2, id|
-  within(:xpath, ".//textarea[@data-testid='#{id}']") do
-    raise ScriptError, "Text '#{text1}' and '#{text2}' not found" unless check_text_and_catch_request_timeout_popup?(text1, text2: text2)
-  end
+  content = find(:xpath, ".//textarea[@data-testid='#{id}']").value.to_s
+  raise ScriptError, "Text '#{text1}' and '#{text2}' not found" unless content.include?(text1) || content.include?(text2)
 end
 
 #
@@ -748,19 +807,19 @@ end
 
 Then(/^I should see a "([^"]*)" text in element "([^"]*)"$/) do |text, element|
   within(:xpath, "//div[@id=\"#{element}\" or @class=\"#{element}\"]") do
-    raise ScriptError, "Text '#{text}' not found in #{element}" unless check_text_and_catch_request_timeout_popup?(text)
+    raise ScriptError, "Text '#{text}' not found in #{element}" unless check_text?(text)
   end
 end
 
 Then(/^I should not see a "([^"]*)" text in element "([^"]*)"$/) do |text, element|
   within(:xpath, "//div[@id=\"#{element}\" or @class=\"#{element}\"]") do
-    raise ScriptError, "Text '#{text}' found in #{element}" if check_text_and_catch_request_timeout_popup?(text)
+    raise ScriptError, "Text '#{text}' found in #{element}" unless has_no_text?(text)
   end
 end
 
 Then(/^I should see a "([^"]*)" or "([^"]*)" text in element "([^"]*)"$/) do |text1, text2, element|
   within(:xpath, "//div[@id=\"#{element}\" or @class=\"#{element}\"]") do
-    raise ScriptError, "Texts #{text1} and #{text2} not found in #{element}" unless check_text_and_catch_request_timeout_popup?(text1, text2: text2)
+    raise ScriptError, "Texts #{text1} and #{text2} not found in #{element}" unless check_text?(text1, text2: text2)
   end
 end
 
@@ -783,12 +842,19 @@ When(/^I wait until the table contains "FINISHED" or "SKIPPED" followed by "FINI
   # therefore we use a non-standard timeout
   repeat_until_timeout(timeout: 800, message: 'Task does not look FINISHED yet') do
     visit current_url
-    # get all texts in the table column under the "Status" header
-    status_tds = '//tr/td[count(//th[contains(*/text(), \'Status\')]/preceding-sibling::*) + 1]'
+
+    # Scope to the specific table containing both headers
+    base_table = "//table[.//th[contains(*/text(), 'Status')] and .//th[contains(*/text(), 'Start Time')]]"
+
+    # Dynamically find the column indexes within that specific table
+    status_col = "#{base_table}//th[contains(*/text(), 'Status')]/preceding-sibling::*"
+    start_time_col = "#{base_table}//th[contains(*/text(), 'Start Time')]/preceding-sibling::*"
+
+    # Extract only the first 10 data rows from the body of that specific table
+    status_tds = "#{base_table}//tbody/tr[position() <= 10]/td[count(#{status_col}) + 1]"
     statuses = all(:xpath, status_tds).map(&:text)
 
-    # get all texts in the table column under the "Start time" header
-    start_time_tds = '//tr/td[count(//th[contains(*/text(), \'Start Time\')]/preceding-sibling::*) + 1]'
+    start_time_tds = "#{base_table}//tbody/tr[position() <= 10]/td[count(#{start_time_col}) + 1]"
     start_times = all(:xpath, start_time_tds).map(&:text)
 
     # disregard any number of initial unimportant rows, that is:
@@ -798,15 +864,15 @@ When(/^I wait until the table contains "FINISHED" or "SKIPPED" followed by "FINI
       statuses.zip(start_times).drop_while do |status, start_time|
         (status == 'INTERRUPTED' && (start_time.empty? || start_time == 'Task never started')) || status == 'SKIPPED'
       end
-    first_non_skipped = result.first.first
 
-    # halt in case we are done, or if an error is detected
+    first_non_skipped = result.first&.first
+
     break if first_non_skipped == 'FINISHED'
     raise('Taskomatic task was INTERRUPTED') if first_non_skipped == 'INTERRUPTED'
 
-    # otherwise either no row is shown yet, or the task is still RUNNING
-    # continue waiting
-    sleep 1
+    # Wait 5 seconds instead of 1 second between full page reloads.
+    # A background task cache refresh takes a while, checking every second is unnecessary overhead.
+    sleep 5
   end
 end
 
@@ -885,6 +951,10 @@ When(/^I check the first patch in the list, that does not require a reboot$/) do
   end
 end
 
+When(/^I click on the Legal button$/) do
+  find_and_wait_click(:xpath, '//li[.//span[text()=\'Legal\']]//button').click
+end
+
 When(/^I click on the red confirmation button$/) do
   find_and_wait_click('button.btn-danger').click
 end
@@ -894,25 +964,26 @@ When(/^I click on the clear SSM button$/) do
 end
 
 When(/^I click on the filter button$/) do
-  find_and_wait_click('button.spacewalk-button-filter').click
-  has_text?('is filtered', wait: 10)
+  page.driver.with_playwright_page { |pw_page| pw_page.locator('button.spacewalk-button-filter').click }
+  raise ScriptError, "Filter was not applied: 'filtered' text did not appear" unless check_text?('filtered', timeout: 20)
 end
 
 Then(/^I click on the filter button until page does not contain "([^"]*)" text$/) do |text|
+  # Use a Playwright locator instead of Capybara's find() so the button is re-resolved from the
+  # DOM on every click iteration. After the list re-renders the old DOM node is detached, but a
+  # locator picks up the new one automatically -- no StaleElementReference or DOM-detachment errors.
   repeat_until_timeout(message: "'#{text}' still found") do
-    break unless check_text_and_catch_request_timeout_popup?(text)
+    break unless check_text?(text)
 
-    find('button.spacewalk-button-filter').click
-    has_text?('is filtered', wait: 10)
+    page.driver.with_playwright_page { |pw_page| pw_page.locator('button.spacewalk-button-filter').click }
   end
 end
 
 Then(/^I click on the filter button until page does contain "([^"]*)" text$/) do |text|
   repeat_until_timeout(message: "'#{text}' was not found") do
-    break if check_text_and_catch_request_timeout_popup?(text)
+    break if check_text?(text)
 
-    find('button.spacewalk-button-filter').click
-    has_text?('is filtered', wait: 10)
+    page.driver.with_playwright_page { |pw_page| pw_page.locator('button.spacewalk-button-filter').click }
   end
 end
 
@@ -953,6 +1024,11 @@ end
 
 When(/^I enter "([^"]*)" as the filtered formula name$/) do |input|
   find('input[placeholder=\'Filter by formula name\']').set(input)
+end
+
+When(/^I filter "([^"]*)" username$/) do |input|
+  find('input[placeholder=\'Filter by Username: \']').set(input)
+  step 'I click on the filter button'
 end
 
 When(/^I enter the package for "([^"]*)" as the filtered package name$/) do |host|
@@ -1044,21 +1120,21 @@ end
 # Test if a radio button is checked
 #
 Then(/^radio button "([^"]*)" should be checked$/) do |arg1|
-  raise ScriptError, "#{arg1} is unchecked" unless has_checked_field?(arg1)
+  raise ScriptError, "#{arg1} is unchecked" unless has_checked_field?(arg1, disabled: :all)
 end
 
 #
 # Test if a checkbox is checked
 #
 Then(/^I should see "([^"]*)" as checked$/) do |arg1|
-  raise ScriptError, "#{arg1} is unchecked" unless has_checked_field?(arg1)
+  raise ScriptError, "#{arg1} is unchecked" unless has_checked_field?(arg1, disabled: :all)
 end
 
 #
 # Test if a checkbox is unchecked
 #
 Then(/^I should see "([^"]*)" as unchecked$/) do |arg1|
-  raise ScriptError, "#{arg1} is checked" unless has_unchecked_field?(arg1)
+  raise ScriptError, "#{arg1} is checked" unless has_unchecked_field?(arg1, disabled: :all)
 end
 
 #
@@ -1118,12 +1194,7 @@ When(/^I click on "([^"]*)" in "([^"]*)" modal$/) do |btn, title|
   # We wait until the element is not shown, because
   # the fade out animation might still be in progress
   repeat_until_timeout(message: "The #{title} modal dialog is still present") do
-    begin
-      break if has_no_xpath?(path, wait: 1)
-    rescue Selenium::WebDriver::Error::StaleElementReferenceError
-      # We need to consider the case that after obtaining the element it is detached from the page document
-      break
-    end
+    break if has_no_xpath?(path, wait: 1)
   end
 end
 
@@ -1154,7 +1225,7 @@ When(/^I visit "([^"]*)" endpoint of this "([^"]*)"$/) do |service, host|
   port, protocol, path, text =
     case service
     when 'Proxy' then [443, 'https', '/pub/', 'Index of /pub']
-    when 'Prometheus' then [9090, 'http', '', 'graph']
+    when 'Prometheus' then [9090, 'http', '/query', 'Prometheus Time Series Collection']
     when 'Prometheus node exporter' then [9100, 'http', '', 'Node Exporter']
     when 'Prometheus apache exporter' then [9117, 'http', '', 'Apache Exporter']
     when 'Prometheus postgres exporter' then [9187, 'http', '', 'Postgres Exporter']
@@ -1184,7 +1255,21 @@ When(/^I enter the controller hostname as the redfish server address$/) do
 end
 
 When(/^I clear browser cookies$/) do
-  page.driver.browser.manage.delete_all_cookies
+  page.driver.with_playwright_page { |pw_page| pw_page.context.clear_cookies }
+end
+
+# Click a link that triggers a browser download and persist it to /tmp/downloads.
+# Playwright has no "default download directory" (unlike the old Selenium Chrome preference).
+# Best practice: drop to the native Playwright page and trigger the click inside expect_download
+# with a native locator. Mixing Capybara DSL inside the download wait is a known flakiness source.
+When(/^I download the file by following "([^"]*)"$/) do |link|
+  # capybara-playwright-driver's built-in on('download') handler auto-saves every download to
+  # Capybara.save_path (set to /tmp/downloads in env.rb). Just trigger it; the following
+  # "wait until file ... exists" step confirms completion. Manually waiting/saving here as well
+  # double-handles the same Download object and is a known flakiness/hang source.
+  page.driver.with_playwright_page do |pw_page|
+    pw_page.get_by_role('link', name: link).click
+  end
 end
 
 When(/^I close the modal dialog$/) do
@@ -1192,13 +1277,7 @@ When(/^I close the modal dialog$/) do
 end
 
 When(/^I refresh the page$/) do
-  begin
-    accept_prompt do
-      execute_script 'window.location.reload()'
-    end
-  rescue Capybara::ModalNotFound
-    # ignored
-  end
+  refresh_page
 end
 
 When(/^I make a list of the existing systems$/) do
@@ -1244,12 +1323,12 @@ end
 When(/^I click on the search button$/) do
   click_button_and_wait('Search', match: :first)
   # after a search reindex, the UI will show a "Could not connect to search server" followed by a false "No matches found" for a while
-  if has_text?('Could not connect to search server.', wait: 0)
+  if has_text?('Could not connect to search server.', wait: IMMEDIATE_WAIT)
     repeat_until_timeout(message: 'Could not perform a successful search after reindexation', timeout: 10) do
-      break unless has_text?('Could not connect to search server.', wait: 0) || has_text?('No matches found', wait: 0)
+      break unless has_text?('Could not connect to search server.', wait: IMMEDIATE_WAIT) || has_text?('No matches found', wait: IMMEDIATE_WAIT)
 
       sleep 1
-      click_button('Search', match: :first, wait: false)
+      click_button('Search', match: :first, wait: IMMEDIATE_WAIT)
     end
   end
 end
@@ -1271,7 +1350,7 @@ Then(/^I should see "([^"]*)" hostname as first search result$/) do |host|
   within(:xpath, '//section') do
     row = find(:xpath, '//div[@class=\'table-responsive\']//tr[.//td]', match: :first)
     within(row) do
-      raise ScriptError, "Text '#{system_name}' not found" unless check_text_and_catch_request_timeout_popup?(system_name)
+      raise ScriptError, "Text '#{system_name}' not found" unless check_text?(system_name)
     end
   end
 end

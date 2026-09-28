@@ -4,37 +4,31 @@ on:
   pull_request:
     branches: [ master ]
     paths:
+      - 'containers/proxy-helm/**'
       - 'containers/server-helm/**'
 
+permissions:
+  contents: read
+
 jobs:
-  test:
+  helm-charts-tests:
     runs-on: ubuntu-latest
+    container: registry.opensuse.org/systemsmanagement/uyuni/master/docker/containers/uyuni-helm:latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
-      - name: Set up Helm unit tests
-        uses: d3adb5/helm-unittest-action@v2
-        with:
-          install-mode: if-not-present
-          charts: containers/server-helm
+      - name: Mark workspace as safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Helm Lint
-        # Validates Chart.yaml and values.yaml against your schema
-        run: helm lint --set global.fqdn=example.org containers/server-helm
-
-      - name: Run Unit Tests
+      - name: Proxy helm chart tests
         run: |
-          # Executes tests defined in containers/server-helm/tests/
-          helm unittest containers/server-helm
-
-      - name: Set up Kubeconform
-        uses: bmuschko/setup-kubeconform@v1
-
-      - name: Validate Kubernetes Manifests
+          pushd containers/proxy-helm
+          ./test.sh
+          popd
+      
+      - name: Server helm chart tests
         run: |
-          # Render templates and validate against K8s and Traefik schemas
-          helm template containers/server-helm --set global.fqdn=test.local | kubeconform \
-            -summary -strict \
-            -schema-location default \
-            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+          pushd containers/server-helm
+          ./test.sh
+          popd

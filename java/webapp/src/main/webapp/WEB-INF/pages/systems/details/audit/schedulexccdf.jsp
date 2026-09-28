@@ -1,8 +1,8 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 <%@ taglib uri="http://rhn.redhat.com/tags/list" prefix="rl" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
+<%@ taglib uri="jakarta.tags.functions" prefix="fn" %>
 
 
 <html>
@@ -17,7 +17,7 @@
             <html:form method="post" styleClass="form-horizontal" action="/systems/details/audit/ScheduleXccdf.do">
                 <%@ include file="/WEB-INF/pages/common/fragments/audit/schedule-xccdf.jspf" %>
                 <html:hidden property="sid" value="${param.sid}"/>
-                <div class="form-group">
+                <div class="row">
                     <div class="col-md-offset-3 offset-md-3 col-md-6">
                         <html:submit property="schedule_button" styleClass="btn btn-primary">
                             <bean:message key="system.audit.schedulexccdf.jsp.button"/>

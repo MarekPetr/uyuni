@@ -1,4 +1,4 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
@@ -31,7 +31,7 @@
                    styleClass="form-horizontal">
             <rhn:csrf />
 
-            <div class="form-group">
+            <div class="row">
                 <label class="col-lg-3 control-label" for="name">
                     <bean:message key="systemgroup.create.name"/>
                     <span class="required-form-field">*</span>:
@@ -41,7 +41,7 @@
                                maxlength="64" styleClass="form-control" />
                 </div>
             </div>
-            <div class="form-group">
+            <div class="row">
                 <label class="col-lg-3 control-label" for="description">
                     <bean:message key="systemgroup.create.description" />
                     <span class="required-form-field">*</span>:
@@ -53,7 +53,7 @@
                 </div>
             </div>
 
-            <div class="form-group">
+            <div class="row">
                 <div class="col-lg-offset-3 offset-lg-3 col-lg-6">
                     <c:choose>
                         <c:when test='${empty param.sgid}'>

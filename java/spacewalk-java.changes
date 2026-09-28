@@ -1,4 +1,237 @@
 -------------------------------------------------------------------
+Wed Aug 05 15:47:23 CEST 2026 - antonio.garofalo@suse.com
+
+- version 5.3.1-0
+  * Restored the original reset behavior in isDryRun() by swapping
+    subscribedChannels and unsubscribedChannels back (bsc#1271681)
+  * Bump version to 5.3.0
+  * Use the standard Bootstrap 5 row class in place of
+    legacy layout classes.
+  * Fix mainframe foreign systems showing wrong OS (bsc#1260342)
+  * Fix hubsync package download checksum lookup (bsc#1270040)
+  * Fixed Hibernate issue when updating the SSL content sources
+    during a pay-as-you-go connection data refresh (bsc#1271382)
+  * Many to many relationships should not cascade deletion
+    (gh#uyuni-project/uyuni#12266, bsc#1272392)
+  * Optimized channel model generation logic to improve page load
+    performance during peripheral channel selection (bsc#1259225)
+  * Allow diskcheck env vars into containers (bsc#1270033)
+  * Query only systems for virtual machines which are flagged as
+    virtualization hosts (bsc#1273073)
+
+-------------------------------------------------------------------
+Mon Jul 06 11:48:26 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.19-0
+  * CVE-2026-63007: Check access rights on two formula API calls (bsc#1269253)
+  * CVE-2026-63009: Sanitize uploaded image name (bsc#1269534)
+
+-------------------------------------------------------------------
+Fri Jul 03 15:44:02 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.18-0
+  * Ensure SCAP bash remediation run under bash, not sh (bsc#1270049)
+
+-------------------------------------------------------------------
+Fri Jun 26 16:20:01 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.17-0
+  * Fix user role selection when org admin
+    role is enabled (bsc#1259254)
+  * Do not serialize null root CA in listPeripheralServers
+    (bsc#1262720)
+  * Fix Stopwatch is not running errors in API logs (bsc#1262720)
+  * Fix reposync crashing when syncing specific
+    products (bsc#1269088)
+  * Prevent inventory refresh before ansible package
+    is installed (bsc#1244141)
+  * Fix oval sync not triggering for RHEL and
+    derivatives (bsc#1269261)
+  * Fix inventory refresh triggering from unrelated
+    inotify events (bsc#1268309)
+  * Support parsing of uname_test and dynamic fallback CPE
+    derivation in OVAL sync (bsc#1269038)
+
+-------------------------------------------------------------------
+Wed Jun 17 14:42:26 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.16-0
+  * Handle the 'unknown' arch as no arch
+  * Fix queries to list servers in an Ansible control node server
+    (bsc#1267964)
+  * Update OSs supported with OVAL
+  * Do not attempt to delete a certificate that does not exist
+    (bsc#1268151)
+  * Remote Report DB connection should always use SSL (bsc#1268229).
+
+-------------------------------------------------------------------
+Fri May 29 18:45:15 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.15-0
+  * Use db_ssl_enabled value consistently
+
+-------------------------------------------------------------------
+Sat May 23 13:02:48 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.14-0
+  * Fix CSRFTokenValidator FIPS compatibility by using
+    platform-default SecureRandom (bsc#1247707)
+
+-------------------------------------------------------------------
+Fri May 22 11:48:13 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.13-0
+  * Fix CSV export failure on system Details > Custom Info page
+  * Minor UI improvements and fixed spinning icon glitch
+    in Admin → Setup Wizard.
+  * Updated the tab label for eligible subscription
+    systems. (bsc#1249243)
+  * Fixed missing field labels in the Create User form.
+    (bsc#1259591)
+  * Move Salt > Remote Commands to its own RBAC namespace
+    (bsc#1261305)
+  * Make OIDC JWKS initialization startup-safe
+  * Run ANALYZE asynchronously after CLM alignment to avoid
+    deadlocks (bsc#1261753)
+  * Use salt's network module if host or nslookup are not installed
+    (bsc#1262720)
+  * Fix Python SyntaxWarning for invalid escape sequence '\s' in
+    RHUI extract repo data script (bsc#1262595)
+  * Update java dependencies
+  * Numeric branch names should not be stored in double format
+    (bsc#1258382)
+  * Add all vendor repo channels to hub access token(bsc#1259230)
+  * Recognize PBKDF2-SHA256 hashes alongside legacy
+    SHA-256 crypt(3) in the Java password check helpers
+  * Disable legacy TLSv1/TLSv1.1 and allow TLSv1.3 for SMTP
+  * Sync package removal permissions in packages API with the Web UI
+    (bsc#1261327)
+  * Fix enforcement of consecutive chars in password policy
+    (bsc#1262761)
+  * Fix Remote Commands hang on direct hostname (bsc#1226578)
+  * Add 'unpushed' to AdvisoryStatus enum to handle EPEL errata
+    with unpushed status (bsc#1264234)
+  * Fix user address list (bsc#1259951)
+  * Use supscription matcher output for subscription expiration
+    warning (bsc#1257894)
+  * Add the ability to disable automatic synchronization for
+    software channels
+  * Default SAML2 signature algorithm to rsa-sha256 on fresh installs
+  * Enable second level cache
+  * Add support for Ubuntu 26.04
+  * Fix Oval data sync for ubuntu 26.04(bsc#1265319)
+
+-------------------------------------------------------------------
+Tue Apr 28 11:26:28 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.12-0
+  * Add the RHEL10 installer generation type (bsc#1263007)
+
+-------------------------------------------------------------------
+Mon Apr 27 10:40:23 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.11-0
+  * Move to per-ID based storage for scap content (bsc#1262721)
+
+-------------------------------------------------------------------
+Fri Apr 17 11:10:11 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.10-0
+  * Allow @ for user name on bootstrapping with web UI (bsc#1254629)
+  * Added beta feature flag support for experimental functionality
+  * Redesigned SCAP integration to centralize content on the server
+  * Fix ServerFactory lookupProxiesByOrg query (bsc#1259991)
+  * Correct deprecated createQuery usages
+  * Add api endpoint to generate proxy configuration without
+    SSL certificate
+  * Removed xalan and xerces dependency
+  * Replace Tomcat and Taskomatic metrics systemd conf file with
+    shell files.
+  * Add API endpoint to delete Salt known_hosts entries
+  * Update supported servers convertible to a proxy
+  * Replace using mgrcompat.module_run with module.run salt calls
+    as mgrcompat.module_run is not required anymore.
+  * Added listMigrationTargetsWithChannels endpoint to return
+    the valid migration targets channels (jsc#SUMA-320)
+  * Fix debian repo sync in peripheral (bsc#1257647)
+  * Fix hub SCC forwarding registration credential filter
+    (bsc#1260031)
+  * Fix API docs for several hub endpoints (bsc#1256493)
+  * Add RBAC endpoint mappings (bsc#1257760)
+  * Allow read-only users to call logout (bsc#1259471)
+  * Kickstart profile for RHEL 8 requires venv-salt-minion
+    instead of salt-minion (bsc#1259474)
+  * Remove validation of packages in kickstart profiles which are
+    not supported anymore (bsc#1259474)
+  * Improve performance by using lazy fetch for ImageDetails
+    and related classes (bsc#1252548)
+  * Optimized memory usage by replacing DOM-based XML parsing with
+    a streaming StaX parser for OVAL metadata files.
+  * Improved resilience of OVAL metadata synchronization to handle
+    invalid Criterion elements.
+  * Added support for migration from sles 15 to sles 16
+  * Fix missing translations (bsc#1259787)
+  * Sanitize inputs to avoid injection in rhn_conf
+    of http proxy settings inputs (bsc#1245107)
+  * Optimize schedule queries for performance (bsc#1257621,
+    bsc#1259127)
+  * Move common dependencies declaration to uyuni-java-parent
+  * Fixed multiple issues with repository persistence (bsc#1259499,
+    gh#uyuni-project/uyuni#11451)
+  * Upgrade to prometheus metrics 1.5.0
+  * Fix migration of peripheral servers to ISSv3
+  * Add listPeripheralServers API method
+  * Fix ErrorReportingStrategies logger retrieval
+  * Add support for RHEL 10 and clones
+  * Removed simple-xml dependency
+  * Healthcheck on disk usage based on taskomatic (bsc#1238890).
+  * Bump to prometheus-metrics-java 1.5.1.
+  * Add primary FQDN to pillar (bsc#1247004)
+  * Generate service user for Grafana reporting datasource
+  * Fix User x Address relationship (bsc#1259951)
+
+-------------------------------------------------------------------
+Mon Mar 02 13:27:35 CET 2026 - michael.calmer@suse.com
+
+- version 5.2.9-0
+  * Fix SCC cache lookup when username have special chars
+  * Use Hub URL for SCC lookup when server is a HUB
+    and Peripheral at same time
+  * Removed the expensive diff column (bsc#1256044)
+  * Fix sso metadata response in xml format
+  * Fix permission check when assigning system groups to a user
+    (bsc#1257674)
+  * Add support for Debian 13
+  * Remove deprecated scripts.
+  * Refactoring and fixes of saltboot cobbler migrations
+  * Use PackageEvr instead of string for fix_version (bsc#1252638)
+  * Do not load additional repos in peripheral server(bsc#1257967)
+  * Fix openscap audit results with negative ids (bsc#1258141)
+  * Fix SQL grammar for rescheduling actions (bsc#1257022)
+  * Do not add SSL certificates to the proxy config from a server on
+    Kubernetes
+  * Migrate to Hibernate 7
+  * Migrate to jakarta namespaces
+  * Migrate to Tomcat 11
+  * Remove hub register API method
+  * Block multiple versions of the same package
+    from being locked (bsc#1246315)
+  * Commit DB changes before refreshing pillar for SSH push minions
+    (bsc#1253712)
+  * Do not check PAYG compliance when running uyuni
+  * Fix return type for sync content listProducts
+    (bsc#1256422)
+  * Removed cglib dependency
+
+-------------------------------------------------------------------
+Wed Feb 04 14:07:21 CET 2026 - michael.calmer@suse.com
+
+- version 5.2.8-0
+  * Fix reposync crashing at metadata generation (bsc#1257538)
+  * Add check for virt vm_info availability (bsc#1254316)
+  * Update license to include the year 2026
+
+-------------------------------------------------------------------
 Tue Jan 27 09:47:12 WET 2026 - psuarezhernandez@suse.com
 
 - version 5.2.7-0

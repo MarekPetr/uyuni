@@ -12,15 +12,91 @@ tests:
           path: metadata.name
           value: uyuni
       - equal:
-          path: spec.template.spec.containers[0].image
-          value: registry.opensuse.org/uyuni/server:latest
+          path: spec.template.spec.containers[?(@.name=="uyuni")].image
+          value: registry.opensuse.org/uyuni/server:0.0.0
+      - notContains:
+          path: spec.template.spec.containers[?(@.name=="uyuni")].env
+          content:
+            name: DEBUG_LONG_START
+            value: "y"
 
   - it: should override image when values.images is provided
     set:
       global.fqdn: uyuni.example.com
-      images:
-        server: my-custom-registry/uyuni-server:5.0.0
+      server:
+        image: my-custom-registry/uyuni-server
+        tag: 5.0.0
     asserts:
       - equal:
-          path: spec.template.spec.containers[0].image
+          path: spec.template.spec.containers[?(@.name=="uyuni")].image
           value: my-custom-registry/uyuni-server:5.0.0
+
+  - it: should use the registry credentials if set
+    set:
+      global.fqdn: uyuni.example.com
+      registrySecret: mycreds
+    asserts:
+      - contains:
+          path: spec.template.spec.imagePullSecrets
+          content:
+            name: mycreds
+
+  - it: should render extra server volumes and volume mounts
+    set:
+      global.fqdn: uyuni.example.com
+      server:
+        extraVolumes:
+          - name: uyuni-bench-source
+            persistentVolumeClaim:
+              claimName: uyuni-bench-source
+        extraVolumeMounts:
+          - name: uyuni-bench-source
+            mountPath: /uyuni-bench-source
+            readOnly: true
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: uyuni-bench-source
+            persistentVolumeClaim:
+              claimName: uyuni-bench-source
+      - contains:
+          path: spec.template.spec.containers[?(@.name=="uyuni")].volumeMounts
+          content:
+            name: uyuni-bench-source
+            mountPath: /uyuni-bench-source
+            readOnly: true
+
+  - it: should use the SCC credentials if set
+    set:
+      global.fqdn: uyuni.example.com
+      server:
+        sccSecret: myscccreds
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[?(@.name=="uyuni")].env
+          content:
+            name: SCC_USER
+            valueFrom:
+              secretKeyRef:
+                key: username
+                name: myscccreds
+                optional: false
+
+      - contains:
+          path: spec.template.spec.containers[?(@.name=="uyuni")].env
+          content:
+            name: SCC_PASS
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: myscccreds
+                optional: false
+
+  - it: should fail to render if the repository value is not set
+    set:
+      global.fqdn: uyuni.example.com
+      repository: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: "The repository value is required!"

@@ -18,12 +18,12 @@ package com.suse.oval.ovaltypes;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlAttribute;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlElements;
-import javax.xml.bind.annotation.XmlType;
+import jakarta.xml.bind.annotation.XmlAccessType;
+import jakarta.xml.bind.annotation.XmlAccessorType;
+import jakarta.xml.bind.annotation.XmlAttribute;
+import jakarta.xml.bind.annotation.XmlElement;
+import jakarta.xml.bind.annotation.XmlElements;
+import jakarta.xml.bind.annotation.XmlType;
 
 /**
  * The required operator attribute provides the logical operator that binds the different statements inside a criteria
@@ -63,6 +63,15 @@ public class CriteriaType implements BaseCriteria {
             children = new ArrayList<>();
         }
         return this.children;
+    }
+
+    /**
+     * Sets the contained criteria or criterion objects
+     *
+     * @param childrenIn the list of children {@link BaseCriteria}.
+     * */
+    public void setChildren(List<BaseCriteria> childrenIn) {
+        this.children = childrenIn;
     }
 
     /**
@@ -127,5 +136,15 @@ public class CriteriaType implements BaseCriteria {
      */
     public void setComment(String value) {
         this.comment = value;
+    }
+
+    @Override
+    public String toString() {
+        return "CriteriaType{" +
+               "children=" + children +
+               ", operator=" + operator +
+               ", negate=" + negate +
+               ", comment='" + comment + '\'' +
+               '}';
     }
 }

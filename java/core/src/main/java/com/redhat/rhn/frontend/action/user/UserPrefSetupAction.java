@@ -39,8 +39,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * UserPreferencesAction, edit action for user detail page
@@ -104,6 +104,7 @@ public class UserPrefSetupAction extends BaseUserSetupAction {
 
         form.set("uid", user.getId());
         form.set("taskoNotify", user.getTaskoNotify());
+        form.set("betaFeaturesEnabled", user.getBetaFeaturesEnabled());
 
         form.set("pagesize", user.getPageSize());
         form.set("csvSeparator", user.getCsvSeparator());

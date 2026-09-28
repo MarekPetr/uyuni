@@ -23,7 +23,7 @@ import com.redhat.rhn.frontend.struts.RequestContext;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * AclManager
@@ -66,7 +66,7 @@ public class AclManager {
         if (acl == null || "".equals(acl)) {
             return true;
         }
-        // TODO: Lifecycle issue
+        // OLDTODO: Lifecycle issue
         // It's not cool that we're instantiating a new
         // Acl everytime we need to use it. We should register
         // the acl handlers at startup and simply call acl.evalAcl()

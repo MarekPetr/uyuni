@@ -21,68 +21,55 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.redhat.rhn.common.localization.LocalizationService;
-import com.redhat.rhn.domain.kickstart.test.KickstartDataTest;
-import com.redhat.rhn.domain.org.OrgFactory;
+import com.redhat.rhn.domain.kickstart.KickstartTestUtils;
 import com.redhat.rhn.domain.role.RoleFactory;
 import com.redhat.rhn.domain.session.WebSession;
 import com.redhat.rhn.domain.user.User;
 import com.redhat.rhn.frontend.context.Context;
-import com.redhat.rhn.frontend.servlets.PxtCookieManager;
 import com.redhat.rhn.frontend.servlets.PxtSessionDelegate;
 import com.redhat.rhn.frontend.servlets.PxtSessionDelegateFactory;
 import com.redhat.rhn.frontend.struts.RequestContext;
 import com.redhat.rhn.frontend.struts.RhnAction;
 
 import org.apache.struts.action.DynaActionForm;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
-import javax.servlet.http.Cookie;
-
-import servletunit.HttpServletRequestSimulator;
-import servletunit.ServletContextSimulator;
-import servletunit.struts.MockStrutsTestCase;
-
 /**
  * RhnMockStrutsTestCase - simple base class that adds a User to the test since all our
  * Struts Actions use a User.
  */
-public class RhnMockStrutsTestCase extends MockStrutsTestCase
-    implements HibernateTestCaseUtils, SaltTestCaseUtils {
+@ExtendWith(SaltTestCaseExtension.class)
+@ExtendWith(UserForTestCaseExtension.class)
+public class RhnMockStrutsTestCase extends BaseStrutsTestCase {
 
+    @SaltTestRootPath
     protected Path tmpSaltRoot;
+
+    @UserForTest(userName = TestStatics.TEST_USER, orgName = TestStatics.TEST_ORG)
     protected User user;
-    private boolean committed = false;
 
     /**
      * {@inheritDoc}
      */
-    @Override
     @BeforeEach
-    public void setUp() throws Exception {
-        super.setUp();
-
+    public void setUpRhnMockStrutsTestCase() throws Exception {
         RequestContext requestContext = new RequestContext(request);
         Context ctx = Context.getCurrentContext();
         ctx.setLocale(Locale.getDefault());
         ctx.setTimezone(TimeZone.getDefault());
-        PxtCookieManager pxtCookieManager = new PxtCookieManager();
 
         request.setServerName("localhost");
-        request.setMethod(HttpServletRequestSimulator.GET);
-        user = UserTestUtils.createUser(TestStatics.TEST_USER, TestStatics.TEST_ORG);
+        request.setMethod("GET");
         user.addPermanentRole(RoleFactory.ORG_ADMIN);
         addRequestParameter(RequestContext.USER_ID, user.getId().toString());
         WebSession s = requestContext.getWebSession();
-        Cookie[] cookies = new Cookie[1];
-        cookies[0] = pxtCookieManager.createPxtCookie(s.getId(), request, 0);
-        request.setCookies(cookies);
         request.setAttribute("session", s);
         request.setRequestURI("http://localhost.redhat.com");
         request.setRequestURL("http://localhost.redhat.com/");
@@ -93,32 +80,17 @@ public class RhnMockStrutsTestCase extends MockStrutsTestCase
         PxtSessionDelegate pxtDelegate = pxtDelegateFactory.newPxtSessionDelegate();
 
         pxtDelegate.updateWebUserId(request, response, user.getId());
-        KickstartDataTest.setupTestConfiguration(user);
-
-        tmpSaltRoot = setupSaltConfigurationForTests();
+        KickstartTestUtils.setupTestConfiguration(user);
     }
 
-    /**
-     * Tears down the fixture, and closes the HibernateSession.
-     */
     @Override
-    @AfterEach
-    public void tearDown() throws Exception {
-        super.tearDown();
-        TestCaseHelper.tearDownHelper();
-        if (committed) {
-            OrgFactory.deleteOrg(user.getOrg().getId(), user);
-            commitAndCloseSession();
-        }
-        committed = false;
-        user = null;
-
-        cleanupSaltConfiguration(tmpSaltRoot);
+    protected void cleanupDatabaseCommits() {
+        TestUtils.deleteOrgOfUser(user);
     }
 
-
-    protected ServletContextSimulator getContext() {
-        return this.context;
+    @Override
+    protected void afterCleanupDatabaseCommits() {
+        user = null;
     }
 
     /**
@@ -128,15 +100,15 @@ public class RhnMockStrutsTestCase extends MockStrutsTestCase
      */
     protected void verifyFormValue(String name, Object expectedValue) {
         DynaActionForm form = (DynaActionForm) getActionForm();
-        Object formval = form.get(name);
-        if (expectedValue != null && formval != null) {
-            assertEquals(expectedValue, formval);
+        Object formVal = form.get(name);
+        if (expectedValue != null && formVal != null) {
+            assertEquals(expectedValue, formVal);
         }
     }
 
     /**
      * Util method to add an "ID" to be selected on a list page.
-     * Usefull for testing list selection code.
+     * Useful for testing list selection code.
      * @param id you want to add
      */
     protected void addSelectedItem(Long id) {
@@ -156,16 +128,15 @@ public class RhnMockStrutsTestCase extends MockStrutsTestCase
     }
 
     /**
-     * Verify that the attribute "pageList" is setup properly:
-     *
+     * Verify that the attribute "pageList" is set up properly:
      * 1) not null
      * 2) size greater than 0
      * 3) first item in list is instance of classIn
      * @param attribName name of list in Request attributes
      * @param classIn to check first item against.
      */
-    protected void verifyList(String attribName, Class classIn) {
-        List dr = (List) request.getAttribute(attribName);
+    protected void verifyList(String attribName, Class<?> classIn) {
+        List<?> dr = (List<?>) request.getAttribute(attribName);
         Assertions.assertNotNull(dr, "Your list: " + attribName + " is null");
         assertFalse(dr.isEmpty(), "Your list: " + attribName + " is empty");
         Assertions.assertEquals(classIn, dr.iterator().next().getClass(),
@@ -173,30 +144,28 @@ public class RhnMockStrutsTestCase extends MockStrutsTestCase
     }
 
     /**
-     * Verify that the attribute "pageList" is setup properly:
-     *
+     * Verify that the attribute "pageList" is set up properly:
      * 1) not null
      * 2) size greater than 0
      * 3) first item in list is instance of classIn
      * @param classIn to check first item against.
      */
-    protected void verifyPageList(Class classIn) {
+    protected void verifyPageList(Class<?> classIn) {
         verifyList(RequestContext.PAGE_LIST, classIn);
     }
 
 
     /**
-     * Verify that the attribute "pageList" is setup properly:
-     *
+     * Verify that the attribute "pageList" is set up properly:
      * 1) not null
      * 2) size greater than 0
      * 3) first item in list is instance of classIn
      * @param attribName name of list in Request attributes
      * @param classIn to check first item against.
      */
-    protected void verifyFormList(String attribName, Class classIn) {
+    protected void verifyFormList(String attribName, Class<?> classIn) {
         DynaActionForm form = (DynaActionForm) getActionForm();
-        List dr = (List) form.get(attribName);
+        List<?> dr = (List<?>) form.get(attribName);
         assertNotNull(dr);
         assertFalse(dr.isEmpty());
         assertEquals(classIn, dr.iterator().next().getClass());
@@ -213,7 +182,7 @@ public class RhnMockStrutsTestCase extends MockStrutsTestCase
     protected void verifyActionMessage(String key) {
         String[] messageNames = new String[1];
         messageNames[0] = key;
-        verifyActionMessages(messageNames);
+        testActionHasMessages(messageNames);
     }
 
     protected void addSubmitted() {
@@ -234,10 +203,5 @@ public class RhnMockStrutsTestCase extends MockStrutsTestCase
 
     protected void assertException() {
         assertTrue(getActualForward().indexOf("/errors") > 0);
-    }
-
-    // If we have to commit in mid-test, set up the next transaction correctly
-    protected void commitHappened() {
-        committed = true;
     }
 }

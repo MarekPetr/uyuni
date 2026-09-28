@@ -47,6 +47,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -157,15 +158,14 @@ public class FilterApiController {
         FilterRequest createFilterRequest = FilterHandler.getFilterRequest(req);
 
         String prefix = createFilterRequest.getPrefix();
-        if (!StringUtils.endsWithAny(prefix, "-", "_")) {
+        if (!Strings.CS.endsWithAny(prefix, "-", "_")) {
             prefix += "-";
         }
 
         List<ContentFilter> createdFilters;
         try {
             switch (createFilterRequest.getTemplate()) {
-            case "LivePatchingSystem":
-            case "LivePatchingProduct":
+            case "LivePatchingSystem", "LivePatchingProduct":
                 PackageEvr kernelEvr = PackageEvrFactory.lookupPackageEvrById(createFilterRequest.getKernelEvrId());
                 createdFilters = TEMPLATE_MGR.createLivePatchFilters(prefix, kernelEvr, user);
                 break;
@@ -224,10 +224,12 @@ public class FilterApiController {
             return createFromTemplate(req, res, user);
         }
 
+        String createCriteriaValue = StringUtils.trimToNull(createFilterRequest.getCriteriaValue());
+
         FilterCriteria filterCriteria = new FilterCriteria(
                 FilterCriteria.Matcher.lookupByLabel(createFilterRequest.getMatcher()),
                 createFilterRequest.getCriteriaKey(),
-                StringUtils.trimToNull(createFilterRequest.getCriteriaValue()));
+                createCriteriaValue);
 
 
         ContentFilter createdFilter;
@@ -275,10 +277,12 @@ public class FilterApiController {
     public static String updateContentFilter(Request req, Response res, User user) {
         FilterRequest updateFilterRequest = FilterHandler.getFilterRequest(req);
 
+        String updateCriteriaValue = StringUtils.trimToNull(updateFilterRequest.getCriteriaValue());
+
         FilterCriteria filterCriteria = new FilterCriteria(
                 FilterCriteria.Matcher.lookupByLabel(updateFilterRequest.getMatcher()),
                 updateFilterRequest.getCriteriaKey(),
-                StringUtils.trimToNull(updateFilterRequest.getCriteriaValue()));
+                updateCriteriaValue);
         try {
             CONTENT_MGR.updateFilter(
                     Long.parseLong(req.params("filterId")),

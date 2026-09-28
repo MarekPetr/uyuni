@@ -1,3 +1,5 @@
+import "ace-builds/src-noconflict/theme-monokai";
+
 import { useEffect, useRef } from "react";
 
 import type { Ace } from "ace-builds";
@@ -12,6 +14,8 @@ declare global {
     };
   }
 }
+
+const isDark = typeof document !== "undefined" && document.body.classList.contains("theme-suse-dark");
 
 type Props = {
   mode?: string;
@@ -39,8 +43,22 @@ const AceEditor = ({ minLines = 20, maxLines = 40, readOnly = false, content = "
       }
       if (!editorRef.current) {
         const editor = window.ace.edit(node);
-        editor.setTheme("ace/theme/xcode");
+
+        const textarea = node.querySelector(".ace_text-input") as HTMLTextAreaElement;
+        if (textarea) {
+          textarea.id = `${props.id ?? fallbackId}-ace-editor`;
+          textarea.name = `${props.id ?? fallbackId}-ace-editor`;
+        }
+
         editor.setShowPrintMargin(false);
+
+        // Set dark theme
+        if (isDark) {
+          editor.setTheme("ace/theme/monokai");
+        } else {
+          editor.setTheme("ace/theme/xcode");
+        }
+
         editor.getSession().setValue(safeContent);
         editor.on("change", () => {
           ignoreNextUpdate.current = true;

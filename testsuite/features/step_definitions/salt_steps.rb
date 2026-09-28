@@ -1,4 +1,4 @@
-# Copyright 2015-2025 SUSE LLC
+# Copyright 2015-2026 SUSE LLC
 # Licensed under the terms of the MIT license.
 
 ### This file contains all step definitions concerning Salt and bootstrapping
@@ -85,8 +85,12 @@ end
 
 When(/^I clean up the git_pillar environment on the Salt master$/) do
   file = 'salt_git_pillar_setup.sh'
+  source = "#{File.dirname(__FILE__)}/../upload_files/#{file}"
+  dest = "/tmp/#{file}"
+  success = file_inject(get_target('server'), source, dest)
+  raise ScriptError, 'File injection failed' unless success
 
-  # Execute "salt_git_pillar_setup.sh setup" on the server
+  # Execute "salt_git_pillar_setup.sh clean" on the server
   get_target('server').run("sh /tmp/#{file} clean", check_errors: true, verbose: true)
 end
 
@@ -242,7 +246,7 @@ end
 Then(/^I should see "([^"]*)" in the command output for "([^"]*)"$/) do |text, host|
   system_name = get_system_name(host)
   within("pre[id='#{system_name}-results']") do
-    raise ScriptError, "Text '#{text}' not found in the results of #{system_name}" unless check_text_and_catch_request_timeout_popup?(text)
+    raise ScriptError, "Text '#{text}' not found in the results of #{system_name}" unless check_text?(text)
   end
 end
 
@@ -453,8 +457,9 @@ When(/^I see "([^"]*)" fingerprint$/) do |host|
   node = get_target(host)
   salt_call = $use_salt_bundle ? 'venv-salt-call' : 'salt-call'
   output, _code = node.run("#{salt_call} --local key.finger")
-  fing = output.split("\n")[1].strip!
-  raise ScriptError, "Text: #{fing} not found" unless check_text_and_catch_request_timeout_popup?(fing)
+  fing = output.split("\n")[1]&.strip
+  raise ScriptError, 'Fingerprint line not found in salt-call output' if fing.nil?
+  raise ScriptError, "Text: #{fing} not found" unless check_text?(fing)
 end
 
 When(/^I accept "([^"]*)" key$/) do |host|
@@ -565,7 +570,7 @@ When(/^I perform a full salt minion cleanup on "([^"]*)"$/) do |host|
   salt_classic_config_dir = '/etc/salt'
 
   # Define cleanup paths
-  salt_bundle_cleanup_paths = '/var/cache/venv-salt-minion /run/venv-salt-minion /var/venv-salt-minion.log /var/tmp/.root*'
+  salt_bundle_cleanup_paths = '/var/cache/venv-salt-minion /run/venv-salt-minion /var/log/venv-salt-minion.log /var/tmp/.root*'
   salt_classic_cleanup_paths = '/var/cache/salt/minion /var/run/salt /run/salt /var/log/salt /var/tmp/.root*'
 
   # File cleanup within the configuration directory
@@ -581,7 +586,7 @@ When(/^I perform a full salt minion cleanup on "([^"]*)"$/) do |host|
   node.run("rm -Rf /root/salt #{salt_bundle_cleanup_paths} #{salt_classic_cleanup_paths}", check_errors: false)
 
   # Package removal using the existing step
-  step %(I remove packages "venv-salt-minion salt salt-minion" from this "#{host}" without error control)
+  step %(I remove packages "venv-salt-minion salt salt-minion" from this "#{host}")
 
   # Disable repositories
   step %(I disable the repositories "tools_update_repo tools_pool_repo" on this "#{host}" without error control)
@@ -641,7 +646,7 @@ end
 
 When(/^I apply highstate on "([^"]*)"$/) do |host|
   system_name = get_system_name(host)
-  if host.include? 'ssh_minion'
+  if host.include? 'sshminion'
     cmd = 'mgr-salt-ssh'
   elsif host.include?('minion') || host.include?('build') || host.include?('proxy')
     cmd = 'salt'

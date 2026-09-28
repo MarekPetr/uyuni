@@ -1,6 +1,6 @@
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
 <%@ taglib uri="http://rhn.redhat.com/tags/list" prefix="rl" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 
@@ -19,6 +19,8 @@
 <p><bean:message key="errata.overview.jsp.summary"/></p>
 
 <c:set var="emptyListKey" value="erratalist.jsp.norelevanterrata"/>
+<c:set var="errataExportColumns"
+       value="errataAdvisoryType,advisoryName,advisorySynopsis,affectedSystemCount,updateDate,cveNames"/>
 <%@ include file="/WEB-INF/pages/common/fragments/errata/relevant-errata-list.jspf" %>
 
 </body>

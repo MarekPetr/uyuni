@@ -28,7 +28,7 @@ type RecurringEventPickerProps = {
   cron: string;
   cronTimes: CronTimes;
   onScheduleNameChanged: (scheduleName: string) => void;
-  onTypeChanged: (type: string) => void;
+  onTypeChanged: (type: RecurringType) => void;
   onCronTimesChanged: (cronTimes: CronTimes) => void;
   onCronChanged: (cron: string) => void;
 };
@@ -335,7 +335,7 @@ class RecurringEventPicker extends Component<RecurringEventPickerProps, Recurrin
 
     const content = (
       <>
-        <div className={`form-group ${styles.center}`}>
+        <div className={`row ${styles.center}`}>
           <div className="col-sm-3 control-label">
             <input
               type="radio"
@@ -362,12 +362,13 @@ class RecurringEventPicker extends Component<RecurringEventPickerProps, Recurrin
           </div>
           <div className={`col-sm-1 ${styles.helpIcon}`}>
             <i
-              className="fa fa-info-circle fa-1-5x text-primary"
+              className="fa fa-info-circle fa-1-5x"
               title={t("The action will be executed every hour at the specified minute")}
+              data-bs-toggle="tooltip"
             />
           </div>
         </div>
-        <div className={`form-group ${styles.center}`}>
+        <div className={`row ${styles.center}`}>
           <div className="col-sm-3 control-label">
             <input
               type="radio"
@@ -391,7 +392,7 @@ class RecurringEventPicker extends Component<RecurringEventPickerProps, Recurrin
             />
           </div>
         </div>
-        <div className={`form-group ${styles.center}`}>
+        <div className={`row ${styles.center}`}>
           <div className="col-sm-3 control-label">
             <input
               type="radio"
@@ -425,7 +426,7 @@ class RecurringEventPicker extends Component<RecurringEventPickerProps, Recurrin
             />
           </div>
         </div>
-        <div className={`form-group ${styles.center}`}>
+        <div className={`row ${styles.center}`}>
           <div className="col-sm-3 control-label">
             <input
               type="radio"
@@ -460,12 +461,13 @@ class RecurringEventPicker extends Component<RecurringEventPickerProps, Recurrin
           </div>
           <div className={`col-sm-1 ${styles.helpIcon}`}>
             <i
-              className="fa fa-info-circle fa-1-5x text-primary"
+              className="fa fa-info-circle fa-1-5x"
               title={t("Days are limited to 28 to have a recurring schedule available for all the months")}
+              data-bs-toggle="tooltip"
             />
           </div>
         </div>
-        <div className={`form-group ${styles.center}`}>
+        <div className={`row ${styles.center}`}>
           <div className="col-sm-3 control-label">
             <input
               type="radio"
@@ -516,7 +518,7 @@ class RecurringEventPicker extends Component<RecurringEventPickerProps, Recurrin
       case "Inline":
         return (
           <div className="form-horizontal">
-            {!this.props.hideScheduleName && <div className="form-group">{form}</div>}
+            {!this.props.hideScheduleName && <div className="row">{form}</div>}
             {content}
           </div>
         );

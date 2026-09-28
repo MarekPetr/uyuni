@@ -46,8 +46,8 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.stream.Collectors;
 
-import javax.mail.internet.AddressException;
-import javax.mail.internet.InternetAddress;
+import jakarta.mail.internet.AddressException;
+import jakarta.mail.internet.InternetAddress;
 
 /**
  * A command to create or edit users
@@ -170,7 +170,7 @@ public class CreateUserCommand {
         }
 
         // Add default RBAC role
-        user.addToGroup(AccessGroupFactory.REGULAR_USER);
+        user.addToGroup(AccessGroupFactory.getRegularUser());
         UserManager.storeUser(user); //save the user via hibernate
     }
 
@@ -224,7 +224,7 @@ public class CreateUserCommand {
          * Check for login maximum length
          * Since we are allowing utf8 input, but not supporting it in the db, we need to
          * check the length of the bytes here as well.
-         * TODO: Do better error checking here once the db and code is fully localized and
+         * OLDTODO: Do better error checking here once the db and code is fully localized and
          * we are supporting it on logins
          */
         else if (login.length() > max || login.getBytes().length > max) {
@@ -350,14 +350,14 @@ public class CreateUserCommand {
      * @param phoneIn The phone to set
      */
     public void setPhone(String phoneIn) {
-        user.setPhone(phoneIn);
+        addr.setPhone(phoneIn);
     }
 
     /**
      * @param faxIn The fax to set
      */
     public void setFax(String faxIn) {
-        user.setFax(faxIn);
+        addr.setFax(faxIn);
     }
 
     /**

@@ -1,5 +1,5 @@
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
 <%@ taglib uri="http://rhn.redhat.com/tags/list" prefix="rl" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
@@ -24,7 +24,7 @@
         <bean:message key="scapdiff.jsp.instructions"/>
       </div>
       <div class="panel-body">
-        <div class="form-group row">
+        <div class="row">
           <div class="col-md-2 text-right">
             <bean:message key="xccdfdiff.firstscan"/>:
           </div>
@@ -32,7 +32,7 @@
             <html:text styleClass="form-control" property="first"/>
           </div>
         </div>
-        <div class="form-group row">
+        <div class="row">
           <div class="col-md-2 text-right">
             <bean:message key="xccdfdiff.secondscan"/>:
           </div>
@@ -40,7 +40,7 @@
             <html:text property="second" styleClass="form-control"/>
           </div>
         </div>
-        <div class="form-group row">
+        <div class="row">
           <div class="col-md-offset-2 offset-md-2 col-md-4">
             <html:submit styleClass="btn btn-primary"><bean:message key="xccdfdiff.schedulescan"/></html:submit>
           </div>

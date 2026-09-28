@@ -1,4 +1,92 @@
 -------------------------------------------------------------------
+Mon Aug 10 11:47:29 CEST 2026 - marina.latini@suse.com
+
+- version 5.3.2
+  * Detect an existing cgroup2 mount by filesystem type,
+    not mountpoint.
+
+-------------------------------------------------------------------
+Thu Aug 06 12:29:20 CEST 2026 - antonio.garofalo@suse.com
+
+- version 5.3.1
+  * Tolerate an already mounted /sys/fs/cgroup in the entrypoint, so
+    the server container starts on hosts where the container runtime
+    premounts the cgroup filesystem
+  * Add a README file for artifacthub to display
+  * Bump version to 5.3.0
+
+-------------------------------------------------------------------
+Fri Jun 26 14:43:50 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.14
+  * Regenerate the OS image trusted CA RPM when the server CA changes
+    (bsc#1268892)
+
+-------------------------------------------------------------------
+Wed Jun 17 15:01:14 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.13
+  * Image rebuilt to the newest version with updated dependencies
+    for SUSE Multi-Linux Manager 5.2.0
+
+-------------------------------------------------------------------
+Wed May 27 16:45:31 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.12
+  * Allow uyuni-config-files to handle lua scriptlets
+
+-------------------------------------------------------------------
+Mon May 25 10:23:00 WEST 2026 - psuarezhernandez@suse.com
+
+- version 5.2.11
+  * Do not get repositories from SCC in the server container
+    (bsc#1242916)
+
+-------------------------------------------------------------------
+Sat May 23 13:03:22 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.10
+  * Add mozilla-nss-sysinit to Dockerfile required for FIPS
+    (bsc#1247707)
+
+-------------------------------------------------------------------
+Fri May 22 13:24:16 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.9
+  * Implement startup check script (bsc#1263157)
+  * Use different flavors for Dockerfile
+  * Drop golang-github-QubitProducts-exporter_exporter
+  * Disable SSL on internal db connection
+  * Do not depend on collation name when checking collation
+    version (bsc#1264178)
+
+-------------------------------------------------------------------
+Tue May 05 11:17:56 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.8
+  * Fix query to identify collation version mismatch
+
+-------------------------------------------------------------------
+Fri Apr 17 11:29:46 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.7
+  * Healthcheck on disk usage based on taskomatic (bsc#1238890).
+  * Healthcheck fails if server should be restarted.
+  * Allow LDAP users that are not visible to pam_unix (bsc#1256791)
+  * Use correct CA for Report DB (bsc#1260806)
+  * Move server setup to the server container image
+  * Remove duplicate zypper excludedocs=yes
+  * Separate the cgroup mount from the host one on Kubernetes
+  * Add rpm-ndb to the server-image (bsc#1259557)
+
+-------------------------------------------------------------------
+Mon Mar 02 13:11:54 CET 2026 - michael.calmer@suse.com
+
+- version 5.2.6
+  * Move setup scripts from mgradm to the server image
+  * Do not create CA symlink to the salt base
+
+-------------------------------------------------------------------
 Tue Jan 27 09:31:12 WET 2026 - psuarezhernandez@suse.com
 
 - version 5.2.5

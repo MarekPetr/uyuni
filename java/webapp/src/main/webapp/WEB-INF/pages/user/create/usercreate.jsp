@@ -1,5 +1,5 @@
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 
@@ -21,13 +21,13 @@
           <h4><bean:message key="usercreate.login" /></h4>
         </div>
         <div class="panel-body">
-              <div class="form-group">
+              <div class="row">
                 <label class="col-sm-3 control-label" for="login"><rhn:required-field key="desiredlogin"/>:</label>
                 <div class="col-sm-6">
                   <html:text property="login" styleClass="form-control" maxlength="${loginLength}" styleId="loginname"/>
                 </div>
               </div>
-              <div class="form-group">
+              <div class="row">
                 <label class="col-sm-3 control-label" for="desiredpass"><bean:message key="desiredpass" /><span name="password-asterisk"
                       class="required-form-field">*</span>:</label>
                 <div class="col-sm-6">
@@ -39,7 +39,7 @@
                   </div>
                 </div>
               </div>
-              <div class="form-group">
+              <div class="row">
                 <label class="col-sm-3 control-label" for="confirmpass"><bean:message key="confirmpass" /><span name="password-asterisk"
                       class="required-form-field">*</span>:</label>
                 <div class="col-sm-6">
@@ -57,7 +57,7 @@
                       jQuery("[name='password-asterisk']").toggle()
                     }
               </script>
-              <div class="form-group">
+              <div class="row">
                 <label class="col-sm-3 control-label"><bean:message key="help.credentials.jsp.passwordstrength"/>:</label>
                 <div class="col-sm-6">
                     <div id="pwstrenghtfield">
@@ -66,7 +66,7 @@
                 </div>
               </div>
               <c:if test="${displaypam == 'true'}">
-                <div class="form-group">
+                <div class="row">
                   <label class="col-sm-3 control-label" for="pam"><bean:message key="usercreate.jsp.pam"/></label>
                   <div class="col-sm-6">
                     <c:choose>
@@ -92,27 +92,36 @@
           <h4><bean:message key="usercreate.accountInfo" /></h4>
         </div>
         <div class="panel-body">
-            <div class="form-group">
-              <label class="col-sm-3 control-label" for="firstNames"><rhn:required-field key="usercreate.names"/>:</label>
+            <div class="row">
+              <label class="col-sm-3 control-label" for="firstNames"><rhn:required-field key="usercreate.prefix"/>:</label>
               <div class="col-sm-6">
                 <html:select styleClass="form-control margin-bottom-xs box-small" property="prefix">
                   <html:options collection="availablePrefixes"
                     property="value"
                     labelProperty="label" />
                 </html:select>
-
+              </div>
+            </div>
+            <div class="row">
+              <label class="col-sm-3 control-label" for="firstNames"><rhn:required-field key="usercreate.firstName"/>:</label>
+              <div class="col-sm-6"> 
                 <html:text property="firstNames" size="15" styleClass="form-control margin-bottom-xs box-large" maxlength="${firstNameLength}" styleId="firstNames"/>
-                <html:text property="lastName" size="15" styleClass="form-control margin-bottom-xs box-large" maxlength="${lastNameLength}"/>
               </div>
             </div>
 
-            <div class="form-group">
+            <div class="row">
+              <label class="col-sm-3 control-label" for="lastName"><rhn:required-field key="usercreate.lastName"/>:</label>
+              <div class="col-sm-6">
+                <html:text property="lastName" size="15" styleClass="form-control margin-bottom-xs box-large" maxlength="${lastNameLength}"/>
+              </div>
+            </div>
+            <div class="row">
                <label class="col-sm-3 control-label" for="email"><rhn:required-field key="email"/>:</label>
                <div class="col-sm-6">
                    <html:text property="email" styleClass="form-control" maxlength="${emailLength}" styleId="email"/>
                </div>
             </div>
-            <div class="form-group">
+            <div class="row">
                <label class="col-sm-3 control-label" for="readonly"><bean:message key="usercreate.jsp.api.readOnly" /></label>
                <div class="col-sm-6">
                    <html:checkbox property="readonly" />
@@ -155,7 +164,7 @@
       <p><bean:message key="preferences.jsp.langs" /></p>
       <div class="well well-sm">
         <c:set var="counter" value="0" />
-          <div class="form-group">
+          <div class="row">
             <div class="col-sm-6">
               <input type="radio" name="preferredLocale" value="<c:out value="${defaultLocale.languageCode}" />"
               <c:if test="${defaultLocale.languageCode == currentLocale}">
@@ -163,19 +172,18 @@
               </c:if>/>
               <c:out value="${defaultLocale.localizedName}" />
               <br />
-              <br />
             </div>
           </div>
         <c:forEach var="item" items="${supportedLocales}">
           <c:if test="${counter == 0}">
-            <div class="form-group">
+            <div class="row">
           </c:if>
           <div class="col-sm-6">
             <input type="radio" name="preferredLocale" value="<c:out value="${item.key}" />"
               <c:if test="${item.key == currentLocale}">
                 checked="checked"
               </c:if>/>
-            <span class="text-info"><strong><c:out value="${item.value.localizedName}" /></strong></span>
+            <span><strong><c:out value="${item.value.localizedName}" /></strong></span>
           </div>
           <c:if test="${counter == 1}">
             </div>
@@ -201,7 +209,7 @@
             <div class="panel-body">
                 <p><bean:message key="preferences.jsp.docs.langs" /></p>
                 <div class="well well-sm">
-                    <div class="form-group">
+                    <div class="row">
                         <div class="col-sm-6">
                             <input type="radio" name="preferredDocsLocale" value="<c:out value="${defaultDocsLocale.languageCode}" />"
                                     <c:if test="${defaultDocsLocale.languageCode == currentDocsLocale}">
@@ -210,19 +218,18 @@
                             <c:out value="${defaultDocsLocale.localizedName}" />
                         </div>
                         </br>
-                        </br>
                     </div>
                     <c:set var="counter" value="0"/>
                     <c:forEach var="item" items="${supportedDocsLocales}">
                         <c:if test="${counter == 0}">
-                            <div class="form-group">
+                            <div class="row">
                         </c:if>
                         <div class="col-sm-6">
                             <input type="radio" name="preferredDocsLocale" value="<c:out value="${item.key}" />"
                                     <c:if test="${item.key == currentDocsLocale}">
                                         checked="checked"
                                     </c:if>/>
-                            <span class="text-info"><strong><c:out value="${item.value.localizedName}" /></strong></span>
+                            <span><strong><c:out value="${item.value.localizedName}" /></strong></span>
                         </div>
                         <c:if test="${counter == 1}">
                             </div>

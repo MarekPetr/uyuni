@@ -63,7 +63,7 @@
       <rhn-tab name="pkg.lock.menu" acl="authorized_for(systems.software.packages, W); system_feature(ftr_package_lock)">
         <rhn-tab-url>/rhn/systems/details/packages/LockPackages.do</rhn-tab-url>
       </rhn-tab>
-      <rhn-tab name="Profiles" acl="authorized_for(systems.software.packages.profiles); system_feature(ftr_profile_compare)">
+      <rhn-tab name="Profiles" acl="authorized_for(systems.profiles); system_feature(ftr_profile_compare)">
         <rhn-tab-url>/rhn/systems/details/packages/profiles/ShowProfiles.do</rhn-tab-url>
         <rhn-tab-url>/rhn/systems/details/packages/profiles/Create.do</rhn-tab-url>
         <rhn-tab-url>/rhn/systems/details/packages/profiles/CompareSystems.do</rhn-tab-url>
@@ -192,10 +192,14 @@
         <rhn-tab-url>/rhn/systems/details/audit/XccdfDetails.do</rhn-tab-url>
         <rhn-tab-url>/rhn/systems/details/audit/RuleDetails.do</rhn-tab-url>
         <rhn-tab-url>/rhn/systems/details/audit/XccdfDeleteConfirm.do</rhn-tab-url>
+        <rhn-tab-url>/rhn/manager/audit/scap/scan/rule-result-details</rhn-tab-url>
       </rhn-tab>
-      <rhn-tab acl="authorized_for(systems.audit.openscap, W)" name="nav.system.audit.schedule">
+      <rhn-tab acl="authorized_for(systems.audit.openscap, W); not user_has_beta_features_enabled()" name="nav.system.audit.schedule">
         <rhn-tab-url>/rhn/systems/details/audit/ScheduleXccdf.do</rhn-tab-url>
       </rhn-tab>
+    <rhn-tab acl="user_has_beta_features_enabled()" name="nav.system.audit.schedule.beta">
+      <rhn-tab-url>/rhn/manager/systems/details/schedule-scap-scan</rhn-tab-url>
+    </rhn-tab>
     </rhn-tab>
 
     <rhn-tab name="nav.system.coco" acl="authorized_for(systems.audit.coco)" url="/rhn/manager/systems/details/coco/settings">

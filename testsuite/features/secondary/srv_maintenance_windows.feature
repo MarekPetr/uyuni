@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2025 SUSE LLC
+# Copyright (c) 2021-2026 SUSE LLC
 # Licensed under the terms of the MIT license.
 
 # skip if container because we do not have a domain name and the
@@ -152,7 +152,7 @@ Feature: Maintenance windows
     And I click the "singleschedule" item delete button
     Then I should see a "Delete maintenance schedule" text
     When I click on the red confirmation button
-    And I wait until I see "singleschedule' has been deleted." text
+    And I wait until I see "Schedule 'singleschedule' has been deleted." text
 
   Scenario: Delete maintenance calendars
     When I follow the left menu "Schedule > Maintenance Windows > Calendars"

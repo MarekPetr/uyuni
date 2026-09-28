@@ -1,4 +1,68 @@
 -------------------------------------------------------------------
+Wed Aug 05 13:30:17 CEST 2026 - antonio.garofalo@suse.com
+
+- version 5.3.1
+  * Use the appVersion of the chart as the default tag for images
+    (bsc#1271902)
+  * Add metadata for artifactory
+  * Bump version to 5.3.0
+
+-------------------------------------------------------------------
+Tue Jun 30 11:05:32 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.9
+  * Error out if the repository is not set (bsc#1269667)
+
+-------------------------------------------------------------------
+Wed Jun 17 14:51:36 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.8
+  * Allow custom volume and mount settings in the server Helm chart.
+  * Allow use of dedicated SELinux type
+
+-------------------------------------------------------------------
+Fri May 29 18:48:51 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.7
+  * Separate SCC and registry secrets (bsc#1266938)
+
+-------------------------------------------------------------------
+Fri May 22 13:28:42 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.6
+  * Use HTTPS to connect to peripheral servers (bsc#1265931)
+  * Remove useless Traefik TCP routes (bsc#1264362)
+  * Disable TFTP by default
+  * Fix the selinux label on server volumes (bsc#1263023)
+  * Add services type and ports configuration
+  * Add global storageClass value (bsc#1263089)
+  * Use a startup check with no limit for the main server container
+    (bsc#1263157)
+
+-------------------------------------------------------------------
+Thu Apr 16 14:26:47 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.5
+  * Add node placement controls properties
+  * Move server setup to the server container image
+  * Expose the exporters via HTTPS
+  * Server chart: handle apparmor nodes
+  * Separate the cgroup mount from the host one
+  * Route the exporters over HTTP using ingress rules
+  * Fix traefik setup and add experimental Gateway API support
+
+-------------------------------------------------------------------
+Mon Mar 02 13:07:56 CET 2026 - michael.calmer@suse.com
+
+- version 5.2.4
+  * Move TFTP server to its own pod
+  * Reorganize the values by component
+  * Increase readiness time for server.
+  * Remove script from setup-job and use the one provided by
+    the image.
+  * Changing volumes and permissions for RKE2.
+
+-------------------------------------------------------------------
 Tue Jan 27 09:31:14 WET 2026 - psuarezhernandez@suse.com
 
 - version 5.2.3

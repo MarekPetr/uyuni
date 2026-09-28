@@ -1,4 +1,4 @@
-# Copyright (c) 2017-2025 SUSE LLC
+# Copyright (c) 2017-2026 SUSE LLC
 # Licensed under the terms of the MIT license.
 #
 # 1) delete Debian-like minion and register as SSH minion

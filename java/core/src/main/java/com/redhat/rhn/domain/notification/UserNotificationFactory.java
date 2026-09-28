@@ -11,11 +11,9 @@
 
 package com.redhat.rhn.domain.notification;
 
-import com.redhat.rhn.common.conf.Config;
 import com.redhat.rhn.common.conf.ConfigDefaults;
 import com.redhat.rhn.common.hibernate.HibernateFactory;
 import com.redhat.rhn.common.messaging.Mail;
-import com.redhat.rhn.common.messaging.SmtpMail;
 import com.redhat.rhn.domain.access.AccessGroup;
 import com.redhat.rhn.domain.notification.types.NotificationData;
 import com.redhat.rhn.domain.notification.types.NotificationType;
@@ -39,10 +37,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaDelete;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Root;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaDelete;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 
 
 /**
@@ -65,19 +63,7 @@ public class UserNotificationFactory extends HibernateFactory {
     }
 
     private static void configureMailer() {
-        String clazz = Config.get().getString("web.mailer_class");
-        if (clazz == null) {
-            mailer = new SmtpMail();
-            return;
-        }
-        try {
-            Class<? extends Mail> cobj = Class.forName(clazz).asSubclass(Mail.class);
-            mailer = cobj.getDeclaredConstructor().newInstance();
-        }
-        catch (Exception | LinkageError e) {
-            log.error("An exception was thrown while initializing custom mailer class", e);
-            mailer = new SmtpMail();
-        }
+        mailer = MailHelper.createMailFromConfig();
     }
 
     /**
@@ -125,9 +111,10 @@ public class UserNotificationFactory extends HibernateFactory {
      * Store {@link UserNotification} to the database.
      *
      * @param userNotificationIn userNotification
+     * @return the managed {@link UserNotification} instance
      */
-    private static void store(UserNotification userNotificationIn) {
-        singleton.saveObject(userNotificationIn);
+    private static UserNotification store(UserNotification userNotificationIn) {
+        return singleton.saveObject(userNotificationIn);
     }
 
     /**
@@ -150,14 +137,17 @@ public class UserNotificationFactory extends HibernateFactory {
     public static void storeForUsers(NotificationMessage notificationMessageIn, Set<User> users) {
         // save first the message to get the 'id' auto generated
         // because it is referenced by the UserNotification object
-        singleton.saveObject(notificationMessageIn);
+        NotificationMessage notificationMessage = singleton.saveObject(notificationMessageIn);
         // We want to disable out the notifications defined on parameter: java.notifications_type_disabled
         // They are still added to the SuseNotificationTable but not associated with any user
-        if (!isNotificationTypeDisabled(notificationMessageIn)) {
+        if (!isNotificationTypeDisabled(notificationMessage)) {
             String[] receipients = users.stream()
                                         .filter(user -> !user.isDisabled())
-                                        .peek(user -> UserNotificationFactory.store(
-                                                new UserNotification(user, notificationMessageIn)))
+                                        .map(user -> {
+                                            UserNotificationFactory.store(
+                                                new UserNotification(user, notificationMessage));
+                                            return user;
+                                        })
                                         .filter(user -> user.getEmailNotify() == 1)
                                         .map(User::getEmail)
                                         .toArray(String[]::new);
@@ -165,8 +155,8 @@ public class UserNotificationFactory extends HibernateFactory {
                 String subject = String.format("%s Notification from %s: %s",
                         MailHelper.PRODUCT_PREFIX,
                         ConfigDefaults.get().getHostname(),
-                        notificationMessageIn.getType().getDescription());
-                NotificationData data = notificationMessageIn.getNotificationData();
+                        notificationMessage.getType().getDescription());
+                NotificationData data = notificationMessage.getNotificationData();
                 String message = data.getSummary();
                 if (!StringUtils.isBlank(data.getDetails())) {
                     message += "\n\n" + data.getDetails();
@@ -276,11 +266,12 @@ public class UserNotificationFactory extends HibernateFactory {
      * Update {@link UserNotification} in the database, set it as read.
      *
      * @param userNotificationIn the userNotification
-     * @param isReadIn flag status to set if the message is read or not
+     * @param isReadIn           flag status to set if the message is read or not
+     * @return the managed {@link UserNotification} instance
      */
-    public static void updateStatus(UserNotification userNotificationIn, boolean isReadIn) {
+    public static UserNotification updateStatus(UserNotification userNotificationIn, boolean isReadIn) {
         userNotificationIn.setRead(isReadIn);
-        singleton.saveObject(userNotificationIn);
+        return singleton.saveObject(userNotificationIn);
     }
 
     /**
@@ -417,7 +408,7 @@ public class UserNotificationFactory extends HibernateFactory {
         CriteriaDelete<NotificationMessage> delete = builder.createCriteriaDelete(NotificationMessage.class);
         Root<NotificationMessage> root = delete.from(NotificationMessage.class);
         delete.where(builder.lessThan(root.get("created"), before));
-        return getSession().createQuery(delete).executeUpdate();
+        return getSession().createMutationQuery(delete).executeUpdate();
     }
 
     /**

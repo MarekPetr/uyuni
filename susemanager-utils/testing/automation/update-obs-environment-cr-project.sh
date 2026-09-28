@@ -7,15 +7,17 @@ clients="Ubuntu1604-Uyuni-Client-Tools;xUbuntu_16.04 \
     Ubuntu2004-Uyuni-Client-Tools;xUbuntu_20.04 \
     Ubuntu2204-Uyuni-Client-Tools;xUbuntu_22.04 \
     Ubuntu2404-Uyuni-Client-Tools;xUbuntu_24.04 \
+    Ubuntu2604-Uyuni-Client-Tools;xUbuntu_26.04 \
     openSUSE_Leap_15-Uyuni-Client-Tools;openSUSE_Leap_15.0 \
     openSUSE_Leap_42-Uyuni-Client-Tools;openSUSE_Leap_42.3 \
     SLE15-Uyuni-Client-Tools;SLE_15 \
     SLE12-Uyuni-Client-Tools;SLE_12 \
     EL8-Uyuni-Client-Tools;EL_8 \
     Debian9-Uyuni-Client-Tools;Debian_9 \
-    Debian12-Uyuni-Client-Tools;Debian_12 \
-    Debian11-Uyuni-Client-Tools;Debian_11 \
     Debian10-Uyuni-Client-Tools;Debian_10 \
+    Debian11-Uyuni-Client-Tools;Debian_11 \
+    Debian12-Uyuni-Client-Tools;Debian_12 \
+    Debian13-Uyuni-Client-Tools;Debian_13\
     CentOS8-Uyuni-Client-Tools;CentOS_8 \
     CentOS7-Uyuni-Client-Tools;CentOS_7 \
     CentOS6-Uyuni-Client-Tools;CentOS_6 \

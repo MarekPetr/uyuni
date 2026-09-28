@@ -1,5 +1,5 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+<%@ taglib uri="jakarta.tags.core" prefix="c"%>
+<%@ taglib uri="jakarta.tags.functions" prefix="fn"%>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn"%>
 <%@ taglib uri="http://rhn.redhat.com/tags/list" prefix="rl"%>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean"%>
@@ -29,7 +29,7 @@
 
             <%@ include file="/WEB-INF/pages/common/fragments/kickstart/powermanagement-options.jspf"%>
 
-            <div class="form-group">
+            <div class="row">
                 <div class="col-md-offset-3 offset-md-3 col-md-6">
                     <button type="submit" name="dispatch" class="btn btn-primary"
                         value='<bean:message key="ssm.provisioning.powermanagement.configuration.update" />'>

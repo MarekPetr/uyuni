@@ -50,13 +50,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.persistence.CascadeType;
-import javax.persistence.DiscriminatorValue;
-import javax.persistence.Entity;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.OneToOne;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToOne;
 
 /**
  * ErrataAction - Class representation of the table rhnAction.
@@ -126,6 +126,13 @@ public class ErrataAction extends Action {
             formatter = new ErrataActionFormatter(this);
         }
         return formatter;
+    }
+
+    /**
+     * default constructor
+     */
+    public ErrataAction() {
+        setDetails(new ActionPackageDetails(this, false));
     }
 
     /**

@@ -42,6 +42,7 @@ import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.quartz.utils.Key;
 
+import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.Date;
 import java.util.List;
@@ -106,7 +107,12 @@ public class SchedulerKernel {
             PrometheusExporter.INSTANCE.registerScheduler(SchedulerKernel.scheduler, "taskomatic");
         }
         catch (SchedulerException e) {
+            log.error("Failed to initialize Quartz scheduler", e);
             throw new InstantiationException("this.scheduler failed");
+        }
+        catch (IOException ex) {
+            log.error("Failed to initialize the TaskoXmlRpcServer", ex);
+            throw new IllegalStateException("Failed to initialize the TaskoXmlRpcServer", ex);
         }
     }
 
@@ -124,7 +130,6 @@ public class SchedulerKernel {
      * @throws TaskomaticException error occurred during Quartz or Hibernate startup
      */
     public void startup() throws TaskomaticException {
-        HibernateFactory.registerComponentName("taskomatic");
         HibernateFactory.createSessionFactory();
         if (!HibernateFactory.isInitialized()) {
             throw new TaskomaticException("HibernateFactory failed to initialize");

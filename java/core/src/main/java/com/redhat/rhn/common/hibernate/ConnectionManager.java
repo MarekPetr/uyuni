@@ -35,6 +35,23 @@ public interface ConnectionManager {
     void addConfigurator(Configurator configurator);
 
     /**
+     * add a listener
+     * @param l the listener to be added
+     */
+    void addCommitListener(HibernateCommitListener l);
+
+    /**
+     * removes a particular listener
+     * @param l the listener to be removed
+     */
+    void removeCommitListener(HibernateCommitListener l);
+
+    /**
+     * removes all listeners
+     */
+    void removeAllCommitListeners();
+
+    /**
      * Closes the session factory.
      */
     void close();
@@ -57,13 +74,6 @@ public interface ConnectionManager {
      * @return true if {@link #initialize()} has been called and the session factory is available.
      */
     boolean isInitialized();
-
-    /**
-     * Set the name for Prometheus Hiberante Statistics collector
-     *
-     * @param componentName The component name for collector registration, used for metric label value
-     */
-    void setComponentName(String componentName);
 
     /**
      * Returns Hibernate session stored in ThreadLocal storage. If not

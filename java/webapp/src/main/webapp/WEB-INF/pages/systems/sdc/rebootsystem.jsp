@@ -7,7 +7,7 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 
 <%@taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
-<%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@taglib uri="jakarta.tags.core" prefix="c" %>
 <%@taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 <%@taglib uri="http://rhn.redhat.com/tags/list" prefix="rl" %>
@@ -28,7 +28,7 @@
                     <rhn:csrf />
                     <rhn:submitted />
 
-                    <div class="form-group">
+                    <div class="row">
                         <jsp:include page="/WEB-INF/pages/common/fragments/schedule-options.jspf"/>
                         <div class="col-lg-offset-3 offset-lg-3 col-lg-6">
                             <html:submit styleClass="btn btn-danger">

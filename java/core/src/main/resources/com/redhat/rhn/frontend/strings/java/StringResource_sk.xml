@@ -310,23 +310,9 @@
           <context context-type="sourcefile">Navigation Menu</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="address type B" xml:space="preserve">
-        <source>Billing Address</source>
-        <target>Fakturačná adresa</target>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/users/Addresses</context>
-        </context-group>
-      </trans-unit>
       <trans-unit id="address type M" xml:space="preserve">
         <source>Mailing Address</source>
         <target>Poštová adresa</target>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/users/Addresses</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="address type S" xml:space="preserve">
-        <source>Shipping Address</source>
-        <target>Dodacia adresa</target>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/users/Addresses</context>
         </context-group>
@@ -2797,13 +2783,6 @@ a skúste to znova.
       <trans-unit id="activation_key_admin" xml:space="preserve">
         <source>Activation Key Administrator</source>
         <target>Administrátor aktivačných kľúčov</target>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/account/UserDetails</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="Admin Access" xml:space="preserve">
-        <source>Admin Access</source>
-        <target>Prístup administrátora</target>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/account/UserDetails</context>
         </context-group>
@@ -6522,13 +6501,6 @@ Vezmite, prosím, na vedomie, že neaktívne systémy nemôžu prijímať žiadn
           <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="kickstart.schedule.noup2date" xml:space="preserve">
-        <source>An autoinstallation was not scheduled for &lt;strong&gt;&lt;a href="/rhn/systems/details/Overview.do?sid={0}"&gt;{1}&lt;/a&gt;&lt;/strong&gt; because the package profile did not contain the 'up2date' package. An update of that system's package profile may be required.</source>
-        <target>Automatická inštalácia nebola naplánovaná pre &lt;strong&gt;&lt;a href="/rhn/systems/details/Overview.do?sid={0}"&gt;{1}&lt;/a&gt;&lt;/strong&gt;, pretože profil balíkov neobsahoval balík 'up2date'. Môže byť potrebná aktualizácia profilu balíkov tohto systému.</target>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
-        </context-group>
-      </trans-unit>
       <trans-unit id="kickstart.session.newsession" xml:space="preserve">
         <source>A new autoinstall session was initiated for this system.</source>
         <target>Pre tento systém bolo začaté nové sedenie automatickej inštalácie.</target>
@@ -6560,13 +6532,6 @@ Vezmite, prosím, na vedomie, že neaktívne systémy nemôžu prijímať žiadn
       <trans-unit id="kickstart.session.newprofile" xml:space="preserve">
         <source>Profile for autoinstall session {0}.</source>
         <target>Profil pre sedenie automatickej inštalácie {0}.</target>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="kickstart.schedule.noup2dateinchannel" xml:space="preserve">
-        <source>We require version {0} or greater of up2date in order to kickstart a system. &lt;strong&gt;{2}&lt;/strong&gt; has {1} installed but we could not find a version of up2date in this system's channels to upgrade it to the required version or above.</source>
-        <target>Na kickstart systému potrebujeme verziu {0} alebo vyššiu pre up2date. &lt;strong&gt;{2}&lt;/strong&gt; má nainštalované {1}, ale v kanáloch tohto systému sme nenašli verziu up2date, aby sme ju mohli aktualizovať na požadovanú alebo vyššiu verziu.</target>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
         </context-group>
@@ -7839,11 +7804,11 @@ Vezmite, prosím, na vedomie, že neaktívne systémy nemôžu prijímať žiadn
           <context context-type="sourcefile">/rhn/systems/provisioning/preservation/PreservationListDelete.do</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="cobbler.powermanagement.poweron" xml:space="preserve">
+      <trans-unit id="cobbler.powermanagement.power_on" xml:space="preserve">
         <source>Power On</source>
         <target>Zapnúť</target>
       </trans-unit>
-      <trans-unit id="cobbler.powermanagement.poweroff" xml:space="preserve">
+      <trans-unit id="cobbler.powermanagement.power_off" xml:space="preserve">
         <source>Power Off</source>
         <target>Vypnúť</target>
       </trans-unit>
@@ -7866,8 +7831,8 @@ Vezmite, prosím, na vedomie, že neaktívne systémy nemôžu prijímať žiadn
         </context-group>
       </trans-unit>
       <trans-unit id="cobbler.powermanagement.no_fence_agents" xml:space="preserve">
-        <source>This functionality is only available on @@PRODUCT_NAME@@ servers that have installed "fence agents," which are possibly availabe as "fence-agents", "fence-agents-all", or "fence-agents-ipmilan" packages depending on your operating system and desired power management infrastructure. Please install the fence agents. If fence agents are not available for your operating system then power management functionality is not supported.</source>
-        <target>Táto funkcia je dostupná len na serveroch @@PRODUCT_NAME@@, ktoré majú nainštalovaných "agentov zábran", ktorí sú prípadne k dispozícii ako balíky "fence-agents", "fence-agents-all" alebo "fence-agents-ipmilan" v závislosti od operačného systému a požadovanej infraštruktúry správy napájania. Prosím, nainštalujte agentov zábran. Ak pre váš operačný systém nie sú k dispozícii agenti zábran, funkcia správy napájania nie je podporovaná.</target>
+        <source>This functionality is only available on @@PRODUCT_NAME@@ servers that have installed "fence agents," which are possibly available as "fence-agents", "fence-agents-all", or "fence-agents-ipmilan" packages depending on your operating system and desired power management infrastructure. Please install the fence agents. If fence agents are not available for your operating system then power management functionality is not supported.</source>
+        <target state="translated">Táto funkcia je dostupná len na serveroch @@PRODUCT_NAME@@, ktoré majú nainštalovaných "agentov zábran", ktorí sú prípadne k dispozícii ako balíky "fence-agents", "fence-agents-all" alebo "fence-agents-ipmilan" v závislosti od operačného systému a požadovanej infraštruktúry správy napájania. Prosím, nainštalujte agentov zábran. Ak pre váš operačný systém nie sú k dispozícii agenti zábran, funkcia správy napájania nie je podporovaná.</target>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/systems/details/kickstart/PowerManagement.do</context>
         </context-group>
@@ -10634,8 +10599,8 @@ Prípadne si budete chcieť stiahnuť &lt;strong&gt; Inkrementálne obsahové IS
         <target>Kalendár s id '{0}' neexistuje</target>
       </trans-unit>
       <trans-unit id="maintenance.action.reschedule.error.cancel" xml:space="preserve">
-        <source>An error occured trying to cancel affected actions for schedule '{0}'</source>
-        <target>Pri pokuse o zrušenie ovplyvnených akcií pre plán '{0}' došlo k chybe</target>
+        <source>An error occurred trying to cancel affected actions for schedule '{0}'</source>
+        <target state="translated">Pri pokuse o zrušenie ovplyvnených akcií pre plán '{0}' došlo k chybe</target>
       </trans-unit>
       <trans-unit id="maintenance.action.reschedule.error.fail" xml:space="preserve">
         <source>Operation could not be performed. There are scheduled actions on systems</source>
@@ -12117,6 +12082,169 @@ Ak chcete túto situáciu napraviť, pridajte prihlasovacie údaje SCC &lt;a hre
           <context context-type="sourcefile">Navigation Menu</context>
         </context-group>
         <target state="translated">Riadenie prístupu</target>
+      </trans-unit>
+      <trans-unit id="pxeeventfailed" xml:space="preserve">
+        <source>PXE Event Failed</source>
+        <target state="translated">Udalosť PXE zlyhala</target>
+      </trans-unit>
+      <trans-unit id="ARMHF Debian" xml:space="preserve">
+        <source>ARMHF Debian</source>
+        <target>ARMHF Debian</target>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="diskcheckwarning" xml:space="preserve">
+        <source>Disk Check</source>
+        <target state="translated">Kontrola diskov</target>
+      </trans-unit>
+      <trans-unit id="notification.diskcheck.summary" xml:space="preserve">
+        <source>You are running out of space on your @@PRODUCT_NAME@@ {0}. This is {1}</source>
+        <target state="translated">Na vašom @@PRODUCT_NAME@@ {0} dochádza miesto. Je to {1}</target>
+      </trans-unit>
+      <trans-unit id="notification.diskcheck.details" xml:space="preserve">
+        <source>You are running out of space on your @@PRODUCT_NAME@@ {0}. This is {1}. If you run out of disk space, @@PRODUCT_NAME@@ will stop running, and this could lead to a loss of data. @@PRODUCT_NAME@@ will shutdown automatically.</source>
+        <target state="translated">Na vašom @@PRODUCT_NAME@@ {0} dochádza miesto. Je to {1}. Ak vám dôjde miesto na disku, @@PRODUCT_NAME@@ prestane fungovať, čo môže viesť k strate dát. @@PRODUCT_NAME@@ sa automaticky vypne.</target>
+      </trans-unit>
+      <trans-unit id="SCAP Policies" xml:space="preserve">
+        <source>SCAP Policies</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">Navigation Menu</context>
+        </context-group>
+        <target state="translated">Politiky SCAP</target>
+      </trans-unit>
+      <trans-unit id="SCAP Content" xml:space="preserve">
+        <source>SCAP Content</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">Navigation Menu</context>
+        </context-group>
+        <target state="translated">Obsah SCAP</target>
+      </trans-unit>
+      <trans-unit id="Tailoring Files" xml:space="preserve">
+        <source>Tailoring Files</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">Navigation Menu</context>
+        </context-group>
+        <target state="translated">Súbory prispôsobenia</target>
+      </trans-unit>
+      <trans-unit id="distupgrade.sles16.migration.success" xml:space="preserve">
+        <source>SLES 16 migration completed successfully.{0}</source>
+        <target state="translated">Migrácia SLES 16 bola úspešne dokončená.{0}</target>
+      </trans-unit>
+      <trans-unit id="distupgrade.sles16.migration.success.post_steps" xml:space="preserve">
+        <source>Recommended post-migration steps:
+- Check for orphaned/unneeded packages: zypper packages --orphaned --unneeded
+- Check for updated config files: find /etc/ -name '*.rpmnew' -o -name '*.rpmsave'</source>
+        <target state="translated">Odporúčané kroky po migrácii:
+- Skontrolovať osirelé/nepotrebné balíky: zypper packages --orphaned --unneeded
+- Skontrolovať aktualizované konfiguračné súbory: find /etc/ -name '*.rpmnew' -o -name '*.rpmsave'</target>
+      </trans-unit>
+      <trans-unit id="distupgrade.sles16.migration.failed" xml:space="preserve">
+        <source>SLES 16 migration failed or result not found.{0}</source>
+        <target state="translated">Migrácia SLES 16 zlyhala alebo sa nenašiel výsledok.{0}</target>
+      </trans-unit>
+      <trans-unit id="user.admin.access" xml:space="preserve">
+        <source>Admin Access</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/account/UserDetails</context>
+        </context-group>
+        <target state="translated">Prístup administrátora</target>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z16.description" xml:space="preserve">
+        <source>KVM on IBM z16 series</source>
+        <target state="translated">KVM na sérii IBM z16</target>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z16.label" xml:space="preserve">
+        <source>KVM on IBM z16 series</source>
+        <target state="translated">KVM na sérii IBM z16</target>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z17.description" xml:space="preserve">
+        <source>KVM on IBM z17 series</source>
+        <target state="translated">KVM na sérii IBM z17</target>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z17.label" xml:space="preserve">
+        <source>KVM on IBM z17 series</source>
+        <target state="translated">KVM na sérii IBM z17</target>
+      </trans-unit>
+      <trans-unit id="coco.resultType.ibm_pvattest.description" xml:space="preserve">
+        <source>IBM Secure Execution (IBM SEL)</source>
+        <target state="translated">IBM Secure Execution (IBM SEL)</target>
+      </trans-unit>
+      <trans-unit id="coco.resultType.ibm_pvattest.label" xml:space="preserve">
+        <source>IBM SEL PVATTEST</source>
+        <target state="translated">IBM SEL PVATTEST</target>
+      </trans-unit>
+      <trans-unit id="coco.status.requested.description" xml:space="preserve">
+        <source>Requested</source>
+        <target state="translated">Požadované</target>
+      </trans-unit>
+      <trans-unit id="coco.status.queued.description" xml:space="preserve">
+        <source>Queued</source>
+        <target state="translated">Zaradené</target>
+      </trans-unit>
+      <trans-unit id="coco.status.submitted.description" xml:space="preserve">
+        <source>Submitted</source>
+        <target state="translated">Odoslané</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.missing_input_data" xml:space="preserve">
+        <source>The mandatory input data is missing</source>
+        <target state="translated">Chýbajú povinné vstupné údaje</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_missing" xml:space="preserve">
+        <source>The secure execution header is missing.</source>
+        <target state="translated">Chýba hlavička bezpečného vykonania.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_wrong_format" xml:space="preserve">
+        <source>The secure execution header is not a valid Base64 string.</source>
+        <target state="translated">Hlavička bezpečného vykonania nie je platný reťazec Base64.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_empty" xml:space="preserve">
+        <source>The secure execution header is empty.</source>
+        <target state="translated">Hlavička bezpečného vykonania je prázdna.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_too_short" xml:space="preserve">
+        <source>The secure execution header is too short.</source>
+        <target state="translated">Hlavička bezpečného vykonania je príliš krátka.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_invalid_header" xml:space="preserve">
+        <source>The secure execution header does not start with the expected byte sequence.</source>
+        <target state="translated">Hlavička bezpečného vykonania nezačína očakávanou sekvenciou bajtov.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_size_mismatch" xml:space="preserve">
+        <source>The secure execution header size does not match the expected value.</source>
+        <target state="translated">Veľkosť hlavičky bezpečného vykonania nezodpovedá očakávanej hodnote.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_wrong_format" xml:space="preserve">
+        <source>The host key document is not a valid string.</source>
+        <target state="translated">Dokument kľúča hostiteľa nie je platný reťazec.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_not_valid_yet" xml:space="preserve">
+        <source>The host key document is not valid yet.</source>
+        <target state="translated">Dokument kľúča hostiteľa ešte nie je platný.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_expired" xml:space="preserve">
+        <source>The host key document has expired.</source>
+        <target state="translated">Dokument kľúča hostiteľa vypršal.</target>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_failed" xml:space="preserve">
+        <source>The host key document is not a valid PEM certificate.</source>
+        <target state="translated">Dokument kľúča hostiteľa nie je platný certifikát PEM.</target>
+      </trans-unit>
+      <trans-unit id="contentmanagement.invalid_issue_date" xml:space="preserve">
+        <source>Invalid date format. It must follow ISO 8601 offset format (e.g. 2026-06-04T22:00:00Z).</source>
+        <target state="translated">Neplatný formát dátumu. Musí byť v súlade s ofsetovým formátom ISO 8601 (napr. 2026-06-04T22:00:00Z).</target>
+      </trans-unit>
+      <trans-unit id="edit_address.jsp.country.select" xml:space="preserve">
+        <source>-- Select Country --</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/users/EditAddress</context>
+        </context-group>
+        <target state="translated">-- Výber krajiny --</target>
+      </trans-unit>
+      <trans-unit id="system.entitle.added.peripheral_server" xml:space="preserve">
+        <source>&lt;strong&gt;Peripheral server&lt;/strong&gt; type has been applied.</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/systems/details/Overview.do</context>
+        </context-group>
+        <target state="translated">Bol použitý typ &lt;strong&gt;periférneho servera&lt;/strong&gt;.</target>
       </trans-unit>
     </body>
   </file>

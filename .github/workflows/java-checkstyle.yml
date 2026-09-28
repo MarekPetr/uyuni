@@ -22,9 +22,13 @@ on:
       - 'java/**.xml'
       - '.github/workflows/java-checkstyle.yml'
 
+permissions:
+  contents: read
+
 jobs:
   checkstyle:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     container: registry.opensuse.org/systemsmanagement/uyuni/master/docker/containers/uyuni-master-pgsql:latest
 
     steps:

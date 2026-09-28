@@ -24,6 +24,7 @@ import com.redhat.rhn.common.localization.LocalizationService;
 import com.redhat.rhn.common.util.FileUtils;
 import com.redhat.rhn.domain.action.ActionFactory;
 import com.redhat.rhn.domain.action.server.ServerAction;
+import com.redhat.rhn.domain.action.server.ServerActionFactory;
 import com.redhat.rhn.domain.server.MinionSummary;
 import com.redhat.rhn.domain.server.Server;
 import com.redhat.rhn.domain.user.User;
@@ -64,8 +65,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import javax.persistence.DiscriminatorValue;
-import javax.persistence.Entity;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
 
 
 /**
@@ -196,7 +197,7 @@ public class ScriptRunAction extends ScriptAction {
                             .orElse(false))
                     .forEach(sa -> {
                         sa.fail("Error scheduling the action: " + errorMsg);
-                        ActionFactory.save(sa);
+                        ServerActionFactory.save(sa);
                     });
         }
         return ret;
@@ -258,9 +259,9 @@ public class ScriptRunAction extends ScriptAction {
      */
     @Override
     public void removeInvalidResults() {
-        HibernateFactory.getSession().createNativeQuery("""
+        HibernateFactory.getSession().createNativeMutationQuery("""
                   DELETE FROM rhnServerActionScriptResult sr WHERE sr.action_script_id = (
-                  SELECT as.id FROM rhnActionScript as WHERE as.action_id = :action)
+                  SELECT s.id FROM rhnActionScript s WHERE s.action_id = :action)
                   AND sr.server_id IN
                   (SELECT sa.server_id FROM rhnServerAction sa WHERE sa.action_id = :action AND sa.status = :queued)
                   """)

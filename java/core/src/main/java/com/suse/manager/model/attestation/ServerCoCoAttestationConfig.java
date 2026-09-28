@@ -14,19 +14,23 @@ import com.redhat.rhn.domain.server.Server;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.io.Serializable;
+import java.util.Map;
+import java.util.TreeMap;
 
-import javax.persistence.Column;
-import javax.persistence.Convert;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "suseServerCoCoAttestationConfig")
@@ -35,6 +39,7 @@ public class ServerCoCoAttestationConfig implements Serializable  {
     private Server server;
     private boolean enabled;
     private CoCoEnvironmentType environmentType;
+    private Map<String, Object> inData = new TreeMap<>();
     private boolean attestOnBoot;
 
     // Default empty constructor for hibernate
@@ -51,7 +56,7 @@ public class ServerCoCoAttestationConfig implements Serializable  {
     public ServerCoCoAttestationConfig(boolean enabledIn, Server serverIn) {
         enabled = enabledIn;
         server = serverIn;
-        environmentType = CoCoEnvironmentType.NONE;
+        environmentType = CoCoEnvironmentType.getDefault();
         attestOnBoot = false;
     }
 
@@ -61,8 +66,9 @@ public class ServerCoCoAttestationConfig implements Serializable  {
     @Id
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "suse_srvcocoatt_cnf_seq")
-    @SequenceGenerator(name = "suse_srvcocoatt_cnf_seq", sequenceName = "suse_srvcocoatt_cnf_id_seq",
-            allocationSize = 1)
+    @SequenceGenerator(
+            name = "suse_srvcocoatt_cnf_seq", sequenceName = "suse_srvcocoatt_cnf_id_seq", allocationSize = 1
+    )
     public Long getId() {
         return id;
     }
@@ -93,6 +99,18 @@ public class ServerCoCoAttestationConfig implements Serializable  {
         return environmentType;
     }
 
+    /**
+     * @return returns the input data
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb", name = "in_data")
+    public Map<String, Object> getInData() {
+        return inData;
+    }
+
+    /**
+     * @return returns true attest on boot flag is set
+     */
     @Column(name = "attest_on_boot")
     public boolean isAttestOnBoot() {
         return attestOnBoot;
@@ -127,6 +145,16 @@ public class ServerCoCoAttestationConfig implements Serializable  {
         environmentType = environmentTypeIn;
     }
 
+    /**
+     * @param inDataIn the input data to set
+     */
+    public void setInData(Map<String, Object> inDataIn) {
+        inData = inDataIn;
+    }
+
+    /**
+     * @param attestOnBootIn the value of attest on boot flag
+     */
     public void setAttestOnBoot(boolean attestOnBootIn) {
         this.attestOnBoot = attestOnBootIn;
     }

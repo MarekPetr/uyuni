@@ -15,7 +15,6 @@
 package com.redhat.rhn.frontend.action.channel.manage;
 
 import com.redhat.rhn.common.db.datasource.DataResult;
-import com.redhat.rhn.common.localization.LocalizationService;
 import com.redhat.rhn.common.security.PermissionException;
 import com.redhat.rhn.domain.access.AccessGroupFactory;
 import com.redhat.rhn.domain.channel.Channel;
@@ -44,8 +43,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * ChannelPackagesAction
@@ -72,7 +71,7 @@ public class ChannelPackagesAddAction extends ChannelPackagesBaseAction {
         Channel chan = ChannelFactory.lookupByIdAndUser(cid, user);
 
         if (!UserManager.verifyChannelAdmin(user, chan)) {
-              throw new PermissionException(AccessGroupFactory.CHANNEL_ADMIN);
+              throw new PermissionException(AccessGroupFactory.getChannelAdmin());
         }
         if (chan.getOrg() == null) {
             throw new PermissionCheckFailureException();
@@ -86,10 +85,8 @@ public class ChannelPackagesAddAction extends ChannelPackagesBaseAction {
 
         //Since if we are going to the confirm screen, we don't need to
         //actually do anything else, so lets go ahead and forward and save some time
-        String button = LocalizationService.getInstance().getMessage(
-        "channel.jsp.package.addbutton");
-        if (button.equals(request.getParameter(RhnHelper.CONFIRM_FORWARD)) &&
-                !set.isEmpty()) {
+        String confirm = request.getParameter(RhnHelper.CONFIRM_FORWARD);
+        if (confirm != null && confirm.equals("addpackages") && !set.isEmpty()) {
             Map<String, Object> params = new HashMap<>();
             params.put("cid", cid);
             return getStrutsDelegate().forwardParams(

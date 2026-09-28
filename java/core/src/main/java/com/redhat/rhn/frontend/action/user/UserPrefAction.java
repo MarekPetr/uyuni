@@ -35,8 +35,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * UserPreferencesAction, edit action for user detail page
@@ -72,6 +72,7 @@ public class UserPrefAction extends RhnAction {
         user.setEmailNotify(BooleanUtils.toInteger((Boolean) form
                 .get("emailNotif"), 1, 0, 0));
         user.setTaskoNotify(BooleanUtils.toBoolean((Boolean) form.get("taskoNotify")));
+        user.setBetaFeaturesEnabled(BooleanUtils.toBoolean((Boolean) form.get("betaFeaturesEnabled")));
         user.setPageSize(getAsInt(form, "pagesize", 5));
         user.setCsvSeparator((Character) form.get("csvSeparator"));
 

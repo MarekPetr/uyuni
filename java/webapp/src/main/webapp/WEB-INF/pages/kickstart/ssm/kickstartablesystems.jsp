@@ -1,5 +1,5 @@
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 <%@ taglib uri="http://rhn.redhat.com/tags/list" prefix="rl" %>
@@ -49,7 +49,7 @@
     </h2>
     <p><bean:message key="ssm.kickstartable-systems.jsp.systems.summary"/></p>
     <hr/>
-    <div class="form-group">
+    <div class="row">
         <div class="control-label">
             <bean:message key="ssm.kickstartable-systems.jsp.type"/>:
         </div>
@@ -71,7 +71,7 @@
             </div>
         <p class="help-block">* <bean:message key="ssm.kickstartable-systems.jsp.ip-tooltip"/></p>
     </div>
-    <div class="form-group text-right">
+    <div class="row text-right">
         <button class="btn btn-default" type="submit" name="dispatch"
             value="${rhn:localize('ssm.config.subscribe.jsp.continue')}"
             <c:if test="${not empty disableProfiles}">disabled="true"</c:if>>

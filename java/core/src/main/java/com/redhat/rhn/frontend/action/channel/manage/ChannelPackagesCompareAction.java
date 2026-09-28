@@ -38,8 +38,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * ChannelPackagesAction
@@ -70,7 +70,7 @@ public class ChannelPackagesCompareAction extends ChannelPackagesBaseAction {
         String syncType = request.getParameter(SYNC_TYPE);
 
         if (!UserManager.verifyChannelAdmin(user, chan)) {
-              throw new PermissionException(AccessGroupFactory.CHANNEL_ADMIN);
+              throw new PermissionException(AccessGroupFactory.getChannelAdmin());
         }
         if (chan.getOrg() == null) {
             throw new PermissionCheckFailureException();

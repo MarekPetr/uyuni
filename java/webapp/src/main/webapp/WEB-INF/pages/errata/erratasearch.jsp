@@ -1,9 +1,9 @@
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
 <%@ taglib uri="http://rhn.redhat.com/tags/list" prefix="rl" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
+<%@ taglib uri="jakarta.tags.functions" prefix="fn" %>
 
 
 <html>
@@ -49,7 +49,7 @@
               </label>
             </td>
              <td>
-              <div class="row-0">
+              <div class="row">
                 <div class="col-md-5">
                   <html:text property="search_string" styleClass="form-control input-sm" name="search_string"
                      value="${search_string}" maxlength="36" accesskey="4"/>
@@ -67,7 +67,7 @@
               </label>
             </td>
              <td>
-                <div class="row-0">
+                <div class="row">
                   <div class="col-md-5">
                     <html:select property="view_mode" styleClass="form-control input-sm">
                         <html:options collection="searchOptions"

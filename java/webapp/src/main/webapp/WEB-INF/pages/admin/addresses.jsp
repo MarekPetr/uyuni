@@ -1,5 +1,5 @@
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 
@@ -13,6 +13,6 @@
             <bean:message key="Addresses" />
         </rhn:toolbar>
         <p><bean:message key="addresses.summary" /></p>
-        <rhn:address type="M" action="my" user="${requestScope.targetuser}" address="${requestScope.addressMarketing}"/>
+        <rhn:address action="my" user="${requestScope.targetuser}" address="${requestScope.address}"/>
     </body>
 </html>

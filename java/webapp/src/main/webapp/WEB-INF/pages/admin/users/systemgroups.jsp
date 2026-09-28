@@ -1,5 +1,5 @@
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 
@@ -28,7 +28,7 @@
       <div class="panel-body">
         <rhn:csrf />
         <html:hidden property="submitted" value="true"/>
-        <div class="form-group">
+        <div class="row">
           <div class="col-md-3 control-label">
             <bean:message key="extauth.sg.default_sg"/>
           </div>
@@ -41,7 +41,7 @@
       </div>
     </div>
     <hr/>
-    <div class="form-group">
+    <div class="row">
       <div class="col-lg-offset-3 offset-lg-3 col-md-4">
         <html:submit styleClass="btn btn-primary">
           <bean:message key="config.update"/>

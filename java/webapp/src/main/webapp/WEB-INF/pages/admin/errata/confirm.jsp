@@ -1,5 +1,5 @@
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 <html>
@@ -27,7 +27,7 @@
                         </html:submit>
                     </div>
                 </div>
-                <div class="form-group">
+                <div class="row">
                     <div class="col-md-offset-3 offset-md-3 col-md-6">
                         <span class="help-block">
                             <bean:message key="applyerrata.disclaimer" />

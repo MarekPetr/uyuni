@@ -217,6 +217,7 @@ rhnActionSubChannelsList           :: rhnActionSubChannels rhnChannel
 rhnActionSubChannelsTokens         :: suseChannelAccessToken rhnActionSubChannels
 suseChannelAccessToken             :: suseMinionInfo
 suseChannelAccessTokenChannel      :: suseChannelAccessToken rhnChannel
+suseClmDiffQueue                   :: suseContentProject rhnChannel
 suseCoCoAttestationResult          :: suseServerCoCoAttestationReport
 suseContentProject                 :: web_customer
 suseContentProject_alters          :: suseContentEnvironment
@@ -253,8 +254,9 @@ suseMinionInfo                     :: rhnServer
 suseInstalledProduct               :: rhnPackageArch
 suseMdData                         :: rhnChannel rhnPackage suseMdKeyword
 suseOVALPlatform                   ::
-suseOVALPlatformVulnerablePackage  :: suseOVALPlatform rhnCVE suseOVALVulnerablePackage
-suseOVALVulnerablePackage          ::
+suseOVALOsProduct                  ::
+suseOVALPlatformVulnerable         :: suseOVALOsProduct suseOVALPlatform rhnCVE
+suseOVALVulnerablePackage          :: suseOVALPlatformVulnerable
 susePackageEula                    :: rhnPackage suseEula
 susePackageProductFile             :: suseProductFile rhnPackage
 susePackageState                   :: rhnPackageName rhnPackageEVR rhnPackageArch suseStateRevision \
@@ -285,9 +287,14 @@ suseOrgStateRevision               :: web_customer suseStateRevision
 web_contact                        :: web_customer
 web_contact_all                    :: web_contact
 web_user_contact_permission        :: web_contact
-web_user_site_info                 :: web_contact web_user_site_type
+web_user_site_info                 :: web_contact
 web_user_personal_info             :: web_contact web_user_prefix
-rhnActionScap                      :: rhnAction
+suseScapContent                    ::
+suseScapTailoringFile              :: web_customer
+suseScapPolicy                     :: suseScapContent suseScapTailoringFile web_customer
+suseXccdfRuleFix                   ::
+suseXccdfRuleFixCustom             :: suseXccdfRuleFix web_customer web_contact
+rhnActionScap                      :: rhnAction suseScapPolicy
 rhnXccdfIdent                      :: rhnXccdfIdentSystem
 rhnXccdfRuleresult                 :: rhnXccdfTestresult rhnXccdfIdent rhnXccdfRuleresultType
 rhnXccdfTestresult                 :: rhnServer rhnActionScap rhnXccdfBenchmark rhnXccdfProfile
@@ -298,6 +305,7 @@ rhnChildChannelArchCompat          :: rhnChannelArch
 rhnResetPassword                   :: web_contact
 suseUserNotification               :: suseNotificationMessage web_contact
 suseRecurringAction                :: web_customer web_contact rhnServerGroup suseMinionInfo
+suseRecurringScapPolicy            :: suseRecurringAction suseScapPolicy
 suseAnsiblePath                    :: rhnServer
 rhnActionPlaybook                  :: rhnAction
 susePaygDimensionResult            :: billing_dimension_t susePaygDimensionComputation

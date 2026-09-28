@@ -45,8 +45,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * ChannelPackagesAction
@@ -67,7 +67,7 @@ public class ChannelPackagesCompareMergeConfirmAction extends ChannelPackagesCom
         Channel chan = ChannelFactory.lookupByIdAndUser(cid, user);
 
         if (!UserManager.verifyChannelAdmin(user, chan)) {
-              throw new PermissionException(AccessGroupFactory.CHANNEL_ADMIN);
+              throw new PermissionException(AccessGroupFactory.getChannelAdmin());
         }
         if (chan.getOrg() == null) {
             throw new PermissionCheckFailureException();

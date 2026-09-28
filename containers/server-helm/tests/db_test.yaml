@@ -1,0 +1,60 @@
+suite: test database deployment
+templates:
+  - db.yaml
+tests:
+  - it: should render db deployment with default values
+    set:
+      global.fqdn: uyuni.example.com
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: db
+      - equal:
+          path: spec.template.spec.containers[?(@.name=="db")].image
+          value: registry.opensuse.org/uyuni/server-postgresql:0.0.0
+      - equal:
+          path: spec.template.spec.containers[?(@.name=="db")].env[?(@.name=="POD_NETWORK")].value
+          value: 10.42.0.0/16
+
+  - it: should override image when values.images is provided
+    set:
+      global.fqdn: uyuni.example.com
+      db:
+        image: my-custom-registry/db
+        tag: 5.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[?(@.name=="db")].image
+          value: my-custom-registry/db:5.0.0
+      
+  - it: should set pod network if db podsCIDR is provided
+    set:
+      global.fqdn: uyuni.example.com
+      db:
+        podsCIDR: 192.168.15.0/24
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[?(@.name=="db")].env[?(@.name=="POD_NETWORK")].value
+          value: 192.168.15.0/24
+
+  - it: should not render db deployment if disabled
+    set:
+      global.fqdn: uyuni.example.com
+      db:
+        enable: false
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: db.yaml
+
+  - it: should use the registry credentials if set
+    set:
+      global.fqdn: uyuni.example.com
+      registrySecret: mycreds
+    asserts:
+      - contains:
+          path: spec.template.spec.imagePullSecrets
+          content:
+            name: mycreds

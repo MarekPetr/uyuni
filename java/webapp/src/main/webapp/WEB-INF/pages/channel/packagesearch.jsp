@@ -1,5 +1,5 @@
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
 <%@ taglib uri="http://rhn.redhat.com/tags/list" prefix="rl" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
@@ -17,7 +17,7 @@
         <p><bean:message key="packagesearch.jsp.instructions"/></p>
         <html:form action="/channels/software/Search.do" styleClass="form-horizontal">
             <rhn:csrf />
-            <div class="form-group">
+            <div class="row">
                 <label class="col-lg-3 control-label">
                     <bean:message key="packagesearch.jsp.searchfor"/>
                 </label>
@@ -33,7 +33,7 @@
                     </div>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="row">
                 <label class="col-lg-3 control-label">
                     <bean:message key="packagesearch.jsp.whatsearch"/>
                 </label>
@@ -45,7 +45,7 @@
                     </html:select>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="row">
                 <label class="col-lg-3 control-label">
                     <bean:message key="packagesearch.jsp.wheresearch"/>
                 </label>
@@ -59,7 +59,7 @@
                     </div>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="row">
                 <div class="col-lg-offset-3 offset-lg-3 col-lg-6">
                     <div class="checkbox">
                         <label>
@@ -70,7 +70,7 @@
                     </div>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="row">
                 <div class="col-lg-offset-3 offset-lg-3 col-lg-6">
                     <html:select property="channel_filter" styleClass="form-control">
                         <html:options collection="allChannels"
@@ -79,7 +79,7 @@
                     </html:select>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="row">
                 <div class="col-lg-offset-3 offset-lg-3 col-lg-6">
                     <div class="checkbox">
                         <label>
@@ -90,7 +90,7 @@
                     </div>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="row">
                 <div class="col-lg-offset-3 offset-lg-3 col-lg-6">
                     <html:select property="channel_arch" multiple="multiple"
                                  styleClass="form-control"
@@ -104,7 +104,7 @@
                     </span>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="row">
                 <div class="col-lg-offset-3 offset-lg-3 col-lg-6">
                     <label>
                         <html:checkbox property="fineGrained" styleId="fineGrainedlabel" />

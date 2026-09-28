@@ -20,6 +20,8 @@ import com.redhat.rhn.domain.server.ServerFactory;
 import com.redhat.rhn.domain.server.ServerGroupFactory;
 import com.redhat.rhn.frontend.events.AlignSoftwareTargetAction;
 import com.redhat.rhn.frontend.events.AlignSoftwareTargetMsg;
+import com.redhat.rhn.frontend.events.AnalyzeAlignTablesAction;
+import com.redhat.rhn.frontend.events.AnalyzeAlignTablesMsg;
 import com.redhat.rhn.frontend.events.CloneErrataAction;
 import com.redhat.rhn.frontend.events.CloneErrataEvent;
 import com.redhat.rhn.frontend.events.NewCloneErrataAction;
@@ -58,6 +60,8 @@ import com.redhat.rhn.frontend.events.UpdateErrataCacheAction;
 import com.redhat.rhn.frontend.events.UpdateErrataCacheEvent;
 import com.redhat.rhn.manager.system.SystemManager;
 
+import com.suse.manager.reactor.messaging.ApplyStatesEventMessage;
+import com.suse.manager.reactor.messaging.ApplyStatesEventMessageAction;
 import com.suse.manager.reactor.messaging.ChannelsChangedEventMessage;
 import com.suse.manager.reactor.messaging.ChannelsChangedEventMessageAction;
 import com.suse.manager.webui.services.iface.SaltApi;
@@ -333,6 +337,10 @@ public class MessageQueue {
         MessageQueue.registerAction(new AlignSoftwareTargetAction(),
                                     AlignSoftwareTargetMsg.class);
 
+        // Analyze CLM tables after align transaction finishes
+        MessageQueue.registerAction(new AnalyzeAlignTablesAction(),
+                        AnalyzeAlignTablesMsg.class);
+
         // Asynchronously schedule immediate repo sync
         MessageQueue.registerAction(new ScheduleRepoSyncAction(),
                 ScheduleRepoSyncEvent.class);
@@ -348,5 +356,9 @@ public class MessageQueue {
         // Handle changes of channel assignments on minions
         MessageQueue.registerAction(new ChannelsChangedEventMessageAction(saltApi),
                 ChannelsChangedEventMessage.class);
+
+        // Salt state apply - moved from SaltReactor as we need it also in taskomatic
+        MessageQueue.registerAction(new ApplyStatesEventMessageAction(),
+                ApplyStatesEventMessage.class);
     }
 }

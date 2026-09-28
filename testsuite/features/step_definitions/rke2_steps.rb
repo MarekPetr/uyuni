@@ -1,0 +1,326 @@
+# Copyright (c) 2026 SUSE LLC.
+# Licensed under the terms of the MIT license.
+
+Then('the setup marker file should exist on "server"') do
+  server_pod = get_pod_name('server', 'server')
+  cmd = "kubectl exec -n uyuni #{server_pod} -- test -f /var/spacewalk/.MANAGER_SETUP_COMPLETE && echo 'EXISTS'"
+  status, code = get_target('server').run_local(cmd)
+  raise 'Failed to check server setup marker file' unless code.zero?
+  raise 'Server setup marker file does not exist' unless status.include? 'EXISTS'
+end
+
+Then(/^the environment variable "([^"]*)" is set on "([^"]*)"$/) do |var_name, host|
+  node = get_target(host)
+  _out, code = node.run("printenv #{var_name}", check_errors: false, runs_in_container: false)
+  raise "Environment variable '#{var_name}' is not set on #{host}" unless code.zero?
+end
+
+Given(/^The Kubernetes cluster is ready on "(.*)"$/) do |target|
+  _out, code = get_target(target).run_local('kubectl get nodes && kubectl get namespace uyuni')
+  raise "Kubernetes cluster is not ready or uyuni namespace is missing on #{target}" unless code.zero?
+end
+
+And(/^(?:the|I wait until the) "(.*)" deployment on "(.*)" in the namespace "(.*)" (?:becomes|should become) ready within (.*) minutes$/) do |name, target, namespace, mins|
+  wait_for_deployment(target, name, namespace, mins.to_i)
+end
+
+And(/^(?:the|I wait until the) "(.*)" pod on "(.*)" in the namespace "(.*)" (?:becomes|should become) ready within (.*) minutes$/) do |name, target, namespace, mins|
+  wait_for_pods(target, name, namespace, mins.to_i)
+end
+
+When(/^I apply the RKE2 YAML file "([^"]*)" on "([^"]*)"$/) do |filename, target|
+  _out, code = get_target(target).run_local("kubectl apply -f #{filename}")
+  raise ScriptError, "Failed to apply #{filename} on #{target}" unless code.zero?
+end
+
+When(/^I wait until "([^"]*)" helm chart is deployed in namespace "([^"]*)" on "([^"]*)"$/) do |chart, namespace, target|
+  node = get_target(target)
+  node.run_until_ok("helm status #{chart} --namespace #{namespace} | grep -q 'STATUS: deployed'", runs_in_container: false)
+end
+
+When(/^I set "([^"]*)" storage class as default on "([^"]*)"$/) do |storage_class, target|
+  cmd = "kubectl patch storageclass #{storage_class} -p '{\"metadata\": {\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"true\"}}}'"
+  _out, code = get_target(target).run_local(cmd)
+  raise ScriptError, "Failed to set #{storage_class} as default storage class on #{target}" unless code.zero?
+end
+
+### External CA setup and teardown steps
+
+Given('I back up the CA certificates on the server and proxy') do
+  backup_dir = '/root/ca-backup'
+  ca_dir = '/root/test-external-ca'
+  ca_cn = 'External Test CA'
+
+  add_context(:backup_dir, backup_dir)
+  add_context(:external_ca_dir, ca_dir)
+  add_context(:external_ca_cn, ca_cn)
+
+  server = get_target('server')
+  server.run_local("mkdir -p #{backup_dir}")
+
+  _out, code = server.run_local(
+    "kubectl get secret uyuni-ca -n cert-manager -o yaml --show-managed-fields=false > #{backup_dir}/uyuni-ca-secret.yaml"
+  )
+  raise SystemCallError, 'Failed to backup uyuni-ca secret' unless code.zero?
+
+  _out, code = server.run_local(
+    "kubectl get certificate uyuni-ca -n cert-manager -o yaml --show-managed-fields=false > #{backup_dir}/uyuni-ca-cert.yaml"
+  )
+  raise SystemCallError, 'Failed to backup uyuni-ca Certificate CR' unless code.zero?
+
+  begin
+    proxy = get_target('proxy')
+    proxy.run_local("mkdir -p #{backup_dir}")
+    proxy.run_local(
+      "kubectl get configmap uyuni-ca -n uyuni -o yaml > #{backup_dir}/uyuni-ca-configmap.yaml",
+      check_errors: false
+    )
+  rescue StandardError
+    $stdout.puts 'Proxy configmap backup skipped (proxy not available yet)'
+  end
+end
+
+When('I restore the original CA certificates on the server and proxy') do
+  backup_dir = get_context(:backup_dir)
+  ca_dir = get_context(:external_ca_dir)
+  server = get_target('server')
+
+  server.run_local('kubectl delete certificate uyuni-ca -n cert-manager --ignore-not-found')
+  server.run_local('kubectl delete secret uyuni-ca -n cert-manager --ignore-not-found')
+  server.run_local("kubectl apply -f #{backup_dir}/uyuni-ca-secret.yaml")
+  server.run_local("kubectl apply -f #{backup_dir}/uyuni-ca-cert.yaml")
+
+  server.run_local('kubectl delete secret uyuni-cert db-cert proxy-cert -n uyuni --ignore-not-found')
+  %w[uyuni-cert db-cert].each do |cert|
+    server.run_local(
+      "kubectl get certificate #{cert} -n uyuni -o yaml --show-managed-fields=false > /tmp/#{cert}-cr.yaml"
+    )
+    server.run_local("kubectl delete certificate #{cert} -n uyuni --ignore-not-found")
+    server.run_local("kubectl apply -f /tmp/#{cert}-cr.yaml")
+  end
+  server.run_local('kubectl delete certificate proxy-cert -n uyuni --ignore-not-found')
+
+  repeat_until_timeout(timeout: 300, message: 'uyuni-cert was not re-issued during restore') do
+    _out, code = server.run_local('kubectl get secret uyuni-cert -n uyuni', check_errors: false)
+    break if code.zero?
+
+    sleep 5
+  end
+
+  local_ca = Tempfile.new('uyuni-restored-ca')
+  remote_ca = "/tmp/uyuni-restored-ca-#{$PROCESS_ID}.crt"
+  begin
+    server.run_local("kubectl get secret uyuni-ca -n cert-manager -o jsonpath='{.data.tls\\.crt}' | base64 -d > #{remote_ca}")
+    file_extract(server, remote_ca, local_ca.path)
+    server.run_local("rm -f #{remote_ca}")
+    FileUtils.cp(local_ca.path, "/etc/pki/trust/anchors/#{server.full_hostname}.cert")
+    raise ScriptError, 'Failed to update CA certificates' unless system('update-ca-certificates')
+  ensure
+    local_ca.close
+    local_ca.unlink
+  end
+
+  server.run_local("rm -rf #{backup_dir} #{ca_dir}")
+
+  begin
+    proxy = get_target('proxy')
+    proxy.run_local(
+      "test -f #{backup_dir}/uyuni-ca-configmap.yaml && kubectl apply -f #{backup_dir}/uyuni-ca-configmap.yaml --force",
+      check_errors: false
+    )
+    proxy.run_local('kubectl delete secret proxy-cert -n uyuni --ignore-not-found', check_errors: false)
+    proxy.run_local("rm -rf #{backup_dir}", check_errors: false)
+  rescue StandardError
+    $stdout.puts 'Proxy restore skipped (proxy not available)'
+  end
+end
+
+### External CA replacement steps
+
+When(/^I generate an external CA on "(.*)"$/) do |target|
+  ca_dir = get_context(:external_ca_dir)
+  ca_cn = get_context(:external_ca_cn)
+  get_target(target).run_local("mkdir -p #{ca_dir}")
+  _out, code = get_target(target).run_local(
+    "openssl ecparam -genkey -name prime256v1 -noout -out #{ca_dir}/ca.key && " \
+    "openssl req -new -x509 -key #{ca_dir}/ca.key -out #{ca_dir}/ca.crt " \
+    "-days 3650 -subj '/C=DE/ST=Bayern/L=Nurnberg/O=#{ca_cn}/OU=Testing/CN=External CA'"
+  )
+  raise SystemCallError, 'Failed to generate external CA' unless code.zero?
+end
+
+When(/^I replace the uyuni-ca secret with the external CA on "(.*)"$/) do |target|
+  ca_dir = get_context(:external_ca_dir)
+  get_target(target).run_local('kubectl delete certificate uyuni-ca -n cert-manager --ignore-not-found')
+  get_target(target).run_local('kubectl delete secret uyuni-ca -n cert-manager --ignore-not-found')
+  cmd = 'kubectl create secret tls uyuni-ca -n cert-manager ' \
+        "--cert=#{ca_dir}/ca.crt --key=#{ca_dir}/ca.key"
+  _out, code = get_target(target).run_local(cmd)
+  raise SystemCallError, 'Failed to replace uyuni-ca secret' unless code.zero?
+end
+
+When(/^I delete the leaf certificate secrets on "(.*)"$/) do |target|
+  _out, code = get_target(target).run_local(
+    'kubectl delete secret uyuni-cert db-cert -n uyuni --ignore-not-found'
+  )
+  raise SystemCallError, 'Failed to delete leaf certificate secrets' unless code.zero?
+end
+
+Then(/^the "(.*)" secret on "(.*)" should be re-issued within (\d+) minutes$/) do |secret, target, mins|
+  repeat_until_timeout(timeout: mins.to_i * 60, message: "Secret #{secret} was not re-issued") do
+    _out, code = get_target(target).run_local("kubectl get secret #{secret} -n uyuni", check_errors: false)
+    break if code.zero?
+
+    sleep 5
+  end
+end
+
+Then(/^the "(.*)" certificate on "(.*)" should be signed by the external CA$/) do |secret, target|
+  ca_cn = get_context(:external_ca_cn)
+  issuer, code = get_target(target).run_local(
+    "kubectl get secret #{secret} -n uyuni -o jsonpath='{.data.tls\\.crt}' | base64 -d | openssl x509 -noout -issuer"
+  )
+  raise SystemCallError, "Failed to read issuer from #{secret}" unless code.zero?
+  raise ScriptError, "#{secret} not signed by external CA. Issuer: #{issuer}" unless issuer.include?(ca_cn)
+end
+
+When(/^I re-generate the proxy certificate on the server using the external CA$/) do
+  proxy_fqdn = get_target('proxy').full_hostname
+
+  get_target('server').run_local('kubectl delete certificate proxy-cert -n uyuni --ignore-not-found')
+  get_target('server').run_local('kubectl delete secret proxy-cert -n uyuni --ignore-not-found')
+
+  certificate = render_certificate_yaml(
+    name: 'proxy-cert',
+    secret_name: 'proxy-cert',
+    fqdn: proxy_fqdn,
+    namespace: 'uyuni',
+    issuer_name: 'uyuni-issuer',
+    issuer_kind: 'ClusterIssuer',
+    issuer_group: 'cert-manager.io',
+    is_ca: false
+  )
+  _out, code = get_target('server').run_local("cat <<'CERT_EOF' | kubectl apply -f -\n#{certificate}\nCERT_EOF")
+  raise SystemCallError, 'Failed to create proxy-cert Certificate resource' unless code.zero?
+
+  repeat_until_timeout(timeout: 600, message: 'proxy-cert secret was not created by cert-manager') do
+    _out, code = get_target('server').run_local('kubectl get secret proxy-cert -n uyuni', check_errors: false)
+    break if code.zero?
+
+    sleep 5
+  end
+end
+
+When(/^I transfer the proxy certificate from the server to "(.*)"$/) do |target|
+  out, code = get_target('server').run_local(
+    'kubectl get secret proxy-cert -n uyuni -o yaml --show-managed-fields=false'
+  )
+  raise SystemCallError, 'Failed to extract proxy-cert secret from server' unless code.zero?
+
+  secret = YAML.safe_load(out)
+  secret['metadata'].delete_if { |k, _| %w[uid resourceVersion creationTimestamp annotations].include?(k) }
+  clean_yaml = YAML.dump(secret)
+
+  secret_file = '/tmp/proxy-cert-secret.yaml'
+  file = generate_temp_file('proxy-cert-secret', clean_yaml)
+  success = file_inject(get_target(target), file.path, secret_file)
+  file.close
+  file.unlink
+  raise ScriptError, 'Failed to inject proxy-cert secret into proxy' unless success
+
+  _out, code = get_target(target).run_local(
+    "kubectl apply -f #{secret_file}"
+  )
+  raise SystemCallError, 'Failed to apply proxy-cert secret on proxy cluster' unless code.zero?
+end
+
+When(/^I update the uyuni-ca configmap on "(.*)" with the external CA$/) do |target|
+  ca_dir = get_context(:external_ca_dir)
+
+  # Copy the external CA cert to the proxy node
+  step %(I copy "#{ca_dir}/ca.crt" from "server" outside the container to "#{target}" via scp in the path "/tmp/external-ca.crt")
+
+  # Replace the uyuni-ca configmap on the proxy cluster
+  _out, code = get_target(target).run_local(
+    'kubectl delete configmap uyuni-ca -n uyuni --ignore-not-found && ' \
+    'kubectl create configmap uyuni-ca -n uyuni --from-file=ca.crt=/tmp/external-ca.crt'
+  )
+  raise SystemCallError, 'Failed to update uyuni-ca configmap on proxy' unless code.zero?
+end
+
+### TFTP container sanity check steps
+
+Then(/^the "(.*)" service on "(.*)" in the namespace "(.*)" should have at least one active endpoint$/) do |svc, target|
+  out, code = get_target(target).run_local(
+    "kubectl get endpoints #{svc} -n uyuni -o jsonpath='{.subsets[0].addresses[0].ip}'"
+  )
+  raise "Service '#{svc}' has no active endpoints on '#{target}'" unless code.zero? && !out.strip.empty?
+end
+
+# File placed in /srv/tftpboot on the uyuni (server) pod.
+# The tftp pod fetches it via http://web.uyuni.svc/tftp/<filename> - it never reads local disk.
+Given(/^I create a sanity-check file in the TFTP boot root on "(.*)"$/) do |target|
+  server_pod = get_pod_name(target, 'server')
+  tftp_probe_filename = 'uyuni-tftp-sanity-probe.txt'
+  tftp_probe_content  = 'uyuni-tftp-sanity-ok'
+  add_context(:tftp_probe_filename, tftp_probe_filename)
+  add_context(:tftp_probe_content, tftp_probe_content)
+  get_target(target).run_local(
+    "kubectl exec -n uyuni #{server_pod} -- " \
+    "sh -c 'echo #{tftp_probe_content} > /srv/tftpboot/#{tftp_probe_filename}'"
+  )
+end
+
+When(/^I configure the certificate in the controller$/) do
+  server = get_target('server')
+  controller = get_target('localhost')
+  remote_file = '/tmp/tls.crt'
+  local_file = '/etc/pki/trust/anchors/tls.crt'
+  nssdb = 'sql:/root/.pki/nssdb'
+  nickname = 'susemanager'
+
+  repeat_until_timeout(timeout: 300, message: 'uyuni-ca configmap was not populated') do
+    server.run("kubectl get cm -n $SERVER_NAMESPACE uyuni-ca -o 'jsonpath={.data.ca\\.crt}' > #{remote_file}", check_errors: false)
+    out, _code = server.run("test -s #{remote_file} && echo present", check_errors: false)
+    break if out.strip == 'present'
+
+    sleep 5
+  end
+
+  file_extract(server, remote_file, local_file)
+  raise ScriptError, 'Failed to update CA certificates' unless system('update-ca-certificates')
+
+  # Chrome/Selenium reads the NSS db, not the system OpenSSL bundle - import there too.
+  controller.run("certutil -d #{nssdb} -t TC -n \"#{nickname}\" -D", check_errors: false)
+  _out, code = controller.run("certutil -d #{nssdb} -A -t TC -n \"#{nickname}\" -i #{local_file}")
+  raise ScriptError, 'Failed to import CA certificate into browser NSS database' unless code.zero?
+end
+
+# Uses curl with the tftp:// scheme
+# Tests the full path: server node -> NodePort -> tftp pod -> HTTP -> uyuni pod -> /srv/tftpboot.
+When(/^I download the sanity-check file via TFTP from "(.*)"$/) do |target|
+  node_port = get_tftp_node_port(target)
+  filename  = get_context(:tftp_probe_filename)
+  local     = "/tmp/#{filename}"
+  add_context(:tftp_probe_local_path, local)
+  get_target(target).run_local(
+    "curl --silent --show-error tftp://localhost:#{node_port}/#{filename} --output #{local}"
+  )
+end
+
+Then(/^the downloaded TFTP content should match the expected sanity-check content on "(.*)"$/) do |target|
+  local    = get_context(:tftp_probe_local_path)
+  expected = get_context(:tftp_probe_content)
+  out, _code = get_target(target).run_local("cat #{local}", check_errors: false)
+  raise "Content mismatch — expected: '#{expected}', got: '#{out.strip}'" unless out.strip == expected
+end
+
+And(/^I remove the sanity-check file from the TFTP boot root on "(.*)"$/) do |target|
+  server_pod = get_pod_name(target, 'server')
+  filename   = get_context(:tftp_probe_filename)
+  local      = get_context(:tftp_probe_local_path)
+  get_target(target).run_local(
+    "kubectl exec -n uyuni #{server_pod} -- rm -f /srv/tftpboot/#{filename}"
+  )
+  get_target(target).run_local("rm -f #{local}", check_errors: false)
+end

@@ -1,8 +1,8 @@
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
+<%@ taglib uri="jakarta.tags.functions" prefix="fn" %>
 
 
 <html>
@@ -205,24 +205,6 @@
                         <bean:message key="details.jsp.none"/>
                     </div>
                 </c:if>
-            </c:if>
-        </div>
-    </div>
-
-    <div class="panel panel-default">
-        <div class="panel-heading">
-            <h2><bean:message key="erratalist.jsp.oval"/></h2>
-        </div>
-        <div class="panel-body">
-            <c:if test="${ovalFile != null}">
-                <div class="page-summary">
-                    <c:out value="${ovalFile}" escapeXml="false" />
-                </div>
-            </c:if>
-            <c:if test="${ovalFile == null}">
-                <div class="page-summary">
-                    <bean:message key="details.jsp.none"/>
-                </div>
             </c:if>
         </div>
     </div>

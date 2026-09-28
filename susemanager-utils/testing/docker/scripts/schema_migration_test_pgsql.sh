@@ -49,13 +49,12 @@ echo $PATH
 echo $PERLLIB
 
 export SYSTEMD_NO_WRAP=1
-su - postgres -c "/usr/lib/postgresql/bin/pg_ctl stop" ||:
-su - postgres -c "/usr/lib/postgresql/bin/pg_ctl start"
+su - postgres -c "/usr/lib/postgresql/bin/pg_ctl -D /var/lib/pgsql/data stop" ||:
+su - postgres -c "/usr/lib/postgresql/bin/pg_ctl -D /var/lib/pgsql/data start"
 
 touch /var/lib/rhn/rhn-satellite-prep/etc/rhn/rhn.conf
 # SUSE Manager initialization
 cp /root/rhn.conf /etc/rhn/rhn.conf
-smdba system-check autotuning --max_connections=50
 
 # we changed the schema dir, but we start with a schema which live still in the old location
 # provide a symlink to make the tooling work
@@ -63,12 +62,6 @@ if [ -d /etc/sysconfig/rhn/postgres -a ! -e /usr/share/susemanager/db/postgres ]
     mkdir -p /usr/share/susemanager/db
     ln -s /etc/sysconfig/rhn/postgres /usr/share/susemanager/db/postgres
 fi
-
-# We need SUPERUSER role to install the old schema as they add extensions.
-# evr_t also didn't exist when installing those packages.
-# This basically reproduces the upgrade from an existing DB setup.
-su - postgres -c "echo 'ALTER ROLE spacewalk WITH SUPERUSER;
-DROP TYPE IF EXISTS evr_t CASCADE;' | psql -d susemanager"
 
 spacewalk-sql /usr/share/susemanager/db/postgres/main.sql
 
@@ -91,9 +84,9 @@ fi
 # run the schema upgrade from git repo
 if ! /manager/schema/spacewalk/spacewalk-schema-upgrade -y; then
     cat /var/log/spacewalk/schema-upgrade/schema-from-*.log
-    su - postgres -c "/usr/lib/postgresql/bin/pg_ctl stop"
+    su - postgres -c "/usr/lib/postgresql/bin/pg_ctl -D /var/lib/pgsql/data stop"
     exit 1
 fi
 
 # Postgres shutdown (avoid stale memory by shmget())
-su - postgres -c "/usr/lib/postgresql/bin/pg_ctl stop"
+su - postgres -c "/usr/lib/postgresql/bin/pg_ctl -D /var/lib/pgsql/data stop"

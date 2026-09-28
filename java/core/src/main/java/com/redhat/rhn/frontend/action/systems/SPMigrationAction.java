@@ -19,6 +19,7 @@ import com.redhat.rhn.domain.action.ActionFactory;
 import com.redhat.rhn.domain.action.dup.DistUpgradeAction;
 import com.redhat.rhn.domain.action.dup.DistUpgradeActionDetails;
 import com.redhat.rhn.domain.action.dup.DistUpgradeChannelTask;
+import com.redhat.rhn.domain.action.server.ServerActionFactory;
 import com.redhat.rhn.domain.channel.Channel;
 import com.redhat.rhn.domain.channel.ChannelArch;
 import com.redhat.rhn.domain.channel.ChannelFactory;
@@ -44,6 +45,7 @@ import com.redhat.rhn.manager.rhnpackage.PackageManager;
 import com.redhat.rhn.taskomatic.TaskomaticApiException;
 
 import com.suse.manager.maintenance.NotInMaintenanceModeException;
+import com.suse.manager.model.products.migration.MigrationDataFactory;
 
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.logging.log4j.LogManager;
@@ -62,13 +64,14 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.stream.Collectors;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Action class for scheduling distribution upgrades (Product Migrations).
@@ -78,8 +81,6 @@ public class SPMigrationAction extends RhnAction {
     private static Logger logger = LogManager.getLogger(SPMigrationAction.class);
 
     // Request attributes
-    private static final String UPGRADE_SUPPORTED = "upgradeSupported";
-    private static final String ZYPP_INSTALLED = "zyppPluginInstalled";
     private static final String MIGRATION_SCHEDULED = "migrationScheduled";
     private static final String LATEST_SP = "latestServicePack";
     private static final String MISSING_SUCCESSOR_EXTENSIONS = "missingSuccessorExtensions";
@@ -146,10 +147,7 @@ public class SPMigrationAction extends RhnAction {
         setGeneralAttributes(request, ctx, server, minion, parHolder);
 
         // Check if there is already a migration in the schedule
-        Action migration = null;
-        if (parHolder.isTradCliUpgradesViaCapabilitySupported()) {
-            migration = ActionFactory.isMigrationScheduledForServer(server.getId());
-        }
+        Action migration = ServerActionFactory.isMigrationScheduledForServer(server.getId());
         request.setAttribute(MIGRATION_SCHEDULED, migration);
 
         String targetProductSelected = request.getParameter(TARGET_PRODUCT_SELECTED);
@@ -173,8 +171,7 @@ public class SPMigrationAction extends RhnAction {
         ActionForward forward = findForward(actionMapping, actionStep, dispatch, parHolder.isGoBack());
 
         // Put data to the request
-        if (forward.getName().equals(TARGET) && parHolder.isTradCliUpgradesViaCapabilitySupported() &&
-                migration == null) {
+        if (forward.getName().equals(TARGET) && migration == null) {
 
             boolean mustReturn = handleTargetForward(request, ctx, server);
             if (mustReturn) {
@@ -225,21 +222,7 @@ public class SPMigrationAction extends RhnAction {
         request.setAttribute(IS_SALT_UP_TO_DATE, parHolder.isSaltPackageUpToDateOnMinion());
         request.setAttribute(SALT_PACKAGE, parHolder.getSaltPackageOnMinion());
 
-        // Check if this server supports distribution upgrades via capabilities
-        // (for traditional clients only)
-        parHolder.setTradCliUpgradesViaCapabilitySupported(parHolder.isSuseMinion() || parHolder.isRedHatMinion() ||
-                DistUpgradeManager.isUpgradeSupported(server, ctx.getCurrentUser()));
-        logger.debug("Upgrade supported for '{}'? {}", server.getName(),
-                parHolder.isTradCliUpgradesViaCapabilitySupported());
-        request.setAttribute(UPGRADE_SUPPORTED, parHolder.isTradCliUpgradesViaCapabilitySupported());
-
-        // Check if zypp-plugin-spacewalk is installed (for traditional clients only)
-        parHolder.setTradCliZyppPluginInstalled(PackageFactory.
-                lookupByNameAndServer("zypp-plugin-spacewalk", server) != null);
-        logger.debug("zypp plugin installed? {}", parHolder.isTradCliZyppPluginInstalled());
-        request.setAttribute(ZYPP_INSTALLED, parHolder.isTradCliZyppPluginInstalled());
-
-        // Check if the newest update stack is installed (for traditional clients only)
+        // Check if the newest update stack is installed (unconditional warning banner)
         parHolder.setTradCliUpdateStackUpdateNeeded(ErrataManager
                 .updateStackUpdateNeeded(ctx.getCurrentUser(), server));
         logger.debug("update stack update needed? {}", parHolder.isTradCliUpdateStackUpdateNeeded());
@@ -263,17 +246,14 @@ public class SPMigrationAction extends RhnAction {
         // flag to know if we are going back or forward in the setup wizard
         parHolder.setGoBack(dispatch.equals(LocalizationService.getInstance().getMessage(GO_BACK)));
 
+        Optional<SUSEProduct> sourceProduct = minion.flatMap(MinionServer::getInstalledProductSet)
+        .map(SUSEProductSet::getBaseProduct);
+
+        Optional<SUSEProduct> targetProduct = Optional.ofNullable(parHolder.getTargetBaseProduct())
+        .map(SUSEProductFactory::getProductById);
         // flag to know if we should show the dry-run button or not
-        String bpProductClass = minion.map(m -> m.getInstalledProductSet()
-                .map(i -> i.getBaseProduct().getChannelFamily().getLabel())
-                .orElse("")).orElse("");
-
-        String tgtProductClass = Optional.ofNullable(parHolder.getTargetBaseProduct())
-                .map(SUSEProductFactory::getProductById)
-                .map(s -> s.getChannelFamily().getLabel())
-                .orElse("");
-
-        parHolder.setHasDryRun(!parHolder.isRedHatMinion() && bpProductClass.equals(tgtProductClass));
+        parHolder.setHasDryRun(MigrationDataFactory.computeHasDryRunCapability(
+                parHolder.isRedHatMinion(), sourceProduct.orElse(null), targetProduct.orElse(null)));
         request.setAttribute(HAS_DRYRUN_CAPABLITY, parHolder.isHasDryRun());
     }
 
@@ -310,7 +290,6 @@ public class SPMigrationAction extends RhnAction {
             logger.debug("Found at least one migration target");
             request.setAttribute(TARGET_PRODUCTS, migrationTargets);
         }
-
         return false;
     }
 
@@ -471,7 +450,9 @@ public class SPMigrationAction extends RhnAction {
 
     /**
      * Identify the extensions which don't have successors and set that information in the request.
-     * OUT: MISSING_SUCESSOR_EXTENSIONS
+     * For SLES 16.x migration targets where source is SLES 15, skips the missing successors check and instead sets
+     * the hasSLES16Target flag to trigger the pre-flight checklist in the UI.
+     * OUT: MISSING_SUCCESSOR_EXTENSIONS or hasSLES16Target
      * @param request
      * @param sourceProducts installed or selected products
      * @param targetProducts target products
@@ -481,11 +462,23 @@ public class SPMigrationAction extends RhnAction {
         Set<SUSEProduct> missingSuccessors = new HashSet<>();
 
         DistUpgradeManager.removeIncompatibleTargets(sourceProducts, targetProducts, missingSuccessors);
-        request.setAttribute(MISSING_SUCCESSOR_EXTENSIONS, missingSuccessors.stream()
-            .map(SUSEProduct::getFriendlyName)
-            .toList());
+        boolean isSLES15Source = sourceProducts
+                .map(SUSEProductSet::getBaseProduct)
+                .filter(Objects::nonNull)
+                .map(SUSEProduct::isSle15)
+                .orElse(false);
+        boolean isSLES16Target = targetProducts.stream()
+                .map(SUSEProductSet::getBaseProduct)
+                .anyMatch(p -> p != null && p.isSle16());
+        // Skip the successors warning for specific SLES 15.x -> 16.y migrations, show the pre-flight checklist instead
+        if (isSLES15Source && isSLES16Target) {
+            request.setAttribute("hasSLES16Target", true);
+        }
+        else {
+            request.setAttribute(MISSING_SUCCESSOR_EXTENSIONS, missingSuccessors.stream()
+                    .map(SUSEProduct::getFriendlyName).toList());
+        }
     }
-
     /**
      * Find the destination given the current page and the dispatch string.
      * The order of actions is: TARGET -> SETUP -> CONFIRM -> SCHEDULE.

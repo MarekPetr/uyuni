@@ -1,4 +1,28 @@
 -------------------------------------------------------------------
+Wed Aug 05 13:49:30 CEST 2026 - antonio.garofalo@suse.com
+
+- version 5.3.1-0
+  * Bump version to 5.3.0
+
+-------------------------------------------------------------------
+Fri May 22 11:28:54 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.6-0
+  * Provide pom file with updated dependencies for SLES/Leap 16 usage
+
+-------------------------------------------------------------------
+Fri Apr 17 11:06:02 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.5-0
+  * Add common dependencies declaration
+
+-------------------------------------------------------------------
+Mon Mar 02 13:16:41 CET 2026 - michael.calmer@suse.com
+
+- version 5.2.4-0
+  * Update for next release
+
+-------------------------------------------------------------------
 Tue Jan 27 09:44:44 WET 2026 - psuarezhernandez@suse.com
 
 - version 5.2.3-0

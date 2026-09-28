@@ -7,125 +7,59 @@ usage: $0 options
     Check the disk space available for the configured directories
 
 OPTIONS:
-    -c              Check only and do not send any emails
     -h              Show this message
+    -f              Skip checking if spacewalk services are running
 EOF
 }
 
 function parseArguments {
-    while getopts "h?c" opt; do
+    while getopts "h?f" opt; do
         case "$opt" in
             h|\?)
                 usage
                 exit 0
                 ;;
-            c)
-                CHECKONLY=true
+            f)
+                SKIP_SERVICES_CHECK=1
                 ;;
         esac
     done
 }
 
 function parseConfiguration {
-    if [ -f $1 ]; then
-        EMAIL_ADDRESS=`grep ^[[:blank:]]*traceback_mail $1 | sed -e "s/.*=[[:blank:]]*//"`
-        SPACECHECKDIRS=`grep ^[[:blank:]]*spacecheck_dirs $1 | sed -e "s/.*=[[:blank:]]*//"`
-        SPACECHECKALERT=`grep ^[[:blank:]]*spacecheck_free_alert $1 | sed -e "s/.*=[[:blank:]]*//"`
-        SPACECHECKCRIT=`grep ^[[:blank:]]*spacecheck_free_critical $1 | sed -e "s/.*=[[:blank:]]*//"`
-        SPACECHECKSHUTDOWN=`grep ^[[:blank:]]*spacecheck_shutdown $1 | sed -e "s/.*=[[:blank:]]*//"`
+    local conf="$1"
+
+    if [ -z "${DISKCHECKDIRS}" ] && [ -f "$conf" ]; then
+        DISKCHECKDIRS=$(grep '^[[:blank:]]*spacecheck_dirs' "$conf" | sed -e 's/.*=[[:blank:]]*//')
+    fi
+    if [ -z "${DISKCHECKALERT}" ] && [ -f "$conf" ]; then
+        DISKCHECKALERT=$(grep '^[[:blank:]]*spacecheck_free_alert' "$conf" | sed -e 's/.*=[[:blank:]]*//')
+    fi
+    if [ -z "${DISKTHRESHOLD}" ] && [ -f "$conf" ]; then
+        DISKTHRESHOLD=$(grep '^[[:blank:]]*spacecheck_free_critical' "$conf" | sed -e 's/.*=[[:blank:]]*//')
     fi
 
-    if [ "$EMAIL_ADDRESS" = "" ]; then
-        EMAIL_ADDRESS="root@localhost"
-    fi
-    if [ "$SPACECHECKDIRS" = "" ]; then
-        SPACECHECKDIRS="/var/spacewalk /var/cache /srv"
-    fi
-    if [ "$SPACECHECKALERT" = "" ] || [ "$SPACECHECKALERT" -gt 90 ]; then
-        SPACECHECKALERT=10
-    fi
-    if [ "$SPACECHECKCRIT" = "" ] || [ "$SPACECHECKCRIT" -ge "$SPACECHECKALERT" ]; then
-        SPACECHECKCRIT=$(($SPACECHECKALERT / 2))
-    fi
-    if [ "$SPACECHECKSHUTDOWN" = "" ]; then
-        SPACECHECKSHUTDOWN=true
-    fi
+    [ -z "${DISKCHECKDIRS}" ] && DISKCHECKDIRS="/var/spacewalk /var/cache /srv"
+    [ -z "${DISKCHECKALERT}" ] && DISKCHECKALERT=90
+    [ -z "${DISKTHRESHOLD}" ]  && DISKTHRESHOLD=95
+
+    # Strip surrounding quotes that may have been introduced via env or rhn.conf.
+    DISKCHECKDIRS="${DISKCHECKDIRS%\"}"; DISKCHECKDIRS="${DISKCHECKDIRS#\"}"
+    DISKCHECKDIRS="${DISKCHECKDIRS%\'}"; DISKCHECKDIRS="${DISKCHECKDIRS#\'}"
+
+    # Split into a bash array for safe iteration.
+    read -ra DISKCHECKDIRS_ARR <<< "$DISKCHECKDIRS"
 }
 
 function ensureSpacewalkRunning {
+    if [ "$SKIP_SERVICES_CHECK" = "1" ]; then
+        return
+    fi
     systemctl status spacewalk.target > /dev/null 2>&1
     if [ $? != 0 ]; then
-        logger  "SPACECHECK: spacewalk services are not running - skipping disk check."
+        echo  "DISKCHECK: spacewalk services are not running - skipping disk check."
         exit 0
     fi
-}
-
-function sendDirectoryMissing {
-    if [ "$CHECKONLY" = true ]; then
-        return
-    fi
-
-    logger "SPACECHECK: Directory $DIR does not exist!"
-    echo "SPACECHECK: Directory $DIR does not exist!" | mail -Ssendwait -s "SPACECHECK: Directory $DIR does not exist!" $EMAIL_ADDRESS
-}
-
-function sendCriticalShutdown {
-    if [ "$CHECKONLY" = true ]; then
-        return
-    fi
-
-    logger "SPACECHECK CRITICAL: Less than $SPACECHECKCRIT% of space available on $DIR - shutting down!"
-    cat << EOF | mail -Ssendwait -s "SPACECHECK CRITICAL: Less than $SPACECHECKCRIT% of space available on $DIR" $EMAIL_ADDRESS
-WARNING!
-Available space on $DIR is less than $SPACECHECKCRIT%.
-Some services have been shut down to avoid running out of disk space.
-EOF
-}
-
-function sendCritical {
-    if [ "$CHECKONLY" = true ]; then
-        return
-    fi
-
-    logger "SPACECHECK CRITICAL: Less than $SPACECHECKCRIT% of space available on $DIR - NOT shutting down!"
-    cat << EOF | mail -Ssendwait -s "SPACECHECK CRITICAL: Less than $SPACECHECKCRIT% of space available on $DIR" $EMAIL_ADDRESS
-WARNING!
-Available space on $DIR is less than $SPACECHECKCRIT%.
-Automatic shutdown of services is disabled.
-You must shut down services to avoid running out of disk space.
-EOF
-}
-
-function sendAlert {
-    if [ "$CHECKONLY" = true ]; then
-        return
-    fi
-
-    logger "SPACECHECK ALERT: Less than $SPACECHECKALERT% of space available on $DIR"
-    cat << EOF | mail -Ssendwait -s "SPACECHECK ALERT: Less than $SPACECHECKALERT% of space available on $DIR" $EMAIL_ADDRESS
-IMPORTANT
-
-If you run out of disk space, SUSE Manager will stop running, and this could lead to a loss of data.
-To avoid this, when the available space on $DIR drops below $SPACECHECKCRIT%, SUSE Manager will shut
-down services automatically.
-
-You can adjust when this happens by editing the values in the /etc/rhn/rhn.conf configuration file.
-Changes will happen immediately, without restarting services.
-
-==========================================================================================================
-# The directories to monitor for available space. Separate multiple directories with a space:
-spacecheck_dirs = $SPACECHECKDIRS
-
-# A warning email is triggered when free space in a monitored directory reaches this level (as a percentage):
-spacecheck_free_alert = $SPACECHECKALERT
-
-# A critical alert is triggered when free space in a monitored directory reaches this level (as a percentage):
-spacecheck_free_critical = $SPACECHECKCRIT
-
-# Allow spacewalk services to be automatically shut down when free space reaches critical level:
-spacecheck_shutdown = $SPACECHECKSHUTDOWN
-==========================================================================================================
-EOF
 }
 
 function updateSeverity {
@@ -136,45 +70,26 @@ function updateSeverity {
 
 # Main script
 
-CHECKONLY=false
-STOPCHECK=0
 CHECKSEVERITY=0
-
-ensureSpacewalkRunning
+SKIP_TARGET_CHECK=0
 
 parseArguments "$@"
+ensureSpacewalkRunning
 parseConfiguration /etc/rhn/rhn.conf
 
-for DIR in $SPACECHECKDIRS
-do
-    if [ ! -d $DIR ]; then
-        sendDirectoryMissing
+for DIR in "${DISKCHECKDIRS_ARR[@]}"; do
+    if [ ! -d "$DIR" ]; then
+        echo "DISKCHECK: Directory $DIR does not exist"
         updateSeverity 1
         continue
     fi
 
-    USEDSPACE=`df -PH $DIR | tail -1 | awk '{print $5}' | sed -e"s/\%//"`
-    FREESPACE=$((100 - $USEDSPACE))
-    if [ $FREESPACE -lt $SPACECHECKCRIT ] && [ "$STOPCHECK" = "0" ]; then
-        if [ "$SPACECHECKSHUTDOWN" = true ]; then
-            sendCriticalShutdown
-            updateSeverity 3
-        else
-            sendCritical
-            updateSeverity 3
-        fi
-
-        STOPCHECK=1
-        break
-    elif [ $FREESPACE -lt $SPACECHECKALERT ] && [ "$STOPCHECK" = "0" ]; then
-        sendAlert
+    USEDSPACE=$(df -PH "$DIR" | tail -1 | awk '{print $5}' | sed -e 's/%//')
+    if [ "$USEDSPACE" -gt "$DISKTHRESHOLD" ]; then
+        updateSeverity 3
+    elif [ "$USEDSPACE" -gt "$DISKCHECKALERT" ]; then
         updateSeverity 2
     fi
 done
-
-if [ "$CHECKONLY" = false ] && [ "$STOPCHECK" = "1" ] && [ "$SPACECHECKSHUTDOWN" = true ]; then
-    spacewalk-service stop
-    logger "SPACECHECK CRITICAL: spacewalk shut down"
-fi
 
 exit $CHECKSEVERITY

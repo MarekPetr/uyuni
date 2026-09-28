@@ -37,13 +37,14 @@ import com.redhat.rhn.common.validator.ValidatorError;
 import com.redhat.rhn.common.validator.ValidatorResult;
 import com.redhat.rhn.domain.action.Action;
 import com.redhat.rhn.domain.action.ActionFactory;
-import com.redhat.rhn.domain.action.ActionType;
+import com.redhat.rhn.domain.action.ActionTypeEnum;
 import com.redhat.rhn.domain.action.CoCoAttestationAction;
 import com.redhat.rhn.domain.action.script.ScriptAction;
 import com.redhat.rhn.domain.action.script.ScriptActionDetails;
 import com.redhat.rhn.domain.action.script.ScriptResult;
 import com.redhat.rhn.domain.action.script.ScriptRunAction;
 import com.redhat.rhn.domain.action.server.ServerAction;
+import com.redhat.rhn.domain.action.server.ServerActionFactory;
 import com.redhat.rhn.domain.action.supportdata.UploadGeoType;
 import com.redhat.rhn.domain.channel.Channel;
 import com.redhat.rhn.domain.channel.ChannelArch;
@@ -59,6 +60,7 @@ import com.redhat.rhn.domain.kickstart.KickstartFactory;
 import com.redhat.rhn.domain.org.CustomDataKey;
 import com.redhat.rhn.domain.org.Org;
 import com.redhat.rhn.domain.org.OrgFactory;
+import com.redhat.rhn.domain.product.SUSEProduct;
 import com.redhat.rhn.domain.product.SUSEProductSet;
 import com.redhat.rhn.domain.product.Tuple2;
 import com.redhat.rhn.domain.rhnpackage.Package;
@@ -84,6 +86,7 @@ import com.redhat.rhn.domain.server.Note;
 import com.redhat.rhn.domain.server.Pillar;
 import com.redhat.rhn.domain.server.PushClient;
 import com.redhat.rhn.domain.server.Server;
+import com.redhat.rhn.domain.server.ServerConstants;
 import com.redhat.rhn.domain.server.ServerFQDN;
 import com.redhat.rhn.domain.server.ServerFactory;
 import com.redhat.rhn.domain.server.ServerSnapshot;
@@ -112,6 +115,7 @@ import com.redhat.rhn.frontend.dto.SystemEventDto;
 import com.redhat.rhn.frontend.dto.SystemOverview;
 import com.redhat.rhn.frontend.dto.VirtualSystemOverview;
 import com.redhat.rhn.frontend.events.SsmDeleteServersEvent;
+import com.redhat.rhn.frontend.listview.PageControl;
 import com.redhat.rhn.frontend.xmlrpc.BaseHandler;
 import com.redhat.rhn.frontend.xmlrpc.DuplicateProfileNameException;
 import com.redhat.rhn.frontend.xmlrpc.EntityNotExistsFaultException;
@@ -191,16 +195,20 @@ import com.suse.manager.api.ApiIgnore;
 import com.suse.manager.api.ApiType;
 import com.suse.manager.api.ReadOnly;
 import com.suse.manager.attestation.AttestationDisabledException;
+import com.suse.manager.attestation.AttestationInputDataValidatorFactory;
 import com.suse.manager.attestation.AttestationManager;
 import com.suse.manager.model.attestation.CoCoAttestationResult;
 import com.suse.manager.model.attestation.CoCoEnvironmentType;
 import com.suse.manager.model.attestation.ServerCoCoAttestationConfig;
 import com.suse.manager.model.attestation.ServerCoCoAttestationReport;
+import com.suse.manager.model.products.migration.MigrationDataFactory;
+import com.suse.manager.webui.controllers.SystemsController;
 import com.suse.manager.webui.services.pillar.MinionPillarManager;
 import com.suse.manager.webui.utils.gson.BootstrapParameters;
 import com.suse.manager.xmlrpc.NoSuchHistoryEventException;
 import com.suse.manager.xmlrpc.dto.SystemEventDetailsDto;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -216,6 +224,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -232,7 +241,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * SystemHandler
@@ -429,9 +438,9 @@ public class SystemHandler extends BaseHandler {
         // must contain all ids or labels (i.e. not a combination of both)
         boolean receivedLabels = false;
         if (!channelIdsOrLabels.isEmpty()) {
-            if (channelIdsOrLabels.get(0) instanceof String) {
+            if (channelIdsOrLabels.get(0) instanceof String channelIdsOrLabelsString) {
                 receivedLabels = true;
-                Channel channel = ChannelFactory.lookupByLabel((String) channelIdsOrLabels.get(0));
+                Channel channel = ChannelFactory.lookupByLabel(channelIdsOrLabelsString);
                 if (channel == null) {
                     throw new InvalidChannelLabelException();
                 }
@@ -934,7 +943,7 @@ public class SystemHandler extends BaseHandler {
                 SystemManager.subscribableChannels(server.getId(),
                 loggedInUser.getId(), baseChannel.getId());
 
-        //TODO: This should go away once we teach marquee how to deal with nulls in a list.
+        //OLDTODO: This should go away once we teach marquee how to deal with nulls in a list.
         //      Luckily, this list shouldn't be too long.
         for (Map<String, Object> row : dr) {
             Map<String, Object> channel = new HashMap<>();
@@ -2418,7 +2427,7 @@ public class SystemHandler extends BaseHandler {
         // Get the logged in user and server
         Server server = lookupServer(loggedInUser, sid);
 
-        List<ServerAction> sActions = ActionFactory.listServerActionsForServer(server, actionType, earliestDate);
+        List<ServerAction> sActions = ServerActionFactory.listServerActionsForServer(server, actionType, earliestDate);
 
         // In order to support bug 501224, this method is being updated to populate
         // the result vs having the serializer do so.  The reason is that in order to
@@ -3607,7 +3616,7 @@ public class SystemHandler extends BaseHandler {
         if (eventDetail.getHistoryType() != null) {
             // This is an action related entry this we can extract additional information
             final Action action = ActionManager.lookupAction(loggedInUser, eventDetail.getId());
-            final ServerAction serverAction = ActionFactory.getServerActionForServerAndAction(server, action);
+            final ServerAction serverAction = ServerActionFactory.getServerActionForServerAndAction(server, action);
 
             eventDetail.setEarliestAction(action.getEarliestAction());
             eventDetail.setResultMsg(serverAction.getResultMsg());
@@ -4173,7 +4182,8 @@ public class SystemHandler extends BaseHandler {
      * @return package action id
      */
     private Long[] schedulePackagesAction(User loggedInUser, List<Integer> sids,
-            List<Map<String, Long>> packageMaps, Date earliestOccurrence, ActionType acT, Boolean allowModules) {
+            List<Map<String, Long>> packageMaps, Date earliestOccurrence, ActionTypeEnum actionTypeEnum,
+                                          Boolean allowModules) {
 
         List<Long> actionIds = new ArrayList<>();
 
@@ -4202,7 +4212,7 @@ public class SystemHandler extends BaseHandler {
             return PackageFactory.lookupByNevraIds(org, nameId, evrId, archId).stream();
         }).toList();
 
-        if (ActionFactory.TYPE_PACKAGES_UPDATE.equals(acT)) {
+        if (ActionTypeEnum.TYPE_PACKAGES_UPDATE == actionTypeEnum) {
             List<Tuple2<Long, Long>> pidsidpairs = ErrataFactory.retractedPackages(
                     packages.stream().map(Package::getId).collect(toList()),
                     sids.stream().map(Integer::longValue).collect(toList())
@@ -4219,7 +4229,7 @@ public class SystemHandler extends BaseHandler {
         }
 
         // PTF master packages cannot be removed
-        if (ActionFactory.TYPE_PACKAGES_REMOVE.equals(acT)) {
+        if (ActionTypeEnum.TYPE_PACKAGES_REMOVE == actionTypeEnum) {
             List<Long> ptfMasterPackages = packages.stream()
                                                    .filter(Package::isMasterPtfPackage)
                                                    .map(Package::getId)
@@ -4246,7 +4256,7 @@ public class SystemHandler extends BaseHandler {
             Action action = null;
             try {
 
-                action = ActionManager.schedulePackageAction(loggedInUser, packageMaps, acT,
+                action = ActionManager.schedulePackageAction(loggedInUser, packageMaps, actionTypeEnum,
                         earliestOccurrence, server);
             }
             catch (MissingEntitlementException e) {
@@ -4270,8 +4280,7 @@ public class SystemHandler extends BaseHandler {
      * @param earliestOccurrence Earliest occurrence of the package install
      * @return package action id
      */
-    private Long schedulePackagesUpdateAction(User loggedInUser, List<Integer> sids,
-            Date earliestOccurrence, ActionType acT) {
+    private Long schedulePackagesUpdateAction(User loggedInUser, List<Integer> sids, Date earliestOccurrence) {
         HashSet<Long> lsids = new HashSet<>();
         for (Integer sid : sids) {
             Server server;
@@ -4292,7 +4301,7 @@ public class SystemHandler extends BaseHandler {
         }
 
         try {
-            return ActionManager.schedulePackageAction(loggedInUser, null, acT,
+            return ActionManager.schedulePackageAction(loggedInUser, null, ActionTypeEnum.TYPE_PACKAGES_UPDATE,
                     earliestOccurrence, lsids).getId();
         }
         catch (MissingEntitlementException e) {
@@ -4452,7 +4461,7 @@ public class SystemHandler extends BaseHandler {
         if (retracted.isEmpty()) {
             return schedulePackagesAction(loggedInUser, sids,
                     packageIdsToMaps(loggedInUser, packageIds), earliestOccurrence,
-                    ActionFactory.TYPE_PACKAGES_UPDATE, allowModules);
+                    ActionTypeEnum.TYPE_PACKAGES_UPDATE, allowModules);
         }
         else {
             throw new RetractedPackageFault(retractedPids);
@@ -4477,9 +4486,7 @@ public class SystemHandler extends BaseHandler {
     public Long schedulePackageUpdate(User loggedInUser, List<Integer> sids,
                                         Date earliestOccurrence) {
 
-        return schedulePackagesUpdateAction(loggedInUser, sids,
-                earliestOccurrence,
-                ActionFactory.TYPE_PACKAGES_UPDATE);
+        return schedulePackagesUpdateAction(loggedInUser, sids, earliestOccurrence);
     }
 
     /**
@@ -4597,7 +4604,7 @@ public class SystemHandler extends BaseHandler {
 
         return schedulePackagesAction(loggedInUser, sids,
                 packageNevrasToMaps(loggedInUser, packageNevraList, false), earliestOccurrence,
-                ActionFactory.TYPE_PACKAGES_UPDATE, allowModules);
+                ActionTypeEnum.TYPE_PACKAGES_UPDATE, allowModules);
     }
 
     /**
@@ -4689,7 +4696,7 @@ public class SystemHandler extends BaseHandler {
 
         return schedulePackagesAction(loggedInUser, sids,
                 packageIdsToMaps(loggedInUser, packageIds), earliestOccurrence,
-                ActionFactory.TYPE_PACKAGES_REMOVE, false);
+                ActionTypeEnum.TYPE_PACKAGES_REMOVE, false);
     }
 
     /**
@@ -4717,7 +4724,7 @@ public class SystemHandler extends BaseHandler {
 
         return schedulePackagesAction(loggedInUser, sids,
                 packageIdsToMaps(loggedInUser, packageIds), earliestOccurrence,
-                ActionFactory.TYPE_PACKAGES_REMOVE, allowModules);
+                ActionTypeEnum.TYPE_PACKAGES_REMOVE, allowModules);
     }
 
     /**
@@ -4744,7 +4751,7 @@ public class SystemHandler extends BaseHandler {
 
         return schedulePackagesAction(loggedInUser, sids,
                 packageIdsToMaps(loggedInUser, packageIds), earliestOccurrence,
-                ActionFactory.TYPE_PACKAGES_REMOVE, false)[0].intValue();
+                ActionTypeEnum.TYPE_PACKAGES_REMOVE, false)[0].intValue();
     }
 
     /**
@@ -4775,7 +4782,7 @@ public class SystemHandler extends BaseHandler {
 
         return schedulePackagesAction(loggedInUser, sids,
                 packageIdsToMaps(loggedInUser, packageIds), earliestOccurrence,
-                ActionFactory.TYPE_PACKAGES_REMOVE, allowModules)[0].intValue();
+                ActionTypeEnum.TYPE_PACKAGES_REMOVE, allowModules)[0].intValue();
     }
 
     /**
@@ -4808,7 +4815,7 @@ public class SystemHandler extends BaseHandler {
 
         return schedulePackagesAction(loggedInUser, sids,
                 packageNevrasToMaps(loggedInUser, packageNevraList, true), earliestOccurrence,
-                ActionFactory.TYPE_PACKAGES_REMOVE, false);
+                ActionTypeEnum.TYPE_PACKAGES_REMOVE, false);
     }
 
     /**
@@ -4845,7 +4852,7 @@ public class SystemHandler extends BaseHandler {
 
         return schedulePackagesAction(loggedInUser, sids,
                 packageNevrasToMaps(loggedInUser, packageNevraList, true), earliestOccurrence,
-                ActionFactory.TYPE_PACKAGES_REMOVE, allowModules);
+                ActionTypeEnum.TYPE_PACKAGES_REMOVE, allowModules);
     }
 
     /**
@@ -4881,7 +4888,7 @@ public class SystemHandler extends BaseHandler {
 
         return schedulePackagesAction(loggedInUser, sids,
                 packageNevrasToMaps(loggedInUser, packageNevraList, true), earliestOccurrence,
-                ActionFactory.TYPE_PACKAGES_REMOVE, false)[0].intValue();
+                ActionTypeEnum.TYPE_PACKAGES_REMOVE, false)[0].intValue();
     }
 
     /**
@@ -4921,7 +4928,7 @@ public class SystemHandler extends BaseHandler {
 
         return schedulePackagesAction(loggedInUser, sids,
                 packageNevrasToMaps(loggedInUser, packageNevraList, true), earliestOccurrence,
-                ActionFactory.TYPE_PACKAGES_REMOVE, allowModules)[0].intValue();
+                ActionTypeEnum.TYPE_PACKAGES_REMOVE, allowModules)[0].intValue();
     }
 
     /**
@@ -5398,12 +5405,53 @@ public class SystemHandler extends BaseHandler {
      *     #item("KVM_AMD_EPYC_BERGAMO")
      *     #item("KVM_AMD_EPYC_SIENA")
      *     #item("KVM_AMD_EPYC_TURIN")
+     *     #item("KVM_IBM_Z16")
+     *     #item("KVM_IBM_Z17")
      *   #options_end()
      * @apidoc.param #param_desc("boolean", "attestOnBoot", "set if the attestation should be performed on system boot")
      * @apidoc.returntype #return_int_success()
      */
     public Integer setCoCoAttestationConfig(User loggedInUser, Integer sid, Boolean enabled, String environmentType,
                                             Boolean attestOnBoot) {
+        return setCoCoAttestationConfig(loggedInUser, sid, enabled, environmentType, null, attestOnBoot);
+    }
+
+    /**
+     * Configure Confidential Compute Attestation for the given system
+     * @param loggedInUser the user
+     * @param sid the ID of the system
+     * @param enabled set the enabled state for Confidential Compute Attestation
+     * @param environmentType set the environment type of the system
+     * @param inputData the optional input data for the attestation
+     * @param attestOnBoot set if the attestation should be performed on system boot
+     * @return Returns 1 if successful, exception otherwise.
+     *
+     * @apidoc.doc Configure Confidential Compute Attestation for the given system
+     * @apidoc.param #session_key()
+     * @apidoc.param #param_desc("int", "sid", "ID of the server to get the config for.")
+     * @apidoc.param #param_desc("boolean", "enabled", "set the enabled state for Confidential Compute Attestation")
+     * @apidoc.param #param_desc("string", "environmentType", "set the environment type of the system:")
+     *   #options()
+     *     #item("KVM_AMD_EPYC_MILAN")
+     *     #item("KVM_AMD_EPYC_GENOA")
+     *     #item("KVM_AMD_EPYC_BERGAMO")
+     *     #item("KVM_AMD_EPYC_SIENA")
+     *     #item("KVM_AMD_EPYC_TURIN")
+     *     #item("KVM_IBM_Z16")
+     *     #item("KVM_IBM_Z17")
+     *   #options_end()
+     * @apidoc.param
+     *   #struct_begin("inputData")
+     *     #prop_desc("string", "secure_execution_header", "The Secure Execution Header file, encoded with Base64 (for
+     *          IBM_Z attestation only)")
+     *     #prop_desc("string", "host_key_document", "The Host Key Document certificate in PEM format (for IBM_Z
+     *          attestation only)")
+     *   #struct_end()
+     * @apidoc.param #param_desc("boolean", "attestOnBoot", "set if the attestation should be performed on system boot")
+     * @apidoc.returntype #return_int_success()
+     */
+    public Integer setCoCoAttestationConfig(User loggedInUser, Integer sid, Boolean enabled, String environmentType,
+                                            Map<String, Object> inputData, Boolean attestOnBoot) {
         MinionServer minionServer = SystemManager.lookupByIdAndUser(sid.longValue(), loggedInUser).asMinionServer()
                 .orElseThrow(NoSuchSystemException::new);
 
@@ -5411,18 +5459,29 @@ public class SystemHandler extends BaseHandler {
             throw new UnsupportedOperationException("System does not support Confidential Computing attestation");
         }
 
+        CoCoEnvironmentType environment = CoCoEnvironmentType.valueOf(environmentType);
+
+        // Validate the input data, if needed
+        var validator = AttestationInputDataValidatorFactory.forEnvironment(environment);
+        List<String> errors = validator.validate(inputData);
+        if (CollectionUtils.isNotEmpty(errors)) {
+            throw new InvalidParameterException(String.join("\n", errors));
+        }
+
         minionServer.getOptCocoAttestationConfig()
                 .ifPresentOrElse(
                         c -> {
                             c.setEnabled(enabled);
-                            c.setEnvironmentType(CoCoEnvironmentType.valueOf(environmentType));
+                            c.setEnvironmentType(environment);
+                            c.setInData(Objects.requireNonNullElseGet(inputData, HashMap::new));
                             c.setAttestOnBoot(attestOnBoot);
                         },
                         () -> attestationManager.createConfig(
                             loggedInUser,
                             minionServer,
-                            CoCoEnvironmentType.valueOf(environmentType),
+                            environment,
                             enabled,
+                            inputData,
                             attestOnBoot
                         )
                 );
@@ -6510,6 +6569,75 @@ public class SystemHandler extends BaseHandler {
     }
 
     /**
+     * Gets a list of all systems visible to user with a filter applied.
+     * @param loggedInUser The current user
+     * @param filterKey the column to filter on
+     * @param filterValue the filter value
+     * @param page the number of the page to get
+     * @param pageSize the number of items per page
+     * @param sortKey the column to use for sorting, no key set means the data won't be sorted
+     * @param sortDescending indicates the sort order
+     * @return Returns an array of maps representing all systems visible to user
+     *
+     * @throws FaultException A FaultException is thrown if a valid user can not be found
+     * from the passed in session key
+     *
+     * @apidoc.doc Returns a list of all filtered servers visible to the user.
+     * The field value can start with an operator like > < >= <= !=.
+     * The field key can be one of:
+     *      server_name
+     *      creator_name
+     *      outdated_packages
+     *      extra_pkg_count
+     *      config_files_with_differences
+     *      group_count
+     *      requires_reboot
+     *      total_errata_count
+     *      channel_labels
+     *      entitlement_level
+     *      system_kind (one of proxy, mgr_server, virtual_host, virtual_guest, physical)
+     *      created_days
+     *
+     * @apidoc.param #session_key()
+     * @apidoc.param #param_desc("string", "filterKey", "what field to filter on")
+     * @apidoc.param #param_desc("string", "filterValue", "the value to look for")
+     * @apidoc.param #param_desc("int", "page", "the number of the page to return")
+     * @apidoc.param #param_desc("int", "pageSize", "the number of items per page to return")
+     * @apidoc.param #param_desc("string", "sortKey", "the column to use for sorting if not empty")
+     * @apidoc.param #param_desc("boolean", "sortDescending", "indicates the sort order")
+     * @apidoc.returntype
+     *      #struct_begin("system details page")
+     *        #prop_desc("int", "total", "Total count of systems for all pages")
+     *        #prop_array_begin_desc("data", "the requested page of systems")
+     *          $SystemOverviewSerializer
+     *        #prop_array_end()
+     *      #struct_end()
+     */
+    @ReadOnly
+    public Map<String, Object> listSystemsFiltered(
+            User loggedInUser, String filterKey, String filterValue, int page, int pageSize,
+            String sortKey, boolean sortDescending
+    ) throws FaultException {
+        PageControl pc = new PageControl();
+        pc.setPageSize(pageSize);
+        pc.setFilter(true);
+        pc.setStart(page * pageSize + 1);
+        pc.setFilterColumn(filterKey);
+        pc.setFilterData(filterValue);
+        if (sortKey != null && !sortKey.isEmpty()) {
+            pc.setSortColumn(sortKey);
+        }
+        pc.setSortDescending(sortDescending);
+        DataResult<SystemOverview> dr = SystemManager.systemListNew(
+                loggedInUser, SystemsController.getFilterParser(pc), pc);
+        dr.elaborate();
+        Map<String, Object> result = new HashMap<>();
+        result.put("total", dr.getTotalSize());
+        result.put("data", dr.toArray());
+        return result;
+    }
+
+    /**
      * Gets a list of virtual hosts for the current user
      * @param loggedInUser The current user
      * @return list of SystemOverview objects
@@ -6815,7 +6943,7 @@ public class SystemHandler extends BaseHandler {
 
         // Set network device information to the server
         for (Map<String, String> map : netDevices) {
-            // FIXME: why do we need this?
+            // OLDTODO: why do we need this?
             CobblerNetworkInterface device = cmd.new CobblerNetworkInterface();
             device.setName(map.get("name"));
             device.setIpaddr(map.get("ip"));
@@ -6878,64 +7006,6 @@ public class SystemHandler extends BaseHandler {
         catch (IllegalArgumentException e) {
             throw new InvalidParameterException("Can't create system", e);
         }
-    }
-
-    /**
-     * Register foreign peripheral server
-     *
-     * @param loggedInUser The current user
-     * @param fqdn         FQDN of the server
-     * @return 1 on success
-     *
-     * @apidoc.doc Register foreign peripheral server.
-     * This is used for registering containerized peripheral servers.
-     * @apidoc.param #session_key()
-     * @apidoc.param #param_desc("string", "fqdn", "FQDN of the server")
-     * @apidoc.returntype #return_int_success()
-     */
-    public int registerPeripheralServer(User loggedInUser, String fqdn) {
-        ensureOrgAdmin(loggedInUser);
-        try {
-            return systemManager.registerPeripheralServer(loggedInUser, fqdn).getId().intValue();
-        }
-        catch (SystemsExistException e) {
-            throw new SystemsExistFaultException(e.getSystemIds());
-        }
-    }
-
-    /**
-     * Update foreign peripheral server info
-     *
-     * @param loggedInUser The current user
-     * @param sid Server ID
-     * @param reportDbName ReportDB name
-     * @param reportDbHost ReportDB host
-     * @param reportDbPort ReportDB port
-     * @param reportDbUser ReportDB user
-     * @param reportDbPassword ReportDB password
-     * @return 1 on success
-     *
-     * @apidoc.doc Update foreign peripheral server info.
-     * @apidoc.param #session_key()
-     * @apidoc.param #param_desc("string", "reportDbName", "ReportDB name")
-     * @apidoc.param #param_desc("string", "reportDbHost", "ReportDB host")
-     * @apidoc.param #param_desc("int", "reportDbPort", "ReportDB port")
-     * @apidoc.param #param_desc("string", "reportDbUser", "ReportDB user")
-     * @apidoc.param #param_desc("string", "reportDbPassword", "ReportDB password")
-     * @apidoc.returntype #return_int_success()
-     */
-    public int updatePeripheralServerInfo(User loggedInUser, Integer sid, String reportDbName, String reportDbHost,
-                       Integer reportDbPort, String reportDbUser, String reportDbPassword) {
-        ensureOrgAdmin(loggedInUser);
-        Server server = null;
-        try {
-            server = SystemManager.lookupByIdAndUser(sid.longValue(), loggedInUser);
-        }
-        catch (LookupException e) {
-            throw new NoSuchSystemException();
-        }
-        return SystemManager.updatePeripheralServerInfo(server, reportDbName, reportDbHost,
-                                               reportDbPort, reportDbUser, reportDbPassword);
     }
 
     /**
@@ -7604,6 +7674,115 @@ public class SystemHandler extends BaseHandler {
     }
 
     /**
+     * Lists the valid migration targets for a given server, including channel details.
+     * @param loggedInUser The current user
+     * @param sid The server ID
+     * @return List of maps containing migration targets and their channel options
+     * @throws FaultException A FaultException is thrown if the server corresponding to
+     * sid cannot be found or if the server has no products installed.
+     *
+     * @apidoc.doc Lists the eligible migration targets for a given server, including channel details.
+     * @apidoc.param #session_key()
+     * @apidoc.param #param("int", "sid")
+     * @apidoc.returntype
+     *      #return_array_begin()
+     *          #struct_begin("migration target")
+     *              #prop("string", "ident", "Product IDs for the target product set ( e.g. '[1894, 1905]')")
+     *              #prop("string", "friendly", "Friendly name of the target product set")
+     *              #prop_array_begin("channel_options")
+     *                  #struct_begin("channel option")
+     *                      #prop("string", "base_channel_label", "Label of the base channel")
+     *                      #prop("string", "base_channel_name", "Name of the base channel")
+     *                      #prop_array_begin("child_channels")
+     *                          #struct_begin("child channel")
+     *                              #prop("string", "label", "Channel label")
+     *                              #prop("string", "name", "Channel name")
+     *                              #prop("boolean", "mandatory", "Whether the channel is mandatory")
+     *                          #struct_end()
+     *                      #array_end()
+     *                  #struct_end()
+     *              #array_end()
+     *          #struct_end()
+     *      #array_end()
+     */
+    @ReadOnly
+    public List<Map<String, Object>> listMigrationTargetsWithChannels(User loggedInUser, Integer sid) {
+        List<Map<String, Object>> returnList = new ArrayList<>();
+        Server server = lookupServer(loggedInUser, sid);
+        Optional<SUSEProductSet> installedProducts = server.getInstalledProductSet();
+        if (!installedProducts.isPresent()) {
+            throw new FaultException(-1, "listMigrationTargetError",
+                    "Server has no Products installed.");
+        }
+        ChannelArch arch = server.getServerArch().getCompatibleChannelArch();
+        List<SUSEProductSet> migrationTargets = DistUpgradeManager.
+                getTargetProductSets(installedProducts, arch, loggedInUser);
+
+        for (SUSEProductSet target : migrationTargets) {
+            if (!target.getIsEveryChannelSynced()) {
+                continue;
+            }
+
+            Map<String, Object> targetMap = new HashMap<>();
+            targetMap.put("ident", target.getSerializedProductIDs());
+            targetMap.put("friendly", target.toString());
+
+            List<Map<String, Object>> channelOptions = new ArrayList<>();
+
+            // 1. Default Base Channel
+            Channel baseChannel = DistUpgradeManager.getProductBaseChannel(
+                    target.getBaseProduct().getId(), arch, loggedInUser);
+
+            if (baseChannel != null) {
+                // Get required child channels for this target/base pairing
+                List<EssentialChannelDto> requiredChannels = DistUpgradeManager.getRequiredChannels(
+                        target, baseChannel.getId());
+                List<Long> requiredChannelIds = requiredChannels.stream()
+                        .map(EssentialChannelDto::getId)
+                        .collect(toList());
+
+                channelOptions.add(buildChannelOptionMap(baseChannel, loggedInUser, requiredChannelIds));
+            }
+
+            // 2. Alternative Base Channels (Clones)
+            SortedMap<ClonedChannel, List<Long>> alternatives = DistUpgradeManager.getAlternatives(
+                    target, arch, loggedInUser);
+
+            for (Map.Entry<ClonedChannel, List<Long>> entry : alternatives.entrySet()) {
+                channelOptions.add(buildChannelOptionMap(entry.getKey(), loggedInUser, entry.getValue()));
+            }
+
+            targetMap.put("channel_options", channelOptions);
+            returnList.add(targetMap);
+        }
+
+        return returnList;
+    }
+
+    private Map<String, Object> buildChannelOptionMap(Channel baseChannel, User user, List<Long> requiredChannelIds) {
+        Map<String, Object> optionMap = new HashMap<>();
+        optionMap.put("base_channel_label", baseChannel.getLabel());
+        optionMap.put("base_channel_name", baseChannel.getName());
+
+        List<Map<String, Object>> childChannelsList = new ArrayList<>();
+        List<Channel> accessibleChildren = baseChannel.getAccessibleChildrenFor(user);
+
+        // Sort by name
+        accessibleChildren.sort(Comparator.comparing(Channel::getName));
+
+        for (Channel child : accessibleChildren) {
+             Map<String, Object> childMap = new HashMap<>();
+             childMap.put("label", child.getLabel());
+             childMap.put("name", child.getName());
+             childMap.put("mandatory", requiredChannelIds.contains(child.getId()));
+             childChannelsList.add(childMap);
+        }
+
+        optionMap.put("child_channels", childChannelsList);
+        return optionMap;
+    }
+
+    /**
      * Schedule a Product migration for a system. This call is the recommended and
      * supported way of migrating a system to the next Service Pack.
      *
@@ -8017,6 +8196,17 @@ public class SystemHandler extends BaseHandler {
         }
         if (!targets.isEmpty()) {
             SUSEProductSet targetProducts = getTargetProducts(targetIdent, targets);
+
+            // Validate dry-run capability
+            if (dryRun) {
+                boolean isRedHat = ServerConstants.REDHAT.equals(server.getOsFamily());
+                SUSEProduct sourceBase = installedProducts.map(SUSEProductSet::getBaseProduct).orElse(null);
+                SUSEProduct targetBase = targetProducts.getBaseProduct();
+                if (!MigrationDataFactory.computeHasDryRunCapability(isRedHat, sourceBase, targetBase)) {
+                    throw new FaultException(-1, "dryRunNotSupported",
+                            "Dry run is not supported for this product migration.");
+                }
+            }
 
             // See if vendor channels are matching the given base channel
             EssentialChannelDto baseChannel = DistUpgradeManager.getProductBaseChannelDto(

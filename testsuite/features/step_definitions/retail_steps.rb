@@ -46,11 +46,11 @@ end
 
 Then(/^"([^"]*)" should communicate with the server using public interface$/) do |host|
   node = get_target(host)
-  _result, return_code = node.run("ping -n -c 1 -I #{node.public_interface} #{get_target('server').public_ip}", check_errors: false)
+  _result, return_code = node.run("ping -n -c 1 -I #{node.public_interface} #{get_target('server').public_ip}", runs_in_container: false, check_errors: false)
   unless return_code.zero?
     sleep 2
     puts 're-try ping'
-    node.run("ping -n -c 1 -I #{node.public_interface} #{get_target('server').public_ip}")
+    node.run("ping -n -c 1 -I #{node.public_interface} #{get_target('server').public_ip}", runs_in_container: false)
   end
   get_target('server').run("ping -n -c 1 #{node.public_ip}")
 end
@@ -118,6 +118,30 @@ end
 
 When(/^I reboot the (Retail|Cobbler) terminal "([^"]*)"$/) do |context, host|
   execute_expect_command_proxy(host, 'reboot-pxeboot.exp', context)
+end
+
+When(/^I reboot the (Retail|Cobbler) terminal "([^"]*)" through the interface "([^"]*)"$/) do |context, host, interface|
+  # we might have no or any IPv4 address on that machine
+  # convert MAC address to IPv6 link-local address
+  case host
+  when 'pxeboot_minion'
+    mac = $pxeboot_mac
+  when 'sles15sp6_terminal'
+    mac = $sles15sp6_terminal_mac
+  when 'sles15sp7_terminal'
+    mac = $sles15sp7_terminal_mac
+  end
+  mac = mac.tr(':', '')
+  hex = (("#{mac[0..5]}fffe#{mac[6..11]}").to_i(16) ^ 0x0200000000000000).to_s(16)
+  ipv6 = "fe80::#{hex[0..3]}:#{hex[4..7]}:#{hex[8..11]}:#{hex[12..15]}%#{interface}"
+  log "Rebooting #{ipv6}..."
+  file = 'reboot-pxeboot.exp'
+  source = "#{File.dirname(__FILE__)}/../upload_files/#{file}"
+  dest = "/tmp/#{file}"
+  success = file_inject(get_target('proxy'), source, dest)
+  raise ScriptError, 'File injection failed' unless success
+
+  get_target('proxy').run("expect -f /tmp/#{file} #{ipv6} #{context}")
 end
 
 When(/^I create the bootstrap script for "([^"]+)" hostname and "([^"]*)" activation key on "([^"]*)"$/) do |hostname, key, host|
@@ -195,10 +219,13 @@ end
 
 Then(/^I should not see any terminals imported from the configuration file$/) do
   terminals = read_terminals_from_yaml
+  domain = read_branch_prefix_from_yaml
   terminals.each do |terminal|
     next if (terminal.include? 'minion') || (terminal.include? 'client')
 
-    step %(I should not see a "#{terminal}" text)
+    # Construct full system name with domain prefix (e.g., "example.org.terminal1")
+    full_system_name = terminal.include?('pxeboot') ? "#{terminal}.#{domain}" : "#{domain}.#{terminal}"
+    step %(I wait at most 60 seconds until I do not see "#{full_system_name}" text, refreshing the page)
   end
 end
 
@@ -304,11 +331,11 @@ end
 When(/^I enter the MAC address of "([^"]*)" in (.*) field$/) do |host, field|
   if host == 'pxeboot_minion'
     mac = $pxeboot_mac
-  elsif host == 'sle15sp6_terminal'
-    mac = $sle15sp6_terminal_mac
+  elsif host == 'sles15sp6_terminal'
+    mac = $sles15sp6_terminal_mac
     mac = 'EE:EE:EE:00:00:06' if mac.nil?
-  elsif host == 'sle15sp7_terminal'
-    mac = $sle15sp7_terminal_mac
+  elsif host == 'sles15sp7_terminal'
+    mac = $sles15sp7_terminal_mac
     mac = 'EE:EE:EE:00:00:07' if mac.nil?
   elsif (host.include? 'deblike') || (host.include? 'debian12') || (host.include? 'ubuntu')
     node = get_target(host)
@@ -376,7 +403,7 @@ When(/^I press "Add Item" in (A|NS|CNAME|for zones) section of zone with local n
 end
 
 When(/^I press "Remove Item" in (.*) CNAME of (.*) zone section$/) do |alias_name, zone|
-  cname_xpath = "//input[@name='Name' and @value='#{zone}']/ancestor::div[starts-with(@id, 'bind#available_zones#')]//input[@name='Alias' and @value='#{alias_name}']/ancestor::div[@class='form-group']"
+  cname_xpath = "//input[@name='Name' and @value='#{zone}']/ancestor::div[starts-with(@id, 'bind#available_zones#')]//input[@name='Alias' and @value='#{alias_name}']/ancestor::div[@class='row']"
   find(:xpath, "#{cname_xpath}/button").click
 end
 
@@ -416,7 +443,7 @@ Then(/^I should see the image for "([^"]*)" is built$/) do |host|
 
   begin
     tr = find('tr', text: name)
-    tr.find('i[title="Built"]')
+    tr.find('i[title="Built"], i[aria-label="Built"]')
   rescue Capybara::ElementNotFound
     raise ScriptError, "Image #{name} is not present or not marked as built"
   end

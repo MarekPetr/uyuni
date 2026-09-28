@@ -24,8 +24,12 @@ import com.redhat.rhn.domain.action.ActionChain;
 import com.redhat.rhn.domain.action.ActionChainEntry;
 import com.redhat.rhn.domain.action.ActionChainFactory;
 import com.redhat.rhn.domain.action.ActionFactory;
+import com.redhat.rhn.domain.action.ActionTypeEnum;
+import com.redhat.rhn.domain.action.dup.DistUpgradeAction;
 import com.redhat.rhn.domain.action.kickstart.KickstartAction;
+import com.redhat.rhn.domain.action.salt.ApplyStatesAction;
 import com.redhat.rhn.domain.action.server.ServerAction;
+import com.redhat.rhn.domain.action.server.ServerActionFactory;
 import com.redhat.rhn.domain.server.MinionServer;
 import com.redhat.rhn.domain.server.MinionServerFactory;
 import com.redhat.rhn.domain.server.MinionSummary;
@@ -36,6 +40,7 @@ import com.redhat.rhn.manager.system.SystemManager;
 import com.redhat.rhn.taskomatic.TaskomaticApi;
 import com.redhat.rhn.taskomatic.TaskomaticApiException;
 
+import com.suse.manager.reactor.messaging.ApplyStatesEventMessage;
 import com.suse.manager.utils.SaltKeyUtils;
 import com.suse.manager.utils.SaltUtils;
 import com.suse.manager.webui.services.iface.SaltApi;
@@ -252,12 +257,13 @@ public class SaltServerActionService {
                 List<Long> succeededServerIds = results.get(true).stream()
                         .map(MinionSummary::getServerId).collect(toList());
                 if (!succeededServerIds.isEmpty()) {
-                    ActionFactory.updateServerActionsPickedUp(actionIn, succeededServerIds);
+                    ServerActionFactory.updateServerActions(actionIn, succeededServerIds,
+                            ActionFactory.STATUS_PICKED_UP);
                 }
                 List<Long> failedServerIds  = results.get(false).stream()
                         .map(MinionSummary::getServerId).collect(toList());
                 if (!failedServerIds.isEmpty()) {
-                    ActionFactory.updateServerActions(actionIn, failedServerIds, ActionFactory.STATUS_FAILED);
+                    ServerActionFactory.updateServerActions(actionIn, failedServerIds, ActionFactory.STATUS_FAILED);
                 }
             }
         }
@@ -400,12 +406,12 @@ public class SaltServerActionService {
             // mgractionchains.start is executed via state.apply, get the actual output of the module
             // fist look for start result
             StateApplyResult<JsonElement> stateApplyResult =
-                    chunkResult.get("mgrcompat_|-startssh_|-mgractionchains.start_|-module_run");
+                    chunkResult.get("module_|-startssh_|-mgractionchains.start_|-run");
 
             if (stateApplyResult == null) {
                 // if no start result, look for resume
                 stateApplyResult =
-                        chunkResult.get("mgrcompat_|-resumessh_|-mgractionchains.resume_|-module_run");
+                        chunkResult.get("module_|-resumessh_|-mgractionchains.resume_|-run");
             }
 
             if (stateApplyResult == null) {
@@ -488,7 +494,7 @@ public class SaltServerActionService {
                 Action action = ActionFactory.lookupById(stateId.getActionId());
                 if (stateResult.getName().map(x -> x.fold(Arrays::asList, List::of)
                         .contains(SaltParameters.SYSTEM_REBOOT)).orElse(false) && stateResult.isResult() &&
-                        action.getActionType().equals(ActionFactory.TYPE_REBOOT)) {
+                        ActionTypeEnum.TYPE_REBOOT.equalsType(action.getActionType())) {
 
                     Optional<ServerAction> rebootServerAction =
                             action.getServerActions().stream()
@@ -587,7 +593,7 @@ public class SaltServerActionService {
                     // get Salt calls for this action
                     Map<LocalCall<?>, List<MinionSummary>> actionCalls = callsForAction(actionIn, minions);
 
-                    // TODO how to handle staging jobs?
+                    // OLDTODO how to handle staging jobs?
 
                     // Salt calls for each minion
                     Map<MinionSummary, List<LocalCall<?>>> callsPerMinion =
@@ -965,21 +971,29 @@ public class SaltServerActionService {
         /* bsc#1197591 ssh push reboot has an answer that is not a failure but the action needs to stay
          *  in picked up, in this way SSHServiceDriver::getCandidates can schedule a reboot correctly
          */
-        if (!action.getActionType().equals(ActionFactory.TYPE_REBOOT)) {
+        if (!(ActionTypeEnum.TYPE_REBOOT.equalsType(action.getActionType()) ||
+                isSLES15To16Migration(Optional.of(action)))) {
             saltUtils.updateServerAction(sa, 0L, true, "n/a", jsonResult,
                     Optional.of(Xor.right(function)), null);
         }
-
         else if (sa.isStatusQueued()) {
             setActionAsPickedUp(sa);
+        }
+
+        // find and update the original pending DistUpgradeAction.
+        if (isMajorMigrationVerifyJob(action, function)) {
+            handleMajorMigrationVerificationResult(minion.getMinionId(), Optional.of(jsonResult));
         }
 
         // Perform a "check-in" after every executed action
         minion.updateServerInfo();
 
         // Perform a package profile update in the end if necessary
-        if (forcePkgRefresh || saltUtils.shouldRefreshPackageList(
-                Optional.of(Xor.right(function)), Optional.of(jsonResult))) {
+        if (!isSLES15To16Migration(Optional.of(action)) &&
+                (forcePkgRefresh || saltUtils.shouldRefreshPackageList(
+                        Optional.of(Xor.right(function)), Optional.of(jsonResult)) ||
+                        isMajorMigrationVerifyJob(action, function))) {
+            // not when returning from migration job, but after the verify job we need to
             LOG.info("Scheduling a package profile update");
 
             try {
@@ -1039,7 +1053,7 @@ public class SaltServerActionService {
             Deque<Long> actionIdsDependencies = new ArrayDeque<>();
             actionIdsDependencies.push(actionId);
             List<ServerAction> serverActions = Optional.ofNullable(action).
-                    map(firstAction -> ActionFactory
+                    map(firstAction -> ServerActionFactory
                         .listServerActionsForServer(minion.get(),
                                 ActionFactory.ALL_STATUSES_BUT_COMPLETED, action.getCreated()))
                     .orElse(new ArrayList<>());
@@ -1105,8 +1119,8 @@ public class SaltServerActionService {
                         LOG.debug("Updating action for server: {}", minionServer.getId());
                     }
                     try {
-                        if (action.get().getActionType().equals(
-                                ActionFactory.TYPE_REBOOT) && success && retcode == 0) {
+                        if (ActionTypeEnum.TYPE_REBOOT.equalsType(action.get().getActionType()) &&
+                                success && retcode == 0) {
                             // Reboot has been scheduled so set reboot action to PICKED_UP.
                             // Wait until next "minion/start/event" to set it to COMPLETED.
                             if (sa.isStatusQueued()) {
@@ -1114,7 +1128,7 @@ public class SaltServerActionService {
                             }
                             return;
                         }
-                        else if (action.get().getActionType().equals(ActionFactory.TYPE_KICKSTART_INITIATE) &&
+                        else if (ActionTypeEnum.TYPE_KICKSTART_INITIATE.equalsType(action.get().getActionType()) &&
                                 success) {
                             KickstartAction ksAction = (KickstartAction) action.get();
                             if (!ksAction.getKickstartActionDetails().getUpgrade()) {
@@ -1129,7 +1143,7 @@ public class SaltServerActionService {
                                 jsonResult,
                                 function,
                                 endTime);
-                        ActionFactory.save(sa);
+                        ServerActionFactory.save(sa);
                         SystemManager.updateSystemOverview(sa.getServer());
                     }
                     catch (Exception e) {
@@ -1140,7 +1154,7 @@ public class SaltServerActionService {
 
                         sa.fail("An unexpected error has occurred. Please check the server logs.");
 
-                        ActionFactory.save(sa);
+                        ServerActionFactory.save(sa);
                         // When we throw the exception again, the current transaction
                         // will be set to rollback-only, so we explicitly commit the
                         // transaction here
@@ -1210,7 +1224,7 @@ public class SaltServerActionService {
     public void handleActionChainResult(
             String minionId, String jobId,
             Map<String, StateApplyResult<Ret<JsonElement>>> actionChainResult,
-            Function<StateApplyResult<Ret<JsonElement>>, Boolean> skipFunction) {
+            Predicate<StateApplyResult<Ret<JsonElement>>> skipFunction) {
         int chunk = 1;
         long retActionChainId = 0L;
         boolean actionChainFailed = false;
@@ -1225,7 +1239,7 @@ public class SaltServerActionService {
                 retActionChainId = stateId.get().getActionChainId();
                 chunk = stateId.get().getChunk();
                 long actionId = stateId.get().getActionId();
-                if (Boolean.TRUE.equals(skipFunction.apply(actionStateApply))) {
+                if (skipFunction.test(actionStateApply)) {
                     continue; // skip this state from handling
                 }
 
@@ -1346,5 +1360,74 @@ public class SaltServerActionService {
      */
     public void setTaskomaticApi(TaskomaticApi taskomaticApiIn) {
         this.taskomaticApi = taskomaticApiIn;
+    }
+
+    /**
+     * Checks if the job return event corresponds to a post-reboot verification state
+     * used in major version migrations (specifically the SLES 15 to 16 bridge).
+     *
+     * @param actionIn the action
+     * @param function the Salt function called (e.g., state.apply)
+     * @return true if this is a major migration verification handshake
+     */
+    private boolean isMajorMigrationVerifyJob(Action actionIn, String function) {
+        if (!"state.apply".equals(function) && !"state.sls".equals(function)) {
+            return false;
+        }
+        if (actionIn instanceof ApplyStatesAction apAction) {
+            return apAction.getDetails().getMods().contains(ApplyStatesEventMessage.DISTUPGRADE_SLES16_VERIFY);
+        }
+        return false;
+    }
+
+    /**
+     * Checks if the action is an DistUpgradeAction for SLES15 to SLES16 migration
+     * @param actionIn the action
+     * @return true when this is a SLES15 to SLES16 migration action
+     */
+    public boolean isSLES15To16Migration(Optional<Action> actionIn) {
+        return actionIn
+                .filter(DistUpgradeAction.class::isInstance)
+                .map(DistUpgradeAction.class::cast)
+                .map(DistUpgradeAction::isSles15To16Migration)
+                .orElse(false);
+    }
+
+    /**
+     * Update the original pending {@link DistUpgradeAction} when sles16_verify completes.
+     * This method finds the still-pending DistUpgradeAction and passes the FULL result map
+     * to {@link DistUpgradeAction#handleUpdateServerAction} so that
+     * {@code isVerificationStateResult} recognises it and calls {@code handleVerificationResult}.
+     *
+     * @param minionId  the reconnected minion
+     * @param jobResult the full state.apply result from sles16_verify
+     */
+    public void handleMajorMigrationVerificationResult(String minionId, Optional<JsonElement> jobResult) {
+        MinionServerFactory.findByMinionId(minionId).ifPresent(minion ->
+                jobResult.filter(JsonElement::isJsonObject).ifPresent(result -> {
+                    if (!DistUpgradeAction.isMajorMigrationVerificationResult(result)) {
+                        return;
+                    }
+                    // Find the SLES 15.x -> 16.x migration action
+                    ServerActionFactory.listServerActionsForServer(minion, ActionFactory.ALL_PENDING_STATUSES)
+                            .stream()
+                            .filter(sa -> sa.getParentAction() instanceof DistUpgradeAction dup &&
+                                    dup.getDetails(minion.getId()) != null &&
+                                    dup.getDetails(minion.getId()).isSles15To16Migration())
+                            .findFirst()
+                            .ifPresentOrElse(sa -> {
+                                DistUpgradeAction dupAction = (DistUpgradeAction) sa.getParentAction();
+                                LOG.info("SLES 16 verify: Found pending migration {} for minion {}. Updating...",
+                                         dupAction.getId(), minionId);
+                                // Delegate the actual result parsing back to the Action class
+                                dupAction.handleUpdateServerAction(sa, result, null);
+                                ServerActionFactory.save(sa);
+                                LOG.info("SLES 16: Migration action {} for {} updated to: {}",
+                                        dupAction.getId(), minionId, sa.getStatus().getName());
+                            },
+                            () -> LOG.warn("SLES 16: No pending SLES 15->16 action found for minion {}", minionId)
+                            );
+                })
+        );
     }
 }

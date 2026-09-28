@@ -1,7 +1,7 @@
 #
 # spec file for package spacewalk-branding
 #
-# Copyright (c) 2025 SUSE LLC
+# Copyright (c) 2026 SUSE LLC
 # Copyright (c) 2008-2018 Red Hat, Inc.
 #
 # All modifications and additions to the file contributed by third parties
@@ -25,7 +25,7 @@
 %global tomcat_path %{wwwroot}/tomcat
 %global wwwdocroot %{wwwroot}/htdocs
 Name:           spacewalk-branding
-Version:        5.2.3
+Version:        5.3.1
 Release:        0
 Summary:        %{productprettyname} branding data
 License:        GPL-2.0-only AND OFL-1.1
@@ -44,7 +44,7 @@ Requires:       susemanager-best-practices_en-pdf
 Requires:       susemanager-docs_en
 Requires:       susemanager-getting-started_en-pdf
 Requires:       susemanager-reference_en-pdf
-Requires(pre):  tomcat
+Requires(pre):  tomcat11
 #BuildArch:  noarch
 %if 0%{?suse_version}
 BuildRequires:  apache2

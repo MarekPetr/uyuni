@@ -1,4 +1,4 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
 <%@ taglib uri="http://rhn.redhat.com/tags/list" prefix="rl" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
@@ -12,7 +12,7 @@
   <bean:message key="ssmchildsubconfirm.jsp.header" />
 </h2>
   <rhn:require acl="any_system_with_salt_entitlement()">
-    <div class="form-group">
+    <div class="row">
       <div class="alert alert-info">
         <bean:message key="sdc.channels.edit.ssm.deploy.warning"/>
       </div>

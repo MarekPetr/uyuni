@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 SUSE LLC
  * Copyright (c) 2009--2016 Red Hat, Inc.
  *
  * This software is licensed to you under the GNU General Public License,
@@ -24,8 +25,11 @@ import com.redhat.rhn.common.hibernate.LookupException;
 import com.redhat.rhn.common.localization.LocalizationService;
 import com.redhat.rhn.domain.org.Org;
 import com.redhat.rhn.domain.org.OrgFactory;
+import com.redhat.rhn.domain.org.usergroup.UserGroupImpl;
+import com.redhat.rhn.domain.org.usergroup.UserGroupMembers;
 import com.redhat.rhn.domain.role.Role;
 import com.redhat.rhn.domain.role.RoleFactory;
+import com.redhat.rhn.domain.role.RoleImpl;
 import com.redhat.rhn.domain.server.Server;
 import com.redhat.rhn.domain.user.legacy.UserImpl;
 import com.redhat.rhn.manager.session.SessionManager;
@@ -36,18 +40,16 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
-import org.hibernate.query.Query;
 import org.hibernate.type.StandardBasicTypes;
 
-import java.math.BigDecimal;
 import java.sql.Types;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.TimeZone;
 
@@ -56,7 +58,7 @@ import java.util.TimeZone;
  * com.redhat.rhn.domain.user.User objects from the
  * database.
  */
-public  class UserFactory extends HibernateFactory {
+public class UserFactory extends HibernateFactory {
 
     private static final String USER_ID = "user_id";
     private static final String LOGIN_UC = "loginUc";
@@ -65,12 +67,10 @@ public  class UserFactory extends HibernateFactory {
 
     private static List<RhnTimeZone> timeZoneList;
 
-    private static final Role[] IMPLIEDROLESARRAY = { RoleFactory.CHANNEL_ADMIN,
-            RoleFactory.CONFIG_ADMIN, RoleFactory.SYSTEM_GROUP_ADMIN,
-            RoleFactory.ACTIVATION_KEY_ADMIN, RoleFactory.IMAGE_ADMIN };
-
     /** List of Role objects that are applied if you are an Org_admin */
-    public static final List<Role> IMPLIEDROLES = Arrays.asList(IMPLIEDROLESARRAY);
+    public static final List<Role> IMPLIEDROLES = List.of(RoleFactory.CHANNEL_ADMIN,
+            RoleFactory.CONFIG_ADMIN, RoleFactory.SYSTEM_GROUP_ADMIN,
+            RoleFactory.ACTIVATION_KEY_ADMIN, RoleFactory.IMAGE_ADMIN);
 
     public static final State ENABLED = loadState("enabled");
     public static final State DISABLED = loadState("disabled");
@@ -97,9 +97,7 @@ public  class UserFactory extends HibernateFactory {
      * @return the responsible user (first org admin) of the org.
      */
     public static User findResponsibleUser(Long orgId, Role r) {
-        Session session = HibernateFactory.getSession();
-
-        Optional<Object> obj = session.createNativeQuery("""
+        return getSession().createNativeQuery("""
                         SELECT ugm.user_id AS user_id
                         FROM   rhnUserGroupMembers ugm
                         WHERE  ugm.user_group_id = (SELECT id
@@ -107,18 +105,15 @@ public  class UserFactory extends HibernateFactory {
                                                     WHERE  org_id = :org_id
                                                     AND    group_type = :type_id)
                         ORDER BY ugm.user_id
-                        """)
+                        """, Long.class)
+                .addSynchronizedEntityClass(UserGroupMembers.class)
+                .addSynchronizedEntityClass(UserGroupImpl.class)
                 .setParameter("org_id", orgId)
                 .setParameter("type_id", r.getId())
                 // only care about the first one
                 .getResultStream()
-                .findFirst();
-        return obj.flatMap(o -> {
-                    if (o instanceof BigDecimal bd) {
-                        return Optional.of(UserFactory.lookupById(bd.longValue()));
-                    }
-                    return Optional.empty();
-                })
+                .findFirst()
+                .map(UserFactory::lookupById)
                 .orElse(null);
     }
 
@@ -153,9 +148,7 @@ public  class UserFactory extends HibernateFactory {
      * @return Address the address created
      */
     public static Address createAddress() {
-        AddressImpl addr = new AddressImpl();
-        addr.setPrivType(Address.TYPE_MARKETING);
-        return addr;
+        return new AddressImpl();
     }
 
     /**
@@ -231,7 +224,7 @@ public  class UserFactory extends HibernateFactory {
         User returnedUser  = getSession().createQuery("""
                 FROM com.redhat.rhn.domain.user.legacy.UserImpl AS u
                 WHERE u.id = :uid
-                AND org_id = :orgId
+                AND u.org.id = :orgId
                 """, UserImpl.class)
                 .setParameter("uid", id)
                 .setParameter("orgId", user.getOrg().getId())
@@ -274,7 +267,7 @@ public  class UserFactory extends HibernateFactory {
         User returnedUser  = getSession().createQuery("""
                 FROM com.redhat.rhn.domain.user.legacy.UserImpl AS u
                 WHERE u.loginUc = :loginUc
-                AND org_id = :orgId
+                AND u.org.id = :orgId
                 """, UserImpl.class)
                 .setParameter("orgId", user.getOrg().getId())
                 .setParameter(LOGIN_UC, login.toUpperCase())
@@ -288,7 +281,7 @@ public  class UserFactory extends HibernateFactory {
 
     /**
      * Insert a new user.  Invalid to call this when updating a user
-     * TODO: mmccune fill out the other fields in the user object.
+     * OLDTODO: mmccune fill out the other fields in the user object.
      * @param usr The object we are commiting.
      * @param addr The address to add to the User
      * @param orgId Org this new user is a member of
@@ -320,7 +313,7 @@ public  class UserFactory extends HibernateFactory {
 
     /**
      * Insert a new user.  Invalid to call this when updating a user
-     * TODO: mmccune fill out the other fields in the user object.
+     * OLDTODO: mmccune fill out the other fields in the user object.
      * @param usr The object we are commiting.
      * @param addr The address to add to the User
      * @param orgId Org this new user is a member of
@@ -328,17 +321,9 @@ public  class UserFactory extends HibernateFactory {
      */
     protected User addNewUser(User usr, Address addr, Long orgId) {
         LOG.debug("Starting addNewUser");
-        if (addr != null) {
-            usr.setAddress1(addr.getAddress1());
-            usr.setAddress2(addr.getAddress2());
-            usr.setCity(addr.getCity());
-            usr.setCountry(addr.getCountry());
-            usr.setFax(addr.getFax());
-            usr.setIsPoBox(addr.getIsPoBox());
-            usr.setPhone(addr.getPhone());
-            usr.setState(addr.getState());
-            usr.setZip(addr.getZip());
-        }
+
+        usr.setAddress(addr);
+
         // save the user
         CallableMode m = ModeFactory.getCallableMode("User_queries", "create_new_user");
         Map<String, Object> inParams = new HashMap<>();
@@ -351,26 +336,26 @@ public  class UserFactory extends HibernateFactory {
         inParams.put("login", usr.getLogin());
         inParams.put("password", usr.getPassword());
         inParams.put("contactId", null);
-        inParams.put("prefix", StringUtils.defaultString(usr.getPrefix(), " "));
-        inParams.put("fname", StringUtils.defaultString(usr.getFirstNames(), null));
-        inParams.put("lname", StringUtils.defaultString(usr.getLastName(), null));
+        inParams.put("prefix", Objects.toString(usr.getPrefix(), " "));
+        inParams.put("fname", Objects.toString(usr.getFirstNames(), null));
+        inParams.put("lname", Objects.toString(usr.getLastName(), null));
         inParams.put("genqual", null);
         inParams.put("parentCompany", StringUtils.defaultIfEmpty(usr.getCompany(), null));
         inParams.put("company", StringUtils.defaultIfEmpty(usr.getCompany(), null));
         inParams.put("title", StringUtils.defaultIfEmpty(usr.getTitle(), null));
-        inParams.put("phone", StringUtils.defaultIfEmpty(usr.getPhone(), null));
-        inParams.put("fax", StringUtils.defaultIfEmpty(usr.getFax(), null));
+        inParams.put("phone", addr != null ? StringUtils.defaultIfEmpty(addr.getPhone(), null) : null);
+        inParams.put("fax", addr != null ? StringUtils.defaultIfEmpty(addr.getFax(), null) : null);
         inParams.put("email", StringUtils.defaultIfEmpty(usr.getEmail(), null));
         inParams.put("pin", 0);
         inParams.put("fnameOl", " ");
         inParams.put("lnameOl", " ");
-        inParams.put("addr1", StringUtils.defaultIfEmpty(usr.getAddress1(), null));
-        inParams.put("addr2", StringUtils.defaultIfEmpty(usr.getAddress2(), null));
+        inParams.put("addr1", addr != null ? addr.getAddress1() : null);
+        inParams.put("addr2", addr != null ? addr.getAddress2() : null);
         inParams.put("addr3", " ");
-        inParams.put("city", StringUtils.defaultIfEmpty(usr.getCity(), null));
-        inParams.put("state", StringUtils.defaultIfEmpty(usr.getState(), null));
-        inParams.put("zip", StringUtils.defaultIfEmpty(usr.getZip(), null));
-        inParams.put("country", StringUtils.defaultIfEmpty(usr.getCountry(), null));
+        inParams.put("city", addr != null ? addr.getCity() : null);
+        inParams.put("state", addr != null ? addr.getState() : null);
+        inParams.put("zip", addr != null ? addr.getZip() : null);
+        inParams.put("country", addr != null ? addr.getCountry() : null);
         inParams.put("altFnames", null);
         inParams.put("altLnames", null);
         inParams.put("contCall", "N");
@@ -685,7 +670,7 @@ public  class UserFactory extends HibernateFactory {
     public List<User> findAllUsers(Optional<Org> inOrg) {
         return Opt.fold(inOrg,
             () -> getSession().createQuery("FROM UserImpl AS u", User.class).list(),
-            org -> getSession().createQuery("FROM UserImpl AS u WHERE org_id = :org_id", User.class)
+            org -> getSession().createQuery("FROM UserImpl AS u WHERE u.org.id = :org_id", User.class)
                     .setParameter("org_id", org.getId()).list()
         );
     }
@@ -711,11 +696,13 @@ public  class UserFactory extends HibernateFactory {
                 )
                 """;
 
-        Query<UserImpl> query = HibernateFactory.getSession().createNativeQuery(sql, UserImpl.class);
-        query.setParameter("org_id", inOrg.getId());
-
-        // Execute the query and return the result
-        return query.getResultList();
+        return getSession().createNativeQuery(sql, UserImpl.class)
+                .addSynchronizedEntityClass(UserImpl.class)
+                .addSynchronizedEntityClass(UserGroupMembers.class)
+                .addSynchronizedEntityClass(UserGroupImpl.class)
+                .addSynchronizedEntityClass(RoleImpl.class)
+                .setParameter("org_id", inOrg.getId())
+                .getResultList();
     }
 
     /**

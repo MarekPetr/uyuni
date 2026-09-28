@@ -20,7 +20,7 @@ import com.redhat.rhn.common.db.datasource.DataResult;
 import com.redhat.rhn.common.localization.LocalizationService;
 import com.redhat.rhn.common.util.DatePicker;
 import com.redhat.rhn.common.validator.ValidatorError;
-import com.redhat.rhn.domain.action.ActionFactory;
+import com.redhat.rhn.domain.action.server.ServerActionFactory;
 import com.redhat.rhn.domain.channel.Channel;
 import com.redhat.rhn.domain.kickstart.KickstartCommand;
 import com.redhat.rhn.domain.kickstart.KickstartData;
@@ -72,10 +72,11 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * blah blah
@@ -550,22 +551,22 @@ public class ScheduleKickstartWizardAction extends RhnWizardAction {
                 if (rec != null && rec.getProfile() != null && profile.getName().equals(rec.getProfile().getName())) {
                     if (StringUtils.isBlank(form.getString(KERNEL_PARAMS_TYPE))) {
                         form.set(KERNEL_PARAMS_TYPE, KERNEL_PARAMS_CUSTOM);
-                        if (rec.getKernelOptions().isEmpty()) {
-                            form.set(KERNEL_PARAMS, CobblerObject.INHERIT_KEY);
-                        }
-                        else {
-                            form.set(KERNEL_PARAMS, profile.convertOptionsMap(rec.getKernelOptions().get()));
-                        }
+
+                        String kernelOptions = rec.getKernelOptions()
+                                .map(profile::convertOptionsMap)
+                                .orElse(CobblerObject.INHERIT_KEY);
+
+                        form.set(KERNEL_PARAMS, kernelOptions);
                     }
 
                     if (StringUtils.isBlank(form.getString(POST_KERNEL_PARAMS_TYPE))) {
                         form.set(POST_KERNEL_PARAMS_TYPE, KERNEL_PARAMS_CUSTOM);
-                        if (rec.getKernelOptionsPost().isEmpty()) {
-                            form.set(POST_KERNEL_PARAMS, CobblerObject.INHERIT_KEY);
-                        }
-                        else {
-                            form.set(POST_KERNEL_PARAMS, profile.convertOptionsMap(rec.getKernelOptionsPost().get()));
-                        }
+
+                        String kernelOptionsPost = rec.getKernelOptionsPost()
+                                .map(profile::convertOptionsMap)
+                                .orElse(CobblerObject.INHERIT_KEY);
+
+                        form.set(POST_KERNEL_PARAMS, kernelOptionsPost);
                     }
                 }
             }
@@ -575,26 +576,30 @@ public class ScheduleKickstartWizardAction extends RhnWizardAction {
     }
 
     private void addKernelParamsAttribute(RequestContext ctx, CobblerObject cobblerObject, String attrString) {
-        if (cobblerObject.getKernelOptions().isEmpty()) {
+        Optional<Map<String, Object>> optKernelOptions = cobblerObject.getKernelOptions();
+
+        if (optKernelOptions.isEmpty()) {
             ctx.getRequest().setAttribute(attrString, CobblerObject.INHERIT_KEY);
         }
         else {
             ctx.getRequest().setAttribute(attrString,
-                    (cobblerObject.getKernelOptions().get() instanceof Map) ?
-                            cobblerObject.convertOptionsMap(cobblerObject.getKernelOptions().get()) :
-                            cobblerObject.getKernelOptions().get());
+                    (optKernelOptions.get() instanceof Map) ?
+                            cobblerObject.convertOptionsMap(optKernelOptions.get()) :
+                            optKernelOptions.get());
         }
     }
 
     private void addPostKernelParamsAttribute(RequestContext ctx, CobblerObject cobblerObject, String attrString) {
-        if (cobblerObject.getKernelOptionsPost().isEmpty()) {
+        Optional<Map<String, Object>> optKernelOptionsPost = cobblerObject.getKernelOptionsPost();
+
+        if (optKernelOptionsPost.isEmpty()) {
             ctx.getRequest().setAttribute(attrString, CobblerObject.INHERIT_KEY);
         }
         else {
             ctx.getRequest().setAttribute(attrString,
-                    (cobblerObject.getKernelOptionsPost().get() instanceof Map) ?
-                            cobblerObject.convertOptionsMap(cobblerObject.getKernelOptionsPost().get()) :
-                            cobblerObject.getKernelOptionsPost().get());
+                    (optKernelOptionsPost.get() instanceof Map) ?
+                            cobblerObject.convertOptionsMap(optKernelOptionsPost.get()) :
+                            optKernelOptionsPost.get());
         }
     }
 
@@ -942,7 +947,7 @@ public class ScheduleKickstartWizardAction extends RhnWizardAction {
 
     private void checkForKickstart(DynaActionForm form,
             KickstartScheduleCommand cmd, RequestContext ctx) {
-        if (ActionFactory.doesServerHaveKickstartScheduled((Long) form
+        if (ServerActionFactory.doesServerHaveKickstartScheduled((Long) form
                 .get(RequestContext.SID))) {
             String[] params = { cmd.getServer().getName() };
             getStrutsDelegate().saveMessage(

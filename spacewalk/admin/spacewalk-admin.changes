@@ -1,4 +1,24 @@
 -------------------------------------------------------------------
+Wed Aug 05 13:37:38 CEST 2026 - antonio.garofalo@suse.com
+
+- version 5.3.1-0
+  * Bump version to 5.3.0
+
+-------------------------------------------------------------------
+Fri May 29 15:51:26 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.4-0
+  * Use db_ssl_enabled value consistently
+
+-------------------------------------------------------------------
+Thu Apr 16 14:33:39 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.3-0
+  * Remove old tomcat code in the startup helper
+  * Update uyuni_roster conf when running spacewalk-hostname-rename.
+  * Allow proper restart for server container using a drop-in file.
+
+-------------------------------------------------------------------
 Thu Nov 27 11:16:21 CET 2025 - michael.calmer@suse.com
 
 - version 5.2.2-0

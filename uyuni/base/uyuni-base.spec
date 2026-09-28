@@ -1,7 +1,7 @@
 #
 # spec file for package uyuni-base
 #
-# Copyright (c) 2025 SUSE LLC
+# Copyright (c) 2026 SUSE LLC
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -33,7 +33,7 @@
 %define apache_group apache
 %endif
 Name:           uyuni-base
-Version:        5.2.1
+Version:        5.3.1
 Release:        0
 Summary:        %{productprettyname} Base Package
 License:        GPL-2.0-only
@@ -66,7 +66,7 @@ Group:          System/Fhs
 Requires(pre):  %{_sbindir}/groupadd
 Requires(pre):  %{_sbindir}/usermod
 Requires(pre):  salt
-Requires(pre):  tomcat
+Requires(pre):  tomcat11
 Requires(pre):  uyuni-base-common
 Provides:       group(susemanager)
 %if 0%{?suse_version} >= 1500
@@ -101,6 +101,7 @@ mkdir -p %{buildroot}%{_datadir}/rhn/proxy
 install -d -m 0775 %{buildroot}%{_localstatedir}/spacewalk
 install -d -m 0775 %{buildroot}/%{_localstatedir}/spacewalk/systems
 install -d -m 0775 %{buildroot}/%{_localstatedir}/spacewalk/packages
+install -d -m 0700 %{buildroot}/%{_localstatedir}/spacewalk/gpg
 %endif
 mkdir -p %{buildroot}%{_datadir}/rhn/config-defaults
 mkdir -p %{buildroot}/srv/www/distributions
@@ -125,7 +126,9 @@ getent passwd %{apache_user} >/dev/null && %{_sbindir}/usermod -a -G susemanager
 %dir %attr(775,%{apache_user}, root) %{_localstatedir}/spacewalk
 %dir %attr(775,%{apache_user}, %{apache_group}) %{_localstatedir}/spacewalk/systems
 %dir %attr(775,%{apache_user}, %{apache_group}) %{_localstatedir}/spacewalk/packages
-%dir %attr(755,root,root) /srv/www/distributions
+%dir %attr(700,tomcat,susemanager) %{_localstatedir}/spacewalk/gpg
+%dir %attr(755,root,root) %{www_path}/www
+%dir %attr(755,root,root) %{www_path}/www/distributions
 %endif
 
 %files proxy

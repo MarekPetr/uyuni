@@ -39,7 +39,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
-import java.util.function.Supplier;
+import java.util.function.BooleanSupplier;
 
 /**
  * Service to manage server monitoring.
@@ -134,9 +134,9 @@ public class MonitoringService {
         }
     };
 
-    private static Supplier<Boolean> tomcatJmxStatusSupplier = TaskoXmlRpcHandler::isJmxEnabled;
+    private static BooleanSupplier tomcatJmxStatusSupplier = TaskoXmlRpcHandler::isJmxEnabled;
 
-    private static Supplier<Boolean> taskomaticJmxStatusSupplier = () -> {
+    private static BooleanSupplier taskomaticJmxStatusSupplier = () -> {
         TaskomaticApi taskomatic = new TaskomaticApi();
         try {
             return taskomatic.isJmxEnabled();
@@ -147,7 +147,7 @@ public class MonitoringService {
         }
     };
 
-    private static Supplier<Boolean> selfMonitoringStatusSupplier =
+    private static BooleanSupplier selfMonitoringStatusSupplier =
             () -> ConfigDefaults.get().isPrometheusMonitoringEnabled();
 
     /**
@@ -162,7 +162,7 @@ public class MonitoringService {
      * Used only for unit tests
      * @param tomcatJmxEnabledIn to set
      */
-    public static void setTomcatJmxStatusSupplier(Supplier<Boolean> tomcatJmxEnabledIn) {
+    public static void setTomcatJmxStatusSupplier(BooleanSupplier tomcatJmxEnabledIn) {
         MonitoringService.tomcatJmxStatusSupplier = tomcatJmxEnabledIn;
     }
 
@@ -170,7 +170,7 @@ public class MonitoringService {
      * Used only for unit tests
      * @param taskomaticJmxEnabledIn to set
      */
-    public static void setTaskomaticJmxStatusSupplier(Supplier<Boolean> taskomaticJmxEnabledIn) {
+    public static void setTaskomaticJmxStatusSupplier(BooleanSupplier taskomaticJmxEnabledIn) {
         MonitoringService.taskomaticJmxStatusSupplier = taskomaticJmxEnabledIn;
     }
 
@@ -178,7 +178,7 @@ public class MonitoringService {
      * Used only for unit tests
      * @param selfMonitoringStatusSupplierIn to set
      */
-    public static void setSelfMonitoringStatusSupplier(Supplier<Boolean> selfMonitoringStatusSupplierIn) {
+    public static void setSelfMonitoringStatusSupplier(BooleanSupplier selfMonitoringStatusSupplierIn) {
         MonitoringService.selfMonitoringStatusSupplier = selfMonitoringStatusSupplierIn;
     }
 
@@ -200,13 +200,13 @@ public class MonitoringService {
     public static Optional<MonitoringStatus> getStatus() {
         Optional<Map<String, Boolean>> res = invokeMonitoringCtl("status", Optional.empty(),
                 new Tuple2<>("node",
-                        "mgrcompat_|-node_exporter_service_|-service.status_|-module_run"),
+                        "module_|-node_exporter_service_|-service.status_|-run"),
                 new Tuple2<>("postgres",
-                        "mgrcompat_|-postgres_exporter_service_|-service.status_|-module_run"),
+                        "module_|-postgres_exporter_service_|-service.status_|-run"),
                 new Tuple2<>("tomcat",
-                        "mgrcompat_|-jmx_tomcat_java_config_|-file.search_|-module_run"),
+                        "module_|-jmx_tomcat_java_config_|-file.search_|-run"),
                 new Tuple2<>("taskomatic",
-                        "mgrcompat_|-jmx_taskomatic_java_config_|-file.search_|-module_run"),
+                        "module_|-jmx_taskomatic_java_config_|-file.search_|-run"),
                 new Tuple2<>("self_monitoring",
                         "cmd_|-mgr_is_prometheus_self_monitoring_enabled_|-/usr/bin/grep*")
                 );
@@ -253,15 +253,15 @@ public class MonitoringService {
     }
 
     private static boolean getTaskomaticRuntimeJmxStatus() {
-        return taskomaticJmxStatusSupplier.get();
+        return taskomaticJmxStatusSupplier.getAsBoolean();
     }
 
     private static boolean getTomcatRuntimeJmxStatus() {
-        return tomcatJmxStatusSupplier.get();
+        return tomcatJmxStatusSupplier.getAsBoolean();
     }
 
     private static boolean getSelfMonitoringStatus() {
-        return selfMonitoringStatusSupplier.get();
+        return selfMonitoringStatusSupplier.getAsBoolean();
     }
 
     /**
@@ -289,9 +289,9 @@ public class MonitoringService {
                 new Tuple2<>("postgres",
                         "service_|-postgres_exporter_service_|-prometheus-postgres_exporter_|-running"),
                 new Tuple2<>("tomcat",
-                        "file_|-jmx_tomcat_config_|-/etc/sysconfig/tomcat/systemd/jmx.conf_|-managed"),
+                        "file_|-jmx_tomcat_config_|-/etc/tomcat/conf.d/tomcat_jmx.conf_|-managed"),
                 new Tuple2<>("taskomatic",
-                        "file_|-jmx_taskomatic_config_|-/etc/sysconfig/taskomatic/systemd/jmx.conf_|" +
+                        "file_|-jmx_taskomatic_config_|-/etc/rhn/taskomatic.conf.d/taskomatic_jmx.conf_|" +
                         "-managed"),
                 new Tuple2<>("self_monitoring",
                         "cmd_|-mgr_is_prometheus_self_monitoring_enabled_|-/usr/bin/grep*")
@@ -328,9 +328,9 @@ public class MonitoringService {
                 new Tuple2<>("postgres",
                         "service_|-postgres_exporter_service_|-prometheus-postgres_exporter_|-dead"),
                 new Tuple2<>("tomcat",
-                        "file_|-jmx_tomcat_config_|-/etc/sysconfig/tomcat/systemd/jmx.conf_|-absent"),
+                        "file_|-jmx_tomcat_config_|-/etc/tomcat/conf.d/tomcat_jmx.conf_|-absent"),
                 new Tuple2<>("taskomatic",
-                        "file_|-jmx_taskomatic_config_|-/etc/sysconfig/taskomatic/systemd/jmx.conf_|" +
+                        "file_|-jmx_taskomatic_config_|-/etc/rhn/taskomatic.conf.d/taskomatic_jmx.conf_|" +
                         "-absent"),
                 new Tuple2<>("self_monitoring",
                         "cmd_|-mgr_is_prometheus_self_monitoring_disabled_|-/usr/bin/grep*")

@@ -24,8 +24,8 @@ import org.apache.struts.action.ActionMessages;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * A base class for performing common list actions for
@@ -101,7 +101,6 @@ public abstract class RhnListDispatchAction extends RhnLookupDispatchAction {
      * @param form the ActionForm
      * @param request HttpServletRequest containing request vars
      * @return Returns Map of parameters
-     * TODO: was private
      */
     protected Map<String, Object> makeParamMap(ActionForm form,
             HttpServletRequest request) {

@@ -32,14 +32,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
-import javax.servlet.RequestDispatcher;
-import javax.servlet.ServletRequest;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.jsp.JspException;
-import javax.servlet.jsp.PageContext;
-import javax.servlet.jsp.tagext.Tag;
-import javax.servlet.jsp.tagext.TagSupport;
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.jsp.JspException;
+import jakarta.servlet.jsp.PageContext;
+import jakarta.servlet.jsp.tagext.Tag;
+import jakarta.servlet.jsp.tagext.TagSupport;
 
 /**
  * Provides various utility functions for the ListTag, ColumnTag, and SpanTag
@@ -647,7 +647,11 @@ public class ListTagUtil {
         sb.append("<div class=\"input-group\">");
 
         String placeHolder = StringUtils.defaultString(ls.getMessage("message.filterby", fields.get(0)));
-        sb.append(String.format("<input autofocus=\"autofocus\" type=\"text\" " +
+        sb.append("<input ");
+        if (!Boolean.parseBoolean(request.getHeader("x-pjax"))) {
+            sb.append("autofocus=\"autofocus\" ");
+        }
+        sb.append(String.format("type=\"text\" " +
                 "name=\"%s\" value=\"%s\" class=\"form-control\" placeholder=\"%s\" " +
                 "onkeypress=\"return enterKeyHandler(event, jQuery('button[name=%s]'))\"/>",
                                 filterValueKey,

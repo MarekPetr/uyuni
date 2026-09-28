@@ -1,5 +1,5 @@
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
 <%@ taglib uri="http://rhn.redhat.com/tags/list" prefix="rl" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
@@ -40,7 +40,7 @@
                     </label>
                   </td>
                   <td>
-                    <div class="row-0">
+                    <div class="row">
                       <div class="col-md-6">
                         <div class="input-group">
                           <html:text property="search_string" styleClass="form-control" name="search_string"
@@ -64,7 +64,7 @@
                     </label>
                   </td>
                   <td>
-                    <div class="row-0">
+                    <div class="row">
                       <div class="col-md-6">
                         <html:select styleClass="form-control" property="result_filter">
                           <html:options collection="allResults" property="label" labelProperty="label"/>

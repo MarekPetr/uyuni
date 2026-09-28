@@ -12,9 +12,13 @@ on:
       - 'web/html/src/**'
       - '.github/workflows/frontend-typescript-compilation.yml'
 
+permissions:
+  contents: read
+
 jobs:
   frontend_typescript_compilation:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     strategy:
       matrix:

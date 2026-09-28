@@ -36,8 +36,8 @@ import org.apache.struts.action.ActionMapping;
 
 import java.util.Map;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 
 /**
@@ -83,7 +83,7 @@ public class ChannelListUnsubscribeSubmitAction extends
     @Override
     protected void processParamMap(ActionForm form, HttpServletRequest request,
                                    Map<String, Object> params) {
-        // TODO Auto-generated method stub
+        // OLDTODO Auto-generated method stub
 
     }
 

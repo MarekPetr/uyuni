@@ -252,6 +252,9 @@ INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('salt.keys', 'W', NULL)
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
+    VALUES ('salt.remote_commands', 'W', 'Execute remote commands on systems')
+    ON CONFLICT (namespace, access_mode) DO NOTHING;
+INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('salt.formulas', 'R', NULL)
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
@@ -663,10 +666,10 @@ INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('systems.activation_keys.delete', 'W', NULL)
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
-    VALUES ('systems.profiles', 'R', NULL)
+    VALUES ('systems.profiles', 'R', 'View/compare package profiles')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
-    VALUES ('systems.profiles', 'W', NULL)
+    VALUES ('systems.profiles', 'W', 'Create/edit package profiles')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('systems.custom_data', 'R', NULL)
@@ -882,6 +885,15 @@ INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.admin.configuration.configure', 'W', 'Configure server.')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
+    VALUES ('api.admin.gpg.upload_gpg_key', 'W', 'Upload and add a GPG key to the customer keyring.')
+    ON CONFLICT (namespace, access_mode) DO NOTHING;
+INSERT INTO access.namespace (namespace, access_mode, description)
+    VALUES ('api.admin.gpg.list_gpg_keys', 'R', 'List all GPG keys from the customer keyring.')
+    ON CONFLICT (namespace, access_mode) DO NOTHING;
+INSERT INTO access.namespace (namespace, access_mode, description)
+    VALUES ('api.admin.gpg.remove_gpg_key', 'W', 'Remove a GPG key from the customer keyring.')
+    ON CONFLICT (namespace, access_mode) DO NOTHING;
+INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.admin.monitoring.disable', 'W', 'Disable monitoring.')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
@@ -906,6 +918,9 @@ INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.admin.payg.set_details', 'W', 'Updates the details of a ssh connection data')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
+    VALUES ('api.admin.ssh.remove_known_host', 'W', 'Remove host from known list.')
+    ON CONFLICT (namespace, access_mode) DO NOTHING;
+INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.ansible.create_ansible_path', 'W', 'Create ansible path')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
@@ -924,13 +939,13 @@ INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.ansible.lookup_ansible_path_by_id', 'R', 'Lookup ansible path by path id')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
-    VALUES ('api.ansible.remove_ansible_path', 'W', 'Create ansible path')
+    VALUES ('api.ansible.remove_ansible_path', 'W', 'Remove ansible path')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.ansible.schedule_playbook', 'W', 'Schedule a playbook execution')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
-    VALUES ('api.ansible.update_ansible_path', 'W', 'Create ansible path')
+    VALUES ('api.ansible.update_ansible_path', 'W', 'Update ansible path')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.channel.access.disable_user_restrictions', 'W', 'Disable user restrictions for the given channel.  If disabled,')
@@ -1517,9 +1532,11 @@ INSERT INTO access.namespace (namespace, access_mode, description)
 INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.sync.hub.store_access_token', 'W', 'Generate a new access token for ISS for accessing this system')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
-
 INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.sync.hub.get_all_peripheral_channels', 'R', 'List all peripheral channels')
+    ON CONFLICT (namespace, access_mode) DO NOTHING;
+INSERT INTO access.namespace (namespace, access_mode, description)
+    VALUES ('api.sync.hub.list_peripheral_servers', 'R', 'List all peripheral servers')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.sync.hub.get_manager_info', 'R', 'Get Manager Server Details')
@@ -1551,7 +1568,9 @@ INSERT INTO access.namespace (namespace, access_mode, description)
 INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.sync.hub.list_peripheral_channels_to_sync', 'R', 'List channels which are configured to be synchronized with a peripheral server')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
-
+INSERT INTO access.namespace (namespace, access_mode, description)
+    VALUES ('api.sync.hub.schedule_update_task', 'W', 'Schedule mgr-sync refresh with reposync on peripheral server')
+    ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.image.add_image_file', 'W', 'Delete image file')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
@@ -2384,6 +2403,12 @@ INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.system.appstreams.enable', 'W', 'Schedule enabling of module streams. Invalid modules will be filtered out. If all provided')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
+    VALUES ('api.system.appstreams.ssm_disable', 'W', 'Schedule disabling of module streams from a given modular channel for SSM')
+    ON CONFLICT (namespace, access_mode) DO NOTHING;
+INSERT INTO access.namespace (namespace, access_mode, description)
+    VALUES ('api.system.appstreams.ssm_enable', 'W', 'Schedule enabling of module streams from a given modular channel for SSM')
+    ON CONFLICT (namespace, access_mode) DO NOTHING;
+INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.system.appstreams.list_module_streams', 'R', 'List available module streams for a given system.')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
@@ -2721,6 +2746,9 @@ INSERT INTO access.namespace (namespace, access_mode, description)
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.system.list_systems', 'R', 'Returns a list of all servers visible to the user.')
+    ON CONFLICT (namespace, access_mode) DO NOTHING;
+INSERT INTO access.namespace (namespace, access_mode, description)
+    VALUES ('api.system.list_systems_filtered', 'R', 'List systems using a filter.')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
 INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.system.list_systems_with_entitlement', 'R', 'Lists the systems that have the given entitlement')
@@ -3088,3 +3116,27 @@ INSERT INTO access.namespace (namespace, access_mode, description)
 INSERT INTO access.namespace (namespace, access_mode, description)
     VALUES ('api.proxy.backup_configuration', 'W', 'Saves the configuration of a proxy to the server for later conversion')
     ON CONFLICT (namespace, access_mode) DO NOTHING;
+INSERT INTO access.namespace (namespace, access_mode, description)
+    VALUES ('api.channel.software.setAutoSync', 'W', 'Change channel automatic synchronization flag.')
+    ON CONFLICT (namespace, access_mode) DO NOTHING;
+INSERT INTO access.namespace (namespace, access_mode, description)
+    VALUES ('api.channel.software.isAutoSync', 'R', 'Get channel automatic synchronization flag status.')
+    ON CONFLICT (namespace, access_mode) DO NOTHING;
+INSERT INTO access.namespace (namespace, access_mode, description)
+    VALUES ('api.channel.listSoftwareChannelsByAutoSync', 'R', 'Get the list of channels automatic synchronization by flag status.')
+    ON CONFLICT (namespace, access_mode) DO NOTHING;
+
+INSERT INTO access.namespace (namespace, access_mode, description)
+    VALUES ('api.system.list_migration_targets_with_channels', 'R', 'Lists the valid migration targets for a given server, including channel details')
+    ON CONFLICT (namespace, access_mode) DO NOTHING;
+
+INSERT INTO access.namespace (namespace, access_mode, description) VALUES
+    ('api.system.scap.list_scap_content', 'R', 'Lists SCAP content for a given system'),
+    ('api.system.scap.list_policies', 'R', 'Lists SCAP policies for a given system'),
+    ('api.system.scap.list_tailoring_files', 'R', 'Lists SCAP tailoring files for a given system'),
+    ('api.system.scap.schedule_beta_xccdf_scan_custom', 'W', 'Schedules a custom XCCDF scan'),
+    ('api.system.scap.schedule_beta_xccdf_scan_with_policy', 'W', 'Schedules a XCCDF scan using a specific policy'),
+    ('audit.scap.management', 'R', 'View SCAP content, tailoring files, and policies'),
+    ('audit.scap.management', 'W', 'Create, edit, or delete SCAP content, tailoring files, and policies'),
+    ('audit.scap.execution', 'R', 'View SCAP scan results and remediation scripts'),
+    ('audit.scap.execution', 'W', 'Schedule SCAP scans and apply remediations');

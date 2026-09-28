@@ -26,7 +26,7 @@ public class VmInfoSlsResult {
 
     private static final Logger LOG = LogManager.getLogger(VmInfoSlsResult.class);
 
-    @SerializedName(value = "mgrcompat_|-mgr_virt_profile_|-virt.vm_info_|-module_run")
+    @SerializedName(value = "module_|-mgr_virt_profile_|-virt.vm_info_|-run")
     private StateApplyResult<Ret<Map<String, Map<String, Object>>>> vminfo;
 
     /**
@@ -34,10 +34,11 @@ public class VmInfoSlsResult {
      */
     public Map<String, Map<String, Object>> getVmInfos() {
         return Optional.ofNullable(vminfo)
+                .filter(StateApplyResult::isResult)
                 .map(StateApplyResult::getChanges)
                 .map(Ret::getRet)
                 .orElseGet(() -> {
-                    LOG.info("No virtual machines found");
+                    LOG.info("No virtual machines found (or libvirtd not available)");
                     return Map.of();
                 });
     }

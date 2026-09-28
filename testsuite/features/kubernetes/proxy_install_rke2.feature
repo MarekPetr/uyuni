@@ -1,0 +1,40 @@
+# Copyright (c) 2026 SUSE LLC
+# Licensed under the terms of the MIT license.
+
+@rke2
+@no_user_creation
+@skip_if_external_cluster
+Feature: Install RKE2 proxy on a transactional system
+
+@transactional_server
+  Scenario: Reboot the proxy to activate everything before starting
+    When I reboot the "proxy" host through SSH, waiting until it comes back
+
+  Scenario: Check the RKE2 configuration
+    Then the environment variable "RKE2_VERSION" is set on "proxy"
+    And the environment variable "RKE2_INSTALL_METHOD" is set on "proxy"
+    And file "/etc/rancher/rke2/config.yaml" should exist on "proxy"
+
+  Scenario: Install RKE2
+    When I run "set -o pipefail; curl -sfL https://get.rke2.io | sudo INSTALL_RKE2_VERSION=$RKE2_VERSION INSTALL_RKE2_METHOD=$RKE2_INSTALL_METHOD sh -" on "proxy"
+
+  @skip_if_transactional_server
+  Scenario: Install selinux package
+    When I install packages "rke2-selinux" on this "proxy"
+
+  @transactional_server
+  Scenario: Reboot the proxy to activate the transaction with the RKE2 content
+    When I reboot the "proxy" host through SSH, waiting until it comes back
+
+  Scenario: Enable and start the RKE2 proxy service
+    When I enable the "rke2-server" service on "proxy"
+    And I start the "rke2-server" service on "proxy"
+    And I wait until "rke2-server" service is active on "proxy"
+    Then service "rke2-server" is enabled on "proxy"
+    And service "rke2-server" is active on "proxy"
+
+  Scenario: Create symlinks for RKE2 tools
+    When I run "ln -sf /var/lib/rancher/rke2/bin/kubectl /usr/local/bin/kubectl" on "proxy"
+    And I run "ln -sf /var/lib/rancher/rke2/bin/crictl /usr/local/bin/crictl" on "proxy"
+    And I run "ln -sf /var/lib/rancher/rke2/bin/ctr /usr/local/bin/ctr" on "proxy"
+

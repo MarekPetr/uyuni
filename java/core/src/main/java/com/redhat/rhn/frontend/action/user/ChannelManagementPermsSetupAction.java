@@ -30,8 +30,8 @@ import org.apache.struts.action.ActionForward;
 import org.apache.struts.action.ActionMapping;
 import org.apache.struts.action.DynaActionForm;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * AddressesAction Setup the Addresses on the Request so
@@ -67,7 +67,7 @@ public class ChannelManagementPermsSetupAction extends RhnListAction {
         request.setAttribute("user", user);
         request.setAttribute("role", "manage");
         request.setAttribute("userIsChannelAdmin",
-                user.isMemberOf(AccessGroupFactory.CHANNEL_ADMIN));
+                user.isMemberOf(AccessGroupFactory.getChannelAdmin()));
         form.set("selectedChannels", dr.stream()
                 .filter(ChannelPerms::isHasPerm)
                 .map(p -> String.valueOf(p.getId())).toArray(String[]::new));

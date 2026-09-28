@@ -35,6 +35,7 @@ class RegexRules:
     WRONG_SPACING = re.compile(r"([.,;:])[^ \n]")
     VERSION_REGEX = re.compile(r"\b(?:v?(\d+\.\d+(\.\d+)?)(?:[-.][a-zA-Z0-9]+)?)\b")
     TRACKER_LIKE = re.compile(r".{2,5}#\d+")
+    QUOTED = re.compile(r"`[^`\n]*`|\"[^\"\n]*\"|(?<!\w)'[^'\n]*'(?!\w)")
 
     def __init__(self, tracker_filename: str = None):
         trackers = {}
@@ -81,6 +82,9 @@ class IssueType:
     MISSING_CHLOG = "Changelog not added"
     WRONG_CHLOG = "Changelog added without changes"
     EMPTY_CHLOG = "No changelog entries found"
+    INVALID_CHLOG_FILENAME = (
+        "Changelog filename must be in format: '{}.changes.<author>.<feature>'"
+    )
     MISSING_NEWLINE = "Missing newline at the end"
     WRONG_CAP = "Wrong capitalization"
     WRONG_SPACING = "Wrong spacing"
@@ -283,7 +287,7 @@ class ChangelogValidator:
         for f in files:
             # Check if the file exists in a subdirectory of the base path of the package
             if f.startswith(pkg_path):
-                if os.path.basename(f).startswith(pkg_name + ".changes."):
+                if ".changes." in os.path.basename(f):
                     # Ignore if the change is a removal
                     if os.path.isfile(os.path.join(self.uyuni_root, f)):
                         pkg_chlogs.append(f)
@@ -416,15 +420,21 @@ class ChangelogValidator:
         )
         return self.extract_trackers(title_and_commits)
 
+    def mask_quoted(self, text: str) -> str:
+        return re.sub(self.regex.QUOTED, lambda m: "_" * len(m.group(0)), text)
+
     def validate_chlog_entry(
         self, entry: Entry, entries_in_file: list[Entry]
     ) -> list[Issue]:
         """Validate a single changelog entry"""
 
         issues = []
+        # Quoted text is not checked for capitalization and spacing
+        text = self.mask_quoted(entry.entry)
+
         # Test capitalization
-        if re.match(self.regex.WRONG_CAP_START, entry.entry) or re.search(
-            self.regex.WRONG_CAP_AFTER, entry.entry
+        if re.match(self.regex.WRONG_CAP_START, text) or re.search(
+            self.regex.WRONG_CAP_AFTER, text
         ):
             issues.append(
                 Issue(IssueType.WRONG_CAP, entry.file, entry.line, entry.end_line)
@@ -437,12 +447,12 @@ class ChangelogValidator:
             lambda ver_str, match: ver_str.start() <= match.start()
             and ver_str.end() >= match.end()
         )
-        for match in re.finditer(self.regex.WRONG_SPACING, entry.entry):
+        for match in re.finditer(self.regex.WRONG_SPACING, text):
             # Ignore if part of a version string
             if not any(
                 overlaps(ver_str, match)
                 for ver_str in re.finditer(
-                    self.regex.VERSION_REGEX, entry.entry[: match.end()]
+                    self.regex.VERSION_REGEX, text[: match.end()]
                 )
             ):
                 issues.append(
@@ -700,6 +710,11 @@ class ChangelogValidator:
             if not files["changes"]:
                 # Files are modified but no changelog file added
                 issues.append(Issue(IssueType.MISSING_CHLOG, package=pkg))
+            for chlog_file in files["changes"]:
+                if not os.path.basename(chlog_file).startswith(f"{pkg}.changes."):
+                    issues.append(
+                        Issue(IssueType.INVALID_CHLOG_FILENAME.format(pkg), package=pkg)
+                    )
 
             # Validate each changelog file and gather all the issues
             for file in files["changes"]:

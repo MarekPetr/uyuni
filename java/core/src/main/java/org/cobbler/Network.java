@@ -127,20 +127,22 @@ public class Network {
      * Intentionally given default/package scope returns a nicely formatted map
      * that can be used by the system record to set it in xmlrpc.
      *
+     * See also https://github.com/openSUSE/cobbler/blob/uyuni/master/cobbler/items/system.py#L672
+     *
      * @return a map representation of the interface
      */
     Map<String, Object> toMap() {
         Map<String, Object> inet = new HashMap<>();
-        addToMap(inet, "macaddress-" + name, macAddress);
+        addToMap(inet, "mac_address-" + name, macAddress);
         addToMap(inet, netmaskVariableName + "-" + name, netmask);
-        addToMap(inet, "ipaddress-" + name, ipAddress);
+        addToMap(inet, "ip_address-" + name, ipAddress);
         addToMap(inet, "static-" + name, isStatic);
-        addToMap(inet, "ipv6address-" + name, ipv6Address);
-        addToMap(inet, "ipv6secondaries-" + name, ipv6Secondaries);
-        addToMap(inet, "dnsname-" + name, dnsname);
+        addToMap(inet, "ipv6_address-" + name, ipv6Address);
+        addToMap(inet, "ipv6_secondaries-" + name, ipv6Secondaries);
+        addToMap(inet, "dns_name-" + name, dnsname);
         addToMap(inet, bondingTypeVariableName + "-" + name, bonding);
         addToMap(inet, bondingMasterVariableName + "-" + name, bondingMaster);
-        addToMap(inet, "bondingopts-" + name, bondingOptions);
+        addToMap(inet, "bonding_opts-" + name, bondingOptions);
         return inet;
     }
 
@@ -153,8 +155,7 @@ public class Network {
      */
     private void addToMap(Map<String, Object> inet, String key, Object value) {
         // do not put null values and empty strings
-        if (value != null && (!(value instanceof String) ||
-                !StringUtils.isBlank((String) value))) {
+        if (value != null && (!(value instanceof String valueString) || !StringUtils.isBlank(valueString))) {
             inet.put(key, value);
         }
     }

@@ -28,8 +28,8 @@ import org.apache.struts.action.ActionForm;
 import org.apache.struts.action.ActionForward;
 import org.apache.struts.action.ActionMapping;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * ChannelPackagesAction
@@ -49,9 +49,9 @@ public class ChannelPackageMenuAction extends RhnAction {
         long cid = requestContext.getRequiredParam("cid");
 
         Channel chan = ChannelFactory.lookupByIdAndUser(cid, user);
-        if (!user.isMemberOf(AccessGroupFactory.CHANNEL_ADMIN) &&
+        if (!user.isMemberOf(AccessGroupFactory.getChannelAdmin()) &&
                 !UserManager.verifyChannelAdmin(user, chan)) {
-            throw new PermissionCheckFailureException(AccessGroupFactory.CHANNEL_ADMIN);
+            throw new PermissionCheckFailureException(AccessGroupFactory.getChannelAdmin());
         }
 
         request.setAttribute("channel_name", chan.getName());

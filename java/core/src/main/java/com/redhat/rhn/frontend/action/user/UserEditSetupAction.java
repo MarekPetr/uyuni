@@ -19,6 +19,7 @@ import com.redhat.rhn.common.conf.Config;
 import com.redhat.rhn.common.conf.ConfigDefaults;
 import com.redhat.rhn.common.localization.LocalizationService;
 import com.redhat.rhn.domain.access.AccessGroup;
+import com.redhat.rhn.domain.access.AccessGroupFactory;
 import com.redhat.rhn.domain.role.Role;
 import com.redhat.rhn.domain.role.RoleFactory;
 import com.redhat.rhn.domain.user.User;
@@ -43,8 +44,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * UserEditAction, edit action for user detail page
@@ -148,7 +149,8 @@ public class UserEditSetupAction extends RhnAction {
             // and disable the item in the UI.
             if (UserFactory.IMPLIEDROLES.contains(currRole) &&
                     targetUser.hasPermanentRole(RoleFactory.ORG_ADMIN)) {
-                uilabel = uilabel + (" - [ " + LocalizationService.getInstance().getMessage("Admin Access") + " ]");
+                uilabel = uilabel + (" - [ " + LocalizationService.getInstance()
+                        .getMessage("user.admin.access") + " ]");
 
                 disabled = true;
                 log.debug("2");
@@ -177,15 +179,32 @@ public class UserEditSetupAction extends RhnAction {
         }
 
         LocalizationService loc = LocalizationService.getInstance();
-        var rbacRoles = rbacGroups.stream()
-                .sorted(Comparator.comparing(AccessGroup::getDescription))
-                .map(ag -> new UserRoleStatusBean(
-                                loc.hasMessage(ag.getLabel()) ? loc.getMessage(ag.getLabel()) : ag.getDescription(),
-                                ag.getLabel(),
-                                targetUser.isMemberOf(ag),
-                                false
-                        )
-                ).toList();
+        List<UserRoleStatusBean> rbacRoles = new LinkedList<>();
+        for (AccessGroup ag : rbacGroups.stream()
+                .sorted(Comparator.comparing(AccessGroup::getDescription)).toList()) {
+            boolean disabled = false;
+
+            String label = ag.getLabel();
+            boolean isDefaultGroup = AccessGroupFactory.getDefaultGroups().stream()
+                    .anyMatch(group -> group.getLabel().equals(ag.getLabel()));
+
+            if (isDefaultGroup) {
+                label = loc.hasMessage(ag.getLabel()) ?
+                    loc.getMessage(ag.getLabel()) :
+                    ag.getDescription();
+            }
+
+            if (ag.getOrg() == null && targetUser.hasPermanentRole(RoleFactory.ORG_ADMIN) &&
+                    UserFactory.IMPLIEDROLES.stream().anyMatch(r -> r.getLabel().equals(ag.getLabel()))) {
+                disabled = true;
+                label = label + (" - [ " + loc.getMessage("user.admin.access") + " ]");
+                if (disabledRoles.length() > 0) {
+                    disabledRoles.append("|");
+                }
+                disabledRoles.append(ag.getLabel());
+            }
+            rbacRoles.add(new UserRoleStatusBean(label, ag.getLabel(), targetUser.isMemberOf(ag), disabled));
+        }
 
         request.setAttribute("adminRoles", adminRoles);
         request.setAttribute("rbacRoles", rbacRoles);

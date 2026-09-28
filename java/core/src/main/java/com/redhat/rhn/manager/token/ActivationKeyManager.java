@@ -197,7 +197,7 @@ public class ActivationKeyManager {
     public ActivationKey createNewActivationKey(User user,
             String key, String note, Long usageLimit, Channel baseChannel,
             boolean universalDefault) {
-        if (user.isMemberOf(AccessGroupFactory.ACTIVATION_KEY_ADMIN)) {
+        if (user.isMemberOf(AccessGroupFactory.getActivationKeyAdmin())) {
             return ActivationKeyFactory.createNewKey(user, null, key,
                     note, usageLimit, baseChannel, universalDefault);
         }
@@ -361,7 +361,7 @@ public class ActivationKeyManager {
     private boolean canAdministerKeys(User user, ActivationKey key) {
         return user != null && key != null &&
                  user.getOrg().equals(key.getOrg()) &&
-                    user.isMemberOf(AccessGroupFactory.ACTIVATION_KEY_ADMIN);
+                    user.isMemberOf(AccessGroupFactory.getActivationKeyAdmin());
     }
 
     /**
@@ -391,7 +391,7 @@ public class ActivationKeyManager {
      * was generated implies that the user credentials have been
      * verified...
      * @param key the key to remove
-     * @param user TODO
+     * @param user
      */
     public void remove(ActivationKey key, User user) {
         changeCobblerProfileKey(key, key.getKey(), "", user);
@@ -426,7 +426,7 @@ public class ActivationKeyManager {
      * and activation key after edit by prepending its org_id to it.
      * @param newKey the key to rename to
      * @param key the key object to be renamed
-     * @param user TODO
+     * @param user
      */
     public void changeKey(String newKey, ActivationKey key, User user) {
         String oldKey = key.getKey();

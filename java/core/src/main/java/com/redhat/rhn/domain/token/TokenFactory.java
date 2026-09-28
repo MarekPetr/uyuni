@@ -17,6 +17,7 @@ package com.redhat.rhn.domain.token;
 import com.redhat.rhn.common.hibernate.HibernateFactory;
 import com.redhat.rhn.common.hibernate.LookupException;
 import com.redhat.rhn.common.localization.LocalizationService;
+import com.redhat.rhn.domain.config.ConfigChannel;
 import com.redhat.rhn.domain.org.Org;
 import com.redhat.rhn.domain.server.Server;
 
@@ -117,11 +118,29 @@ public class TokenFactory extends HibernateFactory {
 
 
     /**
-     * Saves a token to the database
-     * @param tokenIn The Token to save.
+     * List all activation key tokens that reference the given config channel.
+     * @param channel the config channel
+     * @return list of tokens subscribed to the channel
      */
-    public static void save(Token tokenIn) {
-        singleton.saveObject(tokenIn);
+    public static List<Token> listByConfigChannel(ConfigChannel channel) {
+        if (channel == null) {
+            return new ArrayList<>();
+        }
+        return HibernateFactory.getSession()
+                .createQuery("select distinct t from Token t join t.configChannels cc where cc = :channel",
+                        Token.class)
+                .setParameter("channel", channel)
+                .list();
+    }
+
+    /**
+     * Saves a token to the database
+     *
+     * @param tokenIn The Token to save.
+     * @return the managed {@link Token} instance
+     */
+    public static Token save(Token tokenIn) {
+        return singleton.saveObject(tokenIn);
     }
 
     /**

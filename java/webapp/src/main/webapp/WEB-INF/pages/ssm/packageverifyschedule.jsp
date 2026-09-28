@@ -1,9 +1,9 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
 <%@ taglib uri="http://rhn.redhat.com/tags/list" prefix="rl" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+<%@ taglib uri="jakarta.tags.functions" prefix="fn"%>
 
 
 <html>
@@ -30,7 +30,7 @@
         </div>
     </div>
     <div class="form-horizontal">
-        <div class="form-group">
+        <div class="row">
             <jsp:include page="/WEB-INF/pages/common/fragments/schedule-options.jspf"/>
         </div>
     </div>

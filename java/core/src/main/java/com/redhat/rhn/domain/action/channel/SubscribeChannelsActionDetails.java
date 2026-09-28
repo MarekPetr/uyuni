@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 SUSE LLC
+ * Copyright (c) 2018--2026 SUSE LLC
  *
  * This software is licensed to you under the GNU General Public License,
  * version 2 (GPLv2). There is NO WARRANTY for this software, express or
@@ -7,10 +7,6 @@
  * FOR A PARTICULAR PURPOSE. You should have received a copy of GPLv2
  * along with this software; if not, see
  * http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
- *
- * Red Hat trademarks are not licensed under GPLv2. No permission is
- * granted to use or replicate Red Hat trademarks that are incorporated
- * in this software or its documentation.
  */
 
 package com.redhat.rhn.domain.action.channel;
@@ -26,18 +22,18 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.persistence.CascadeType;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 
 /**
  * Class representation of the table rhnActionSubChannels
@@ -48,22 +44,27 @@ public class SubscribeChannelsActionDetails extends BaseDomainHelper {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "RHN_ACT_SUBSCR_CHNLS_ID_SEQ")
-    @SequenceGenerator(name = "RHN_ACT_SUBSCR_CHNLS_ID_SEQ", sequenceName = "RHN_ACT_SUBSCR_CHNLS_ID_SEQ",
-            allocationSize = 1)
+    @SequenceGenerator(
+            name = "RHN_ACT_SUBSCR_CHNLS_ID_SEQ", sequenceName = "RHN_ACT_SUBSCR_CHNLS_ID_SEQ", allocationSize = 1
+    )
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "base_channel_id", updatable = false, nullable = true)
     private Channel baseChannel;
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @ManyToMany(
+        cascade = {CascadeType.MERGE, CascadeType.PERSIST, CascadeType.DETACH, CascadeType.REFRESH},
+        fetch = FetchType.EAGER)
     @JoinTable(
         name = "rhnActionSubChannelsList",
         joinColumns = @JoinColumn(name = "subscribe_channels_id"),
         inverseJoinColumns = @JoinColumn(name = "channel_id"))
     private Set<Channel> channels = new HashSet<>();
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @ManyToMany(
+        cascade = {CascadeType.MERGE, CascadeType.PERSIST, CascadeType.DETACH, CascadeType.REFRESH},
+        fetch = FetchType.EAGER)
     @JoinTable(
         name = "rhnActionSubChannelsTokens",
         joinColumns = @JoinColumn(name = "subscribe_channels_id"),

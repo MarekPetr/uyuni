@@ -1,4 +1,4 @@
-# Copyright (c) 2024 SUSE LLC.
+# Copyright (c) 2024-2026 SUSE LLC.
 # Licensed under the terms of the MIT license.
 
 ### This file contains all steps concerning content lifecycle and hostname management
@@ -28,7 +28,7 @@ end
 
 Then(/^I should see a "([^"]*)" text in the environment "([^"]*)"$/) do |text, env|
   within(:xpath, "//h3[text()='#{env}']/../..") do
-    raise ScriptError, "Text \"#{text}\" not found" unless check_text_and_catch_request_timeout_popup?(text)
+    raise ScriptError, "Text \"#{text}\" not found" unless check_text?(text)
   end
 end
 
@@ -40,7 +40,7 @@ end
 
 When(/^I wait until I see "([^"]*)" text in the environment "([^"]*)"$/) do |text, env|
   within(:xpath, "//h3[text()='#{env}']/../..") do
-    raise ScriptError, "Text \"#{text}\" not found" unless check_text_and_catch_request_timeout_popup?(text, timeout: DEFAULT_TIMEOUT)
+    raise ScriptError, "Text \"#{text}\" not found" unless check_text?(text, timeout: DEFAULT_TIMEOUT)
   end
 end
 
@@ -51,19 +51,26 @@ When(/^I add the "([^"]*)" channel to sources$/) do |channel|
 end
 
 When(/^I click the "([^"]*)" item (.*?) button$/) do |name, action|
-  button =
+  icon_class =
     case action
-    when /details/ then 'i[contains(@class, \'fa-list\')]'
-    when /edit/ then 'i[contains(@class, \'fa-edit\')]'
-    when /delete/ then 'i[contains(@class, \'fa-trash\')]'
+    when /details/ then 'fa-list'
+    when /edit/ then 'fa-edit'
+    when /delete/ then 'fa-trash'
     else raise ScriptError, "Unknown element with description '#{action}'"
     end
 
-  td_element = find(:xpath, "//td[contains(text(), '#{name}')]")
-  raise ScriptError, "xpath: #{name} item not found" unless td_element
+  xpath = "//tr[td[contains(text(), '#{name}')]]//button[i[contains(@class, '#{icon_class}')]]"
 
-  button_element = td_element.find(:xpath, "./ancestor::tr/td/button/#{button} | ./ancestor::tr/td/div/button/#{button}")
-  raise ScriptError, "xpath: #{action} button not found" unless button_element.click
+  attempts = 0
+  begin
+    find(:xpath, xpath).click
+  rescue Playwright::Error => e
+    raise unless e.message.include?('not attached to the DOM')
+
+    attempts += 1
+    retry if attempts < 3
+    raise
+  end
 end
 
 When(/^I click the "([^"]*)" item (.*?) button if exists$/) do |name, action|
@@ -121,7 +128,12 @@ When(/^I add "([^"]*)" calendar file as url$/) do |file|
   get_target('server').run("chmod 644 #{dest}")
   url = "https://#{get_target('server').full_hostname}/pub/" + file
   log "URL: #{url}"
-  step %(I enter "#{url}" as "calendar-data-text")
+  # Playwright's locator.fill waits for the element to be visible, attached, and editable
+  # before typing -- this handles any React async initialization of the field without a
+  # separate has_field? guard (which has proved unreliable with the Playwright driver).
+  page.driver.with_playwright_page do |pw_page|
+    pw_page.locator('#calendar-data-text').fill(url)
+  end
 end
 
 When(/^I deploy testing playbooks and inventory files to "([^"]*)"$/) do |host|
@@ -144,6 +156,19 @@ When(/^I deploy testing playbooks and inventory files to "([^"]*)"$/) do |host|
   source = "#{File.dirname(__FILE__)}/../upload_files/ansible/playbooks/playbook_ping.yml"
   success = file_inject(target, source, "#{dest}playbook_ping.yml")
   raise ScriptError, 'File injection failed' unless success
+
+  # basic tests - playbook
+  dest = '/srv/playbooks/'
+  source = "#{File.dirname(__FILE__)}/../upload_files/ansible/playbooks/basic_tests.yml"
+  success = file_inject(target, source, "#{dest}basic_tests.yml")
+  raise ScriptError, "File \"#{source}\" injection failed" unless success
+
+  # basic tests - parameter tester shell script
+  dest = '/srv/playbooks/host_files/'
+  target.run("mkdir -p #{dest}")
+  source = "#{File.dirname(__FILE__)}/../upload_files/ansible/playbooks/host_files/ansible_param_tester.sh"
+  success = file_inject(target, source, "#{dest}ansible_param_tester.sh")
+  raise ScriptError, "File \"#{source}\" injection failed" unless success
 end
 
 When(/^I enter the reactivation key of "([^"]*)"$/) do |host|

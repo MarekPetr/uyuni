@@ -49,13 +49,12 @@ echo $PATH
 echo $PERLLIB
 
 export SYSTEMD_NO_WRAP=1
-su - postgres -c "/usr/lib/postgresql/bin/pg_ctl stop" ||:
-su - postgres -c "/usr/lib/postgresql/bin/pg_ctl start"
+su - postgres -c "/usr/lib/postgresql/bin/pg_ctl -D /var/lib/pgsql/data stop" ||:
+su - postgres -c "/usr/lib/postgresql/bin/pg_ctl -D /var/lib/pgsql/data start"
 
 touch /var/lib/rhn/rhn-satellite-prep/etc/rhn/rhn.conf
 # SUSE Manager initialization
 cp /root/rhn.conf /etc/rhn/rhn.conf
-smdba system-check autotuning --max_connections=50
 
 
 # we changed the schema dir, but we start with a schema which live still in the old location
@@ -91,9 +90,9 @@ fi
 # run the schema upgrade from git repo
 if ! /manager/schema/spacewalk/spacewalk-schema-upgrade -y --reportdb; then
     cat /var/log/spacewalk/reportdb-schema-upgrade/schema-from-*.log
-    su - postgres -c "/usr/lib/postgresql/bin/pg_ctl stop"
+    su - postgres -c "/usr/lib/postgresql/bin/pg_ctl -D /var/lib/pgsql/data stop"
     exit 1
 fi
 
 # Postgres shutdown (avoid stale memory by shmget())
-su - postgres -c "/usr/lib/postgresql/bin/pg_ctl stop"
+su - postgres -c "/usr/lib/postgresql/bin/pg_ctl -D /var/lib/pgsql/data stop"

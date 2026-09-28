@@ -24,11 +24,12 @@ import org.hibernate.type.StandardBasicTypes;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import javax.persistence.Tuple;
+import jakarta.persistence.Tuple;
 
 /**
  * Creates {@link SaltEvent} objects.
@@ -46,10 +47,12 @@ public class SaltEventFactory extends HibernateFactory {
     }
 
     /**
-     * Returns the approximate number of Salt events currently queued.
+     * Returns the number of Salt events per queue for queues in the range [0, queuesCount-1].
+     *
      * @param queuesCount the number of queues handling events
-     * @return the list of events count per queue starting with a queue corresponding to events
-     *  without any minion ID. This queue is referred to as queue 0.
+     * @return the list of size {@code queuesCount} where each index corresponds to a queue number and the value is the
+     * number of events in that queue. Queues with no events return {@code 0}. Queue {@code 0} represents events
+     * without a minion ID.
      */
     public static List<Long> countSaltEvents(int queuesCount) {
         Session session = HibernateFactory.getSession();
@@ -59,11 +62,15 @@ public class SaltEventFactory extends HibernateFactory {
                 .addScalar("count", StandardBasicTypes.LONG)
                 .list();
 
-        return IntStream.range(0, queuesCount).mapToLong(i -> countObjects.stream()
-                .filter(c -> c.get(0, Integer.class).equals(i))
-                .map(c -> c.get(1, Long.class))
-                .findFirst()
-                .orElse(0L)).boxed().collect(Collectors.toList());
+        Map<Integer, Long> countByQueue = countObjects.stream()
+                .collect(Collectors.toMap(
+                    c -> c.get(0, Integer.class),
+                    c -> c.get(1, Long.class)
+                ));
+
+        return IntStream.range(0, queuesCount)
+                .mapToObj(i -> countByQueue.getOrDefault(i, 0L))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -74,7 +81,7 @@ public class SaltEventFactory extends HibernateFactory {
      */
     public static Stream<SaltEvent> popSaltEvents(int limit, int queue) {
         Session session = HibernateFactory.getSession();
-        List<Tuple> eventObjects = session.createNativeQuery("""
+        return session.createNativeQuery("""
                         DELETE FROM suseSaltEvent
                         WHERE id IN (
                                      SELECT id FROM suseSaltEvent
@@ -90,9 +97,7 @@ public class SaltEventFactory extends HibernateFactory {
                 .addScalar("minion_id", StandardBasicTypes.STRING)
                 .addScalar("data", StandardBasicTypes.STRING)
                 .addScalar("queue", StandardBasicTypes.INTEGER)
-                .list();
-
-        return eventObjects.stream()
+                .stream()
                 .map(o -> new SaltEvent(o.get(0, Long.class), o.get(1, String.class),
                         o.get(2, String.class), o.get(3, Integer.class)));
     }
@@ -104,7 +109,7 @@ public class SaltEventFactory extends HibernateFactory {
      */
     public static List<Long> deleteSaltEvents(Collection<Long> ids) {
         Session session = HibernateFactory.getSession();
-        return session.createNativeQuery("DELETE FROM suseSaltEvent WHERE id IN :ids RETURNING id")
+        return session.createNativeQuery("DELETE FROM suseSaltEvent WHERE id IN :ids RETURNING id", Long.class)
                 .setParameter("ids", ids)
                 .addScalar("id", StandardBasicTypes.LONG)
                 .list();
@@ -118,7 +123,7 @@ public class SaltEventFactory extends HibernateFactory {
      * @return the number of updated events
      */
     public static int fixQueueNumbers(int maxQueueNum) {
-        return getSession().createNativeQuery("UPDATE suseSaltEvent SET queue = :q WHERE queue > :q")
+        return getSession().createNativeMutationQuery("UPDATE suseSaltEvent SET queue = :q WHERE queue > :q")
                 .setParameter("q", maxQueueNum)
                 .executeUpdate();
     }

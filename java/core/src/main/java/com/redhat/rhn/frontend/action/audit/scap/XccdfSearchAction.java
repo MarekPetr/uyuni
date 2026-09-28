@@ -38,8 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.servlet.http.HttpServletRequest;
-
+import jakarta.servlet.http.HttpServletRequest;
 import redstone.xmlrpc.XmlRpcException;
 import redstone.xmlrpc.XmlRpcFault;
 
@@ -58,6 +57,7 @@ public class XccdfSearchAction extends BaseSearchAction {
                                       DynaActionForm form)
             throws MalformedURLException, XmlRpcException, XmlRpcFault {
         RequestContext context = new RequestContext(request);
+        request.setAttribute("user", context.getCurrentUser());
         String searchString = form.getString(SEARCH_STR);
         String whereToSearch = form.getString(WHERE_TO_SEARCH);
 

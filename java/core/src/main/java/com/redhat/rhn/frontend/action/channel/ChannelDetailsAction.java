@@ -39,8 +39,8 @@ import org.apache.struts.action.DynaActionForm;
 import java.util.Collections;
 import java.util.Map;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * ChannelDetailsAction handles the interaction of the ChannelDetails page.
@@ -64,7 +64,7 @@ public class ChannelDetailsAction extends RhnAction {
         Channel chan = ChannelManager.lookupByIdAndUser(cid, user);
 
         if (isSubmitted(form) && (
-                (chan.getOrg() == null && user.isMemberOf(AccessGroupFactory.CHANNEL_ADMIN)) ||
+                (chan.getOrg() == null && user.isMemberOf(AccessGroupFactory.getChannelAdmin())) ||
                     UserManager.verifyChannelAdmin(user, chan))) {
             String global = (String)form.get("global");
             chan.setGloballySubscribable("all".equals(global), user.getOrg());
@@ -108,7 +108,7 @@ public class ChannelDetailsAction extends RhnAction {
 
         request.setAttribute("gpg_check", chan.isGPGCheck());
 
-        boolean hasAccess = (chan.getOrg() == null && user.isMemberOf(AccessGroupFactory.CHANNEL_ADMIN)) ||
+        boolean hasAccess = (chan.getOrg() == null && user.isMemberOf(AccessGroupFactory.getChannelAdmin())) ||
                 UserManager.verifyChannelAdmin(user, chan);
         request.setAttribute("has_access", hasAccess);
 

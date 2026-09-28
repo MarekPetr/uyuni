@@ -310,7 +310,9 @@ public class KickstartEditCommand extends BaseKickstartCommand {
         Collection<Channel> channels = getAvailableChannels();
         Set<ChannelFamily> retval = new HashSet<>();
         for (Channel c : channels) {
-            retval.add(c.getChannelFamily());
+            if (c.getChannelFamily() != null) {
+                retval.add(c.getChannelFamily());
+            }
         }
         logger.debug("getAvailableChannelFamilies() - end - return value={}", retval);
         return retval;
@@ -335,7 +337,7 @@ public class KickstartEditCommand extends BaseKickstartCommand {
     public String getReleaseUpdate() {
         String retval = null;
 
-        // TODO: Actually fetch this off the kickstartableTree
+        // OLDTODO: Actually fetch this off the kickstartableTree
         // Only can parse the label if its an RHN
         // owned channel
         //if (this.ksdata.getTree().getChannel().getOrg() == null) {

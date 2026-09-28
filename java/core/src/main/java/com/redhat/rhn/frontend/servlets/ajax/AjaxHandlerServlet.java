@@ -16,6 +16,7 @@ package com.redhat.rhn.frontend.servlets.ajax;
 
 import com.redhat.rhn.frontend.action.renderers.ActionChainEntryRenderer;
 import com.redhat.rhn.frontend.action.renderers.CriticalSystemsRenderer;
+import com.redhat.rhn.frontend.action.renderers.DiskCheckWarningRenderer;
 import com.redhat.rhn.frontend.action.renderers.InactiveSystemsRenderer;
 import com.redhat.rhn.frontend.action.renderers.LatestErrataRenderer;
 import com.redhat.rhn.frontend.action.renderers.PendingActionsRenderer;
@@ -50,11 +51,11 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Handler for ajax requests previously handled by the DWR library that was removed.
@@ -82,6 +83,7 @@ public class AjaxHandlerServlet extends HttpServlet {
     private static ActionChainEntryRenderer actionChainEntryRenderer = new ActionChainEntryRenderer();
     private static ActionChainSaveAction actionChainSaveAction = new ActionChainSaveAction();
     private static SubscriptionWarningRenderer subscriptionWarningRenderer = new SubscriptionWarningRenderer();
+    private static DiskCheckWarningRenderer diskCheckWarningRenderer = new DiskCheckWarningRenderer();
     private static ItemSelector itemSelector = new ItemSelector();
 
     // URLs whose result needs to be parsed to JSON
@@ -109,6 +111,7 @@ public class AjaxHandlerServlet extends HttpServlet {
         HANDLERS.put("latest-errata", latestErrataRenderer::renderAsync);
         HANDLERS.put("recent-systems", recentSystemsRenderer::renderAsync);
         HANDLERS.put("subscription-warning", subscriptionWarningRenderer::renderAsync);
+        HANDLERS.put("disk-check-warning", diskCheckWarningRenderer::renderAsync);
 
         // The following 3 handlers are used in the Proxy Setup page (Admin -> Setup Wizard -> HTTP Proxy)
         HANDLERS.put("retrieve-proxy-settings", (req, resp) -> proxySettingsRenderer.retrieveProxySettings());

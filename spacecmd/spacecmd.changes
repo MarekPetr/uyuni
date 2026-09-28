@@ -1,4 +1,37 @@
 -------------------------------------------------------------------
+Wed Aug 05 13:36:50 CEST 2026 - antonio.garofalo@suse.com
+
+- version 5.3.1-0
+  * Pre-filter errata in system_applyerrata to avoid using
+    API calls for all existing errata (bsc#1267261)
+  * Bump version to 5.3.0
+
+-------------------------------------------------------------------
+Wed Jun 17 14:18:55 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.9-0
+  * Update translation strings
+
+-------------------------------------------------------------------
+Fri May 22 08:34:27 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.8-0
+  * Update translation strings
+  * Make tests compatible with Python 3.13
+
+-------------------------------------------------------------------
+Thu Apr 16 14:27:32 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.7-0
+  * Add proxy_container_config_nossl command
+
+-------------------------------------------------------------------
+Mon Mar 02 13:24:19 CET 2026 - michael.calmer@suse.com
+
+- version 5.2.6-0
+  * Update translation strings
+
+-------------------------------------------------------------------
 Tue Jan 27 09:31:31 WET 2026 - psuarezhernandez@suse.com
 
 - version 5.2.5-0

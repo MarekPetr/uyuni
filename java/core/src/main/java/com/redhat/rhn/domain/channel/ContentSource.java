@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2009--2017 Red Hat, Inc.
+ * Copyright (c) 2010--2026 SUSE LLC
  *
  * This software is licensed to you under the GNU General Public License,
  * version 2 (GPLv2). There is NO WARRANTY for this software, express or
@@ -12,9 +13,6 @@
  * granted to use or replicate Red Hat trademarks that are incorporated
  * in this software or its documentation.
  */
-/*
- * Copyright (c) 2010 SUSE LLC
- */
 package com.redhat.rhn.domain.channel;
 
 import com.redhat.rhn.domain.BaseDomainHelper;
@@ -22,26 +20,29 @@ import com.redhat.rhn.domain.Identifiable;
 import com.redhat.rhn.domain.org.Org;
 import com.redhat.rhn.domain.scc.SCCRepositoryAuth;
 
-import org.hibernate.annotations.Type;
+import com.suse.utils.persistence.EntityAssociationHelper;
 
+import org.hibernate.type.YesNoConverter;
+
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 
 /**
  * ContentSourceType
@@ -70,42 +71,20 @@ public class ContentSource extends BaseDomainHelper implements Identifiable {
     private String label;
 
     @Column(name = "metadata_signed")
-    @Type(type = "yes_no")
+    @Convert(converter = YesNoConverter.class)
     private boolean metadataSigned;
 
     @ManyToMany(cascade = {CascadeType.MERGE, CascadeType.PERSIST}, fetch = FetchType.LAZY)
-    @JoinTable(
-                name = "rhnChannelContentSource",
-                joinColumns = @JoinColumn(name = "source_id"),
+    @JoinTable(name = "rhnChannelContentSource", joinColumns = @JoinColumn(name = "source_id"),
                 inverseJoinColumns = @JoinColumn(name = "channel_id"))
     private Set<Channel> channels = new HashSet<>();
 
-    @OneToMany(mappedBy = "contentSource", cascade = {CascadeType.MERGE, CascadeType.PERSIST}, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "contentSource", cascade = {CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REMOVE},
+                fetch = FetchType.LAZY, orphanRemoval = true)
     private Set<SslContentSource> sslSets = new HashSet<>();
 
-    @OneToOne(mappedBy = "contentSource", fetch = FetchType.LAZY)
-    private SCCRepositoryAuth repositoryAuth;
-
-    /**
-     * Constructor
-     */
-    public ContentSource() {
-    }
-
-    /**
-     * Copy Constructor
-     * @param cs content source template
-     */
-    public ContentSource(ContentSource cs) {
-        org = cs.getOrg();
-        type = cs.getType();
-        sourceUrl = cs.getSourceUrl();
-        label = cs.getLabel();
-        metadataSigned = cs.getMetadataSigned();
-        channels = new HashSet<>(cs.getChannels());
-        sslSets = new HashSet<>(cs.getSslSets());
-        repositoryAuth = cs.getRepositoryAuth();
-    }
+    @OneToMany(mappedBy = "contentSource", fetch = FetchType.LAZY)
+    private Set<SCCRepositoryAuth> repositoryAuths = new HashSet<>();
 
     /**
      * @return Returns the label.
@@ -113,7 +92,6 @@ public class ContentSource extends BaseDomainHelper implements Identifiable {
     public String getLabel() {
         return label;
     }
-
 
     /**
      * @param labelIn The label to set.
@@ -215,33 +193,58 @@ public class ContentSource extends BaseDomainHelper implements Identifiable {
     }
 
     /**
-     *
+     * Returns an unmodifiable view of SSL mappings for this content source.
+     * Use add/remove/clear helper methods to mutate the association.
      * @return SSL sets for content source
      */
-    public Set<SslContentSource> getSslSets() {
-        return sslSets;
+    public Set<SslContentSource> getSslContentSources() {
+        return Collections.unmodifiableSet(sslSets);
     }
 
     /**
-     *
+     * Reconciles SSL mappings in place to preserve Hibernate collection tracking
+     * with orphanRemoval semantics.
      * @param sslSetsIn SSL sets to assign to repository
      */
-    public void setSslSets(Set<SslContentSource> sslSetsIn) {
-        this.sslSets = sslSetsIn;
+    public void setSslContentSources(Set<SslContentSource> sslSetsIn) {
+        EntityAssociationHelper.reconcile(this, sslSets, sslSetsIn, ContentSource::setSslContentSourceParent);
     }
 
     /**
-     * @return repositoryAuth object or null
+     * Adds an SSL mapping and keeps the child-to-parent reference in sync.
+     * @param sslContentSource SSL mapping to add
      */
-    public SCCRepositoryAuth getRepositoryAuth() {
-        return repositoryAuth;
+    public void addSslContentSource(SslContentSource sslContentSource) {
+        EntityAssociationHelper.addMember(this, sslSets, sslContentSource, ContentSource::setSslContentSourceParent);
     }
 
     /**
-     * @param repoAuth repository auth object to set
+     * Removes an SSL mapping and clears the child-to-parent reference.
+     * @param sslContentSource SSL mapping to remove
      */
-    public void setRepositoryAuth(SCCRepositoryAuth repoAuth) {
-        repositoryAuth = repoAuth;
+    public void removeSslContentSource(SslContentSource sslContentSource) {
+        EntityAssociationHelper.removeMember(sslSets, sslContentSource, ContentSource::setSslContentSourceParent);
+    }
+
+    /**
+     * Removes all SSL mappings and clears child-to-parent references.
+     */
+    public void clearSslContentSources() {
+        EntityAssociationHelper.clear(sslSets, ContentSource::setSslContentSourceParent);
+    }
+
+    /**
+     * @return repository auth objects for this content source
+     */
+    public Set<SCCRepositoryAuth> getRepositoryAuths() {
+        return repositoryAuths;
+    }
+
+    /**
+     * @param repoAuths repository auth objects to set
+     */
+    public void setRepositoryAuths(Set<SCCRepositoryAuth> repoAuths) {
+        repositoryAuths = repoAuths;
     }
 
     @Override
@@ -253,5 +256,9 @@ public class ContentSource extends BaseDomainHelper implements Identifiable {
                 ", label='" + label + '\'' +
                 ", metadataSigned=" + metadataSigned +
                 '}';
+    }
+
+    private static void setSslContentSourceParent(SslContentSource sslContentSource, ContentSource contentSource) {
+        sslContentSource.setContentSource(contentSource);
     }
 }

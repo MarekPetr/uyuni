@@ -1,4 +1,53 @@
 -------------------------------------------------------------------
+Wed Aug 05 16:51:54 CEST 2026 - antonio.garofalo@suse.com
+
+- version 5.3.1-0
+  * Bump version to 5.3.0
+  * Add Ubuntu 26.04 LTS
+
+-------------------------------------------------------------------
+Wed Jun 17 14:16:18 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.9-0
+  * Add bootstrap repository definition for SLE and Leap 16.1
+
+-------------------------------------------------------------------
+Fri May 22 08:35:01 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.8-0
+  * Add SUSE LibertyLinux 9.6 x86_64 bootstrap repository definition
+  * Drop firewalld dependency and service file as it is not
+    used anymore in the container
+  * Cleanup specfile from python2 and rhel macros
+  * Fix issues building package for openSUSE Leap 16.0
+  * Migrate away from mock and nose in favor of pytest
+
+-------------------------------------------------------------------
+Mon Apr 27 10:41:32 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.7-0
+  * Add missing RHEL10 / SUSE Liberty Linux 10 (bsc#1262760)
+
+-------------------------------------------------------------------
+Thu Apr 16 14:35:14 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.6-0
+  * Fix wrong Raspberry Pi OS 12 bootstrap repo creation
+    (bsc#1252867)
+  * Adding bootstrap repo definition and spacewalk-common-channels
+    for RHEL10 clones
+  * Add OES 25.4 support (bsc#1249675)
+  * Drop all pg-migrate scripts as this is now done in the containers
+
+-------------------------------------------------------------------
+Mon Mar 02 13:22:36 CET 2026 - michael.calmer@suse.com
+
+- version 5.2.5-0
+  * Add bootstrap repositories for Debian 13 and
+    Raspberry Pi OS 13
+  * Remove mgr-setup: unify script setup in container image
+
+-------------------------------------------------------------------
 Tue Jan 27 10:33:52 WET 2026 - psuarezhernandez@suse.com
 
 - version 5.2.4-0

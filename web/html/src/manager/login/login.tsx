@@ -1,5 +1,3 @@
-import { Fragment } from "react";
-
 import { isUyuni } from "core/user-preferences";
 
 import withPageWrapper from "components/general/with-page-wrapper";
@@ -13,10 +11,10 @@ const products = {
   suma: {
     productName: "SUSE Multi-Linux Manager",
     headerTitle: (
-      <Fragment>
+      <>
         <span>SUSE</span>
         <i className="fa fa-registered" /> <span>Multi-Linux Manager</span>
-      </Fragment>
+      </>
     ),
     bodyTitle: (
       <span>
@@ -49,6 +47,7 @@ type Props = {
   loginLength: string;
   passwordLength: string;
   diskspaceSeverity: string;
+  dbDiskspaceSeverity: string;
   sccForwardWarning: boolean;
 };
 

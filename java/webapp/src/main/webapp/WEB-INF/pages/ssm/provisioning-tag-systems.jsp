@@ -1,4 +1,4 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
 <%@ taglib uri="http://rhn.redhat.com/tags/list" prefix="rl" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
@@ -16,7 +16,7 @@
     <html:form styleClass="form-horizontal" action="/systems/ssm/provisioning/TagSystems" method="post">
       <rhn:csrf />
       <rhn:submitted />
-      <div class="form-group">
+      <div class="row">
         <label class="col-md-3 control-label">
           <bean:message key="ssm.operations.provisioning.tagsystems.label"/>
         </label>
@@ -28,7 +28,7 @@
         </div>
       </div>
 
-      <div class="form-group">
+      <div class="row">
         <div class="col-md-offset-3 offset-md-3 col-md-6">
           <button type="submit" class="btn btn-primary">
             <bean:message key='ssm.operations.provisioning.tagsystems.button'/>

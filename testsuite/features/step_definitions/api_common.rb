@@ -1,4 +1,4 @@
-# Copyright (c) 2015-2025 SUSE LLC
+# Copyright (c) 2015-2026 SUSE LLC
 # Licensed under the terms of the MIT license.
 
 ### This file contains the definitions for all steps concerning the API.
@@ -156,6 +156,50 @@ end
 
 When(/^I delete user "([^"]*)"$/) do |user|
   $api_test.user.delete(user)
+end
+
+# admin.gpg namespace
+
+# Return a canonical fingerprint string for comparisons and API calls.
+def normalized_gpg_fingerprint(fingerprint)
+  fingerprint.delete(' ').upcase
+end
+
+# Find an uploaded GPG key by fingerprint, ignoring spaces and case.
+def find_gpg_key(fingerprint)
+  expected = normalized_gpg_fingerprint(fingerprint)
+  $api_test.admin.gpg.list_keys.find do |key|
+    normalized_gpg_fingerprint(key['fingerprint']).casecmp(expected).zero?
+  end
+end
+
+When(/^I upload the GPG key "([^"]*)" via API$/) do |filename|
+  key_path = File.expand_path("../upload_files/#{filename}", __dir__)
+  assert_equal(1, $api_test.admin.gpg.upload_key(File.read(key_path)))
+end
+
+When(/^I make sure the GPG key with fingerprint "([^"]*)" is not present via API$/) do |fingerprint|
+  key = find_gpg_key(fingerprint)
+  assert_equal(1, $api_test.admin.gpg.remove_key(normalized_gpg_fingerprint(fingerprint))) unless key.nil?
+end
+
+When(/^I remove the GPG key with fingerprint "([^"]*)" via API$/) do |fingerprint|
+  assert_equal(1, $api_test.admin.gpg.remove_key(normalized_gpg_fingerprint(fingerprint)))
+end
+
+Then(/^I should see GPG key fingerprint "([^"]*)" via API$/) do |fingerprint|
+  @gpg_key = find_gpg_key(fingerprint)
+  refute_nil(@gpg_key)
+end
+
+Then(/^I should not see GPG key fingerprint "([^"]*)" via API$/) do |fingerprint|
+  assert_nil(find_gpg_key(fingerprint))
+end
+
+Then(/^the GPG key fingerprint "([^"]*)" should have user name "([^"]*)" via API$/) do |fingerprint, name|
+  key = find_gpg_key(fingerprint)
+  refute_nil(key)
+  assert_includes(key['names'], name)
 end
 
 When(/^I make sure "([^"]*)" is not present$/) do |user|
@@ -344,55 +388,22 @@ When(/^I create an activation key including custom channels for "([^"]*)" via AP
   # Create a key with the base channel for this client
   id = description = "#{client}_key"
   client = 'proxy_nontransactional' if client == 'proxy' && !$is_transactional_server
-  base_channel = BASE_CHANNEL_BY_CLIENT[product][client]
-  base_channel_label = LABEL_BY_BASE_CHANNEL[product][base_channel]
+  client = 'server_nontransactional' if client == 'server' && !$is_transactional_server
+  base_channel_label = LABEL_BY_BASE_CHANNEL[product][BASE_CHANNEL_BY_CLIENT[product][client]]
+
   key = $api_test.activationkey.create(id, description, base_channel_label, 100)
   raise StandardError, 'Error creating activation key via the API' if key.nil?
 
-  $stdout.puts "Activation key #{key} created" unless key.nil?
+  $stdout.puts "Activation key #{key} created"
+  contact_method = client.include?('ssh_minion') ? 'ssh-push' : 'default'
+  success = $api_test.activationkey.details_set?(key, description, base_channel_label, 100, contact_method)
+  raise 'Failed to set activation key details' unless success
 
-  is_ssh_minion = client.include? 'ssh_minion'
-  $api_test.activationkey.details_set?(key, description, base_channel_label, 100, is_ssh_minion ? 'ssh-push' : 'default')
-  entitlements = client.include?('buildhost') ? ['osimage_build_host'] : ''
-  $api_test.activationkey.set_entitlement(key, entitlements) unless entitlements.empty?
+  $api_test.activationkey.set_entitlement(key, ['osimage_build_host']) if client.include?('buildhost')
 
-  # Get the list of child channels for this base channel
-  child_channels = $api_test.channel.software.list_child_channels(base_channel_label)
-
-  # filter out wrong child channels for SLE Micro 5.5 as normal Minion
-  if client.include? 'slemicro55'
-    child_channels.reject! { |channel| channel.include? 'suse-manager-proxy-5.0-pool-x86_64' }
-    child_channels.reject! { |channel| channel.include? 'suse-manager-proxy-5.0-updates-x86_64' }
-    child_channels.reject! { |channel| channel.include? 'suse-manager-retail-branch-server-5.0-pool-x86_64' }
-    child_channels.reject! { |channel| channel.include? 'suse-manager-retail-branch-server-5.0-updates-x86_64' }
-  end
-
-  # filter out wrong child channels for SLES15sp6 as normal Minion
-  if client.include? 'sle15sp6'
-    child_channels.reject! { |channel| channel.include? 'suse-manager-proxy-5.0-pool-x86_64-sp6' }
-    child_channels.reject! { |channel| channel.include? 'suse-manager-proxy-5.0-updates-x86_64-sp6' }
-    child_channels.reject! { |channel| channel.include? 'suse-manager-retail-branch-server-5.0-pool-x86_64-sp6' }
-    child_channels.reject! { |channel| channel.include? 'suse-manager-retail-branch-server-5.0-updates-x86_64-sp6' }
-  end
-
-  # filter out wrong child channels for SL Micro 6.1 as normal Minion
-  if client.include? 'slmicro61'
-    child_channels.reject! { |channel| channel.include? 'suse-multi-linux-manager-proxy-5.1-x86_64' }
-    child_channels.reject! { |channel| channel.include? 'suse-multi-linux-manager-retail-branch-server-5.1-x86_64' }
-    child_channels.reject! { |channel| channel.include? 'suse-multi-linux-manager-server-5.1-x86_64' }
-  end
-
-  # filter out wrong child channels for SLES15SP7 as normal Minion
-  if client.include? 'sle15sp7'
-    child_channels.reject! { |channel| channel.include? 'suse-multi-linux-manager-proxy-sle-5.1-pool-x86_64-sp7' }
-    child_channels.reject! { |channel| channel.include? 'suse-multi-linux-manager-proxy-sle-5.1-updates-x86_64-sp7' }
-    child_channels.reject! { |channel| channel.include? 'suse-multi-linux-manager-retail-branch-server-sle-5.1-pool-x86_64-sp7' }
-    child_channels.reject! { |channel| channel.include? 'suse-multi-linux-manager-retail-branch-server-sle-5.1-updates-x86_64-sp7' }
-  end
-
+  # Attach the child channels appropriate for this client's role
+  child_channels = child_channels_for_activation_key(client, base_channel_label)
   $stdout.puts "Child_channels for #{key}: <#{child_channels}>"
-
-  # Add child channels to the key
   $api_test.activationkey.add_child_channels(key, child_channels)
 end
 

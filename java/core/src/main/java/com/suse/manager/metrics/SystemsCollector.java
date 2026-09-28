@@ -14,15 +14,17 @@ package com.suse.manager.metrics;
 import com.redhat.rhn.common.hibernate.HibernateFactory;
 import com.redhat.rhn.domain.common.RhnConfiguration;
 import com.redhat.rhn.domain.common.RhnConfigurationFactory;
+import com.redhat.rhn.domain.server.ServerInfo;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.persistence.Tuple;
+import io.prometheus.metrics.model.registry.MultiCollector;
+import io.prometheus.metrics.model.snapshots.MetricSnapshot;
+import io.prometheus.metrics.model.snapshots.MetricSnapshots;
+import jakarta.persistence.Tuple;
 
-import io.prometheus.client.Collector;
-
-public class SystemsCollector extends Collector {
+public class SystemsCollector implements MultiCollector {
 
     public static final String PRODUCT_NAME = "uyuni";
 
@@ -45,8 +47,8 @@ public class SystemsCollector extends Collector {
     }
 
     @Override
-    public List<MetricFamilySamples> collect() {
-        List<MetricFamilySamples> out = new ArrayList<>();
+    public MetricSnapshots collect() {
+        List<MetricSnapshot> out = new ArrayList<>();
         long start = System.nanoTime();
         long numberOfSystems = getNumberOfSystems();
 
@@ -63,7 +65,7 @@ public class SystemsCollector extends Collector {
                     "statistics scrape", (System.nanoTime() - start) / 1.0E9, PRODUCT_NAME));
         }
 
-        return out;
+        return new MetricSnapshots(out);
     }
 
     private long getNumberOfSystems() {
@@ -76,7 +78,7 @@ public class SystemsCollector extends Collector {
         return getCountFromNativeQuery(selectCountQuery);
     }
 
-    private long getNumberOfInactiveSystems() {
+    protected long getNumberOfInactiveSystems() {
         String selectCountQuery = "SELECT COUNT(DISTINCT(server_id)) " +
                 "FROM rhnServerInfo " +
                 "WHERE checkin < CURRENT_TIMESTAMP - NUMTODSINTERVAL(:checkin_threshold, 'second')";
@@ -85,6 +87,7 @@ public class SystemsCollector extends Collector {
         long secondsInDay = 60L * 60 * 24;
         return HibernateFactory.getSession()
                 .createNativeQuery(selectCountQuery, Tuple.class)
+                .addSynchronizedEntityClass(ServerInfo.class)
                 .setParameter("checkin_threshold", threshold * secondsInDay)
                 .getSingleResult()
                 .get("count", Number.class)

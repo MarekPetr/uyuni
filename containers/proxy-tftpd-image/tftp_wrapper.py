@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2024 SUSE LLC
+# SPDX-FileCopyrightText: 2026 SUSE LLC
 #
 # SPDX-License-Identifier: MIT
 """Wrapper script for Uyuni proxy tftp container."""
@@ -7,6 +7,7 @@
 import argparse
 import logging
 import os
+import sys
 import errno
 import re
 import requests
@@ -16,6 +17,8 @@ from fbtftp.base_handler import BaseHandler
 from fbtftp.base_handler import ResponseData
 from fbtftp.base_server import BaseServer
 from fbtftp import constants
+
+DEFAULT_ENTRY_IDENTIFIER: str = "id-saltboot-default"
 
 
 def stats(s):
@@ -53,17 +56,19 @@ class HttpResponseData(ResponseData):
         self._size = int(self._request.headers["content-length"])
 
     def read(self, requested):
-        data = self._content
+        chunks = [self._content]
         read = len(self._content)
         while read < requested:
             if self._stream is None:
                 break
             try:
                 d = next(self._stream)
-                data += d
+                chunks.append(d)
                 read += len(d)
             except StopIteration:
+                self._stream = None
                 break
+        data = b"".join(chunks)
         if read > requested:
             self._content = data[requested:]
             data = data[:requested]
@@ -128,7 +133,7 @@ class HttpResponseDataFilteredPXE(HttpResponseDataFiltered):
                     in_entry = False
                     # detect Saltboot entries
                     if (
-                        " MASTER=" + self._proxy_fqdn in entry
+                        f" MASTER={self._proxy_fqdn}" in entry
                         and "MINION_ID_PREFIX" in entry
                     ):
                         have_entry = True
@@ -176,7 +181,6 @@ class HttpResponseDataFilteredGrub(HttpResponseDataFiltered):
         cobbler_content = ""
         have_entry = False
         entry = ""
-        entry_name = ""
         in_entry = False
         for line in self._content.decode("utf-8").splitlines():
             if in_entry:
@@ -185,16 +189,29 @@ class HttpResponseDataFilteredGrub(HttpResponseDataFiltered):
                     in_entry = False
                     # detect Saltboot entries
                     if (
-                        " MASTER=" + self._proxy_fqdn in entry
+                        f" MASTER={self._proxy_fqdn}" in entry
                         and "MINION_ID_PREFIX" in entry
                     ):
                         have_entry = True
+                        # When entry starts with a number, grub assumes we are pointing to a menuentry position.
+                        # This is incorrect, and so we need to provide custom --id option for the menuentry which will
+                        # always start with a character so grub is doing menuentry name match.
+                        entry_lines = entry.splitlines()
+                        entry_lines[0] = re.sub(
+                            r"\{\s*$",
+                            f"--id {DEFAULT_ENTRY_IDENTIFIER} {{",
+                            entry_lines[0],
+                        )
+                        entry = "\n".join(entry_lines) + "\n"
                         saltboot_content += entry
                         saltboot_content += (
                             'if [ -z "${default}" -o "${default}" == "local" ]; then\n  set default='
-                            + entry_name
+                            + DEFAULT_ENTRY_IDENTIFIER
                             + "\nfi\n"
                         )
+                        # There can be only one matching saltboot entry
+                        # MINION_ID_PREFIX should be unique across deployment
+                        break
                     else:
                         filtered_entry = re.sub(
                             r"\b" + re.escape(self._server_fqdn) + r"\b",
@@ -211,7 +228,6 @@ class HttpResponseDataFilteredGrub(HttpResponseDataFiltered):
                     entry = ""
             else:
                 if line.startswith("menuentry"):
-                    entry_name = line.split(" ", 3)[1]
                     entry = line + "\n"
                     in_entry = True
                 else:
@@ -340,7 +356,7 @@ class TFTPServer(BaseServer):
         replace_fqdns,
     ):
         self._root = root
-        if capath is None or http_host == "localhost":
+        if capath is None or http_host == "localhost" or http_host.endswith(".svc"):
             self._http_host = f"http://{http_host}"
             logging.info("SSL not used for inproxy communication")
         else:
@@ -425,7 +441,7 @@ def get_arguments():
     parser.add_argument(
         "--caPath",
         type=str,
-        default="/usr/share/uyuni/ca.crt",
+        default="/etc/pki/trust/anchors/RHN-ORG-TRUSTED-SSL-CERT",
         help="Path to CA certificate",
     )
     parser.add_argument(
@@ -434,6 +450,7 @@ def get_arguments():
         type=str,
         dest="replace_fqdns",
         help="Replace additional FQDNs with proxy hostname in cobbler menu files",
+        default=[],
     )
     return parser.parse_args()
 
@@ -445,7 +462,13 @@ def main():
     try:
         with open(args.configFile, encoding="utf-8") as source:
             config = yaml.safe_load(source)
-            args.proxy_fqdn = config["proxy_fqdn"]
+            # Accept both the old and the new config for proxy_fqdn to ease upgrade
+            proxy_fqdn = (
+                config["global"]["proxy_fqdn"]
+                if "global" in config
+                else config["proxy_fqdn"]
+            )
+            args.proxy_fqdn = proxy_fqdn
             args.server_fqdn = config["server"]
             args.replace_fqdns = config.get("replace_fqdns", [])
             log_level = (
@@ -457,11 +480,11 @@ def main():
         logging.warning("Configuration file reading error %s, ignoring", str(err))
     except KeyError as err:
         logging.error("Invalid configuration file passed, missing %s", str(err))
-        exit(1)
+        sys.exit(1)
 
     if not isinstance(args.replace_fqdns, list):
         logging.error("Invalid configuration file passed, replace_fqdns is not a list")
-        exit(1)
+        sys.exit(1)
 
     logging.info("Starting TFTP proxy:")
     logging.info("HTTP endpoint: %s", args.http_host)

@@ -1,4 +1,69 @@
 -------------------------------------------------------------------
+Wed Aug 05 13:47:58 CEST 2026 - antonio.garofalo@suse.com
+
+- version 5.3.1-0
+  * Allow diskcheck env vars into containers (bsc#1270033)
+  * Use sha256 as the default checksum type for Debian repositories
+  * Remove token based authentication mechanism for package_push
+    (bsc#1230949)
+  * Fix gpgverify signature file check for file object (bsc#1273131)
+  * Bump version to 5.3.0
+
+-------------------------------------------------------------------
+Wed Jun 17 14:37:07 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.9-0
+  * Guard legacy RPM function that was deprecated and removed in
+    newer versions
+  * Fix wsgiHandler errors on openSUSE Leap 16.0
+  * Redact 'default_password_crypted' broke coppler yaml syntax
+    uyuni supportconfig spacewalk-debug. Fixes #10414
+
+-------------------------------------------------------------------
+Fri May 29 15:52:51 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.8-0
+  * Use db_ssl_enabled value consistently
+
+-------------------------------------------------------------------
+Fri May 22 08:29:32 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.7-0
+  * Cleanup specfile from rhel and fedora macros
+  * Fix gpgverify check for file object (bsc#1263886)
+  * Fix issues building package on Leap 16.0
+  * Add support for Python 3.13
+  * Use PBKDF2-SHA256 (600000 iterations) for new
+    password hashes; verify legacy SHA-256 crypt(3)
+    hashes transparently
+  * Drop md5 and sha1 from available checksum choices
+
+-------------------------------------------------------------------
+Thu Apr 16 14:28:48 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.6-0
+  * Consider GPG signature check successful if one signature by a
+    known key is good (bsc#1248085)
+  * Kickstart profile for RHEL 8 requires venv-salt-minion
+    instead of salt-minion (bsc#1259474)
+  * Avoid package duplicates with reposync on synchronization
+    the same package with custom and vendored repositories
+    (bsc#1251821, bsc#1252793)
+  * Healthcheck on disk usage based on taskomatic (bsc#1238890).
+  * Optimize reposync memory requirements (bsc#1256512)
+  * Prevent accidental errata deletion from custom channels,
+    including the cases of using Hub online synchronization
+    (bsc#1259287)
+
+-------------------------------------------------------------------
+Mon Mar 02 13:11:08 CET 2026 - michael.calmer@suse.com
+
+- version 5.2.5-0
+  * Use configured email sender instead of auto detected
+    hostname (bsc#1256583)
+  * Use pycurl redirects
+
+-------------------------------------------------------------------
 Tue Jan 27 09:31:18 WET 2026 - psuarezhernandez@suse.com
 
 - version 5.2.4-0
@@ -75,7 +140,7 @@ Tue Jun 17 19:29:59 CEST 2025 - marina.latini@suse.com
     GPG keys during reposync execution
   * Make reposync to allow commas as part of HTTP Proxy password
     (bsc#1243460)
-  * Use cryptographically secure random generation for secrets
+  * Use cryptographically secure random generation for secrets (bsc#1230568)
   * Fix zstd-compressed comps file reposync use case (bsc#1243821)
   * Fix fetching the mirrorlist with a ca bundle which include only
     the intermediate CAs. This is the case for RHUI CA bundles

@@ -1,4 +1,28 @@
 -------------------------------------------------------------------
+Wed Aug 05 13:58:22 CEST 2026 - antonio.garofalo@suse.com
+
+- version 5.3.1-0
+  * Bump version to 5.3.0
+
+-------------------------------------------------------------------
+Fri May 22 08:46:37 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.6-0
+  * Enable build on openSUSE Leap 16
+
+-------------------------------------------------------------------
+Thu Apr 16 14:40:29 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.5-0
+  * Update translations
+
+-------------------------------------------------------------------
+Mon Mar 02 13:23:42 CET 2026 - michael.calmer@suse.com
+
+- version 5.2.4-0
+  * Disable build for SLES 16
+
+-------------------------------------------------------------------
 Tue Jan 27 09:31:37 WET 2026 - psuarezhernandez@suse.com
 
 - version 5.2.3-0

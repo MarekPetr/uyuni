@@ -1,4 +1,4 @@
-# Copyright (c) 2015-2024 SUSE LLC.
+# Copyright (c) 2015-2026 SUSE LLC.
 # Licensed under the terms of the MIT license.
 #
 # This feature can cause failures in the following features:
@@ -84,18 +84,16 @@ Feature: Verify that Salt mgrcompat state works when the new module.run syntax i
     And I wait until there is no Salt job calling the module "hardware.profileupdate" on "sle_minion"
 
   Scenario: Cleanup: Delete profile of the minion and disable new module.run syntax
-    Given I am on the Systems overview page of this "sle_minion"
-    And I remove "custom_modulerun.conf" from salt minion config directory on "sle_minion"
+    When I remove "custom_modulerun.conf" from salt minion config directory on "sle_minion"
     And I remove "custom_grains.conf" from salt minion config directory on "sle_minion"
-    When I follow "Delete System"
-    Then I should see a "Confirm System Profile Deletion" text
-    When I click on "Delete Profile"
-    And I wait until I see "has been deleted" text
+    And I delete "sle_minion" system using the api
+    And I perform a full salt minion cleanup on "sle_minion"
     And I wait until Salt client is inactive on "sle_minion"
     Then "sle_minion" should not be registered
 
   Scenario: Cleanup: bootstrap again the minion after mgrcompat tests
-    When I follow the left menu "Systems > Bootstrapping"
+    When I perform a full salt minion cleanup on "sle_minion"
+    And I follow the left menu "Systems > Bootstrapping"
     Then I should see a "Bootstrap Minions" text
     When I enter the hostname of "sle_minion" as "hostname"
     And I enter "22" as "port"

@@ -15,24 +15,25 @@ import com.redhat.rhn.domain.action.Action;
 import com.redhat.rhn.domain.product.SUSEProductUpgrade;
 import com.redhat.rhn.domain.server.Server;
 
-import org.hibernate.annotations.Type;
+import org.hibernate.type.YesNoConverter;
 
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.OrderBy;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 
 /**
  * DistUpgradeActionDetails - Class representation of the table rhnActionDup.
@@ -51,15 +52,15 @@ public class DistUpgradeActionDetails extends BaseDomainHelper {
     private Server server;
 
     @Column(name = "dry_run")
-    @Type(type = "yes_no")
+    @Convert(converter = YesNoConverter.class)
     private boolean dryRun;
 
     @Column(name = "allow_vendor_change")
-    @Type(type = "yes_no")
+    @Convert(converter = YesNoConverter.class)
     private boolean allowVendorChange;
 
     @Column(name = "full_update")
-    @Type(type = "yes_no")
+    @Convert(converter = YesNoConverter.class)
     private boolean fullUpdate;
 
     @Column(name = "missing_successors")
@@ -223,5 +224,31 @@ public class DistUpgradeActionDetails extends BaseDomainHelper {
      */
     public void setParentAction(Action parentActionIn) {
         this.parentAction = parentActionIn;
+    }
+    /**
+     * Check if these details represent a cross-major migration from SLES 15 to SLES 16.
+     * This specific path requires the DMS/reboot-to-live workflow.
+     *
+     * @return true if a SLES 15 to SLES 16 upgrade path exists in this action
+     */
+    public boolean isSles15To16Migration() {
+        if (getProductUpgrades() == null) {
+            return false;
+        }
+        return getProductUpgrades().stream()
+                .anyMatch(u -> u.getFromProduct() != null && u.getFromProduct().isSle15() &&
+                        u.getToProduct() != null && u.getToProduct().isSle16());
+    }
+
+    /**
+     * Get the channels for a given task type.
+     * @param task the task type (e.g. DistUpgradeChannelTask.SUBSCRIBE)
+     * @return list of channels
+     */
+    public java.util.List<com.redhat.rhn.domain.channel.Channel> getChannelsByTask(char task) {
+        return getChannelTasks().stream()
+                .filter(ct -> ct.getTask() == task)
+                .map(DistUpgradeChannelTask::getChannel)
+                .collect(java.util.stream.Collectors.toList());
     }
 }

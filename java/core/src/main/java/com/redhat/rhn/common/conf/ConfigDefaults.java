@@ -26,6 +26,9 @@ import org.apache.commons.lang3.StringUtils;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -70,6 +73,8 @@ public class ConfigDefaults {
     public static final String WEB_SMTP_TIMEOUT = "java.smtp_timeout";
     public static final String WEB_SMTP_CONNECTION_TIMEOUT = "java.smtp_connection_timeout";
     public static final String WEB_SMTP_WRITE_TIMEOUT = "java.smtp_write_timeout";
+    public static final String WEB_SMTP_TLS_PROTOCOLS = "java.smtp_tls_protocols";
+    public static final String JAVA_HTTP_CLIENT_TLS_PROTOCOLS = "java.http_client_tls_protocols";
     public static final String WEB_DISABLE_UPDATE_STATUS = "java.disable_update_status";
     public static final String WEB_DISABLE_REMOTE_COMMANDS_FROM_UI = "java.disable_remote_commands_from_ui";
     public static final String WEB_DISABLE_SUPPORTDATA_UPLOAD = "java.disable_supportdata_upload";
@@ -100,6 +105,7 @@ public class ConfigDefaults {
     public static final String VENDOR_NAME = "java.vendor_name";
     public static final String PRODUCT_VERSION_MGR = "web.version";
     public static final String PRODUCT_VERSION_UYUNI = "web.version.uyuni";
+    public static final String PRODUCT_VERSION_EOL = "web.version.eol";
     public static final String ENTERPRISE_LINUX_NAME = "java.enterprise_linux_name";
     public static final String VENDOR_SERVICE_NAME = "java.vendor_service_name";
 
@@ -220,6 +226,7 @@ public class ConfigDefaults {
      * Taskomatic defaults
      */
     private static final String TASKOMATIC_CHANNEL_REPODATA_WORKERS = "java.taskomatic_channel_repodata_workers";
+    private static final String TASKOMATIC_CLMDIFF_WORKERS = "java.taskomatic_clmdiff_workers";
 
     /**
      * HTTP proxy defaults
@@ -243,6 +250,20 @@ public class ConfigDefaults {
     public static final String MESSAGE_QUEUE_THREAD_POOL_SIZE = "java.message_queue_thread_pool_size";
 
     public static final String CVE_AUDIT_ENABLE_OVAL_METADATA = "java.cve_audit.enable_oval_metadata";
+
+    public static final String OVAL_DEFINITIONS_BULK_SIZE = "java.oval_definitions_bulk_size";
+
+    /**
+     * SCAP XCCDF profiles XSL transformation file path
+     */
+    public static final String SCAP_XCCDF_PROFILES_XSL = "scap.xccdf.profiles.xsl";
+    private static final String DEFAULT_SCAP_XCCDF_PROFILES_XSL = "/usr/share/susemanager/scap/xccdf-profiles.xslt.in";
+
+    /**
+     * SCAP XCCDF resume XSL transformation file path
+     */
+    public static final String SCAP_XCCDF_RESUME_XSL = "scap.xccdf.resume.xsl";
+    private static final String DEFAULT_SCAP_XCCDF_RESUME_XSL = "/usr/share/susemanager/scap/xccdf-resume.xslt.in";
 
     /**
      * Token lifetime in seconds
@@ -343,14 +364,22 @@ public class ConfigDefaults {
     public static final String SALT_EVENTS_PER_COMMIT = "java.salt_events_per_commit";
 
     /**
+     * Polling interval in milliseconds for checking PostgreSQL LISTEN/NOTIFY notifications.
+     */
+    public static final String SALT_EVENT_NOTIFICATION_POLL_INTERVAL_MS =
+            "java.salt_event_notification_poll_interval_ms";
+
+    /**
+     * Connection watchdog interval in seconds for checking database connection health and
+     * recovering orphaned events.
+     */
+    public static final String SALT_EVENT_CONNECTION_WATCHDOG_INTERVAL_SECONDS =
+            "java.salt_event_connection_watchdog_interval_seconds";
+
+    /**
      * Single Sign-On associated config option name in rhn.conf
      */
     public static final String SINGLE_SIGN_ON_ENABLED = "java.sso";
-
-    /**
-     * List of distributions for which use salt for registration in kickstart
-     */
-    public static final String SALT_ENABLED_KICKSTART_INSTALL_TYPES = "salt_enabled_kickstart_install_types";
 
     /**
      * Allows to publish erratas into the configured vendor channels via the api
@@ -464,6 +493,7 @@ public class ConfigDefaults {
     public String getOidcUsernameClaim() {
         return Config.get().getString(OIDC_JWT_USERNAME_CLAIM, "preferred_username");
     }
+
 
 
     private ConfigDefaults() {
@@ -800,6 +830,27 @@ public class ConfigDefaults {
     }
 
     /**
+     * Return the product end of life date, if configured.
+     *
+     * @return the product end of life date, or an empty optional if it is not set or cannot be
+     * parsed as an ISO 8601 date
+     */
+    public Optional<LocalDate> getProductEndOfLifeDate() {
+        String value = Config.get().getString(PRODUCT_VERSION_EOL);
+        if (StringUtils.isBlank(value)) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(LocalDate.parse(value, DateTimeFormatter.ISO_LOCAL_DATE));
+        }
+        catch (DateTimeParseException ex) {
+            org.apache.logging.log4j.LogManager.getLogger(ConfigDefaults.class)
+                .warn("Unable to parse {} value '{}' as YYYY-MM-DD; ignoring", PRODUCT_VERSION_EOL, value, ex);
+            return Optional.empty();
+        }
+    }
+
+    /**
      * Return true if you are to use/save repodata into the DB
      * @return true or false
      */
@@ -937,7 +988,8 @@ public class ConfigDefaults {
         String dbBackend = Config.get().getString(REPORT_DB_BACKEND);
         String dbProto = Optional.ofNullable(Config.get().getString(REPORT_DB_PROTO))
                 .orElse("jdbc:postgresql");
-        boolean dbSslEnabled = Config.get().getBoolean(REPORT_DB_SSL_ENABLED);
+        //Remote Report DB connection should always use SSL
+        boolean dbSslEnabled = true;
 
         // If the server with the remote reporting database is registered as a ISSv3 peripheral, the correct root
         // certificate authority is available in /etc/pki/trust/anchors
@@ -979,6 +1031,9 @@ public class ConfigDefaults {
         if (!"localhost".equals(host) && useSsl) {
             connectionUrl.append("?ssl=true&sslrootcert=" + sslrootcert + "&sslmode=" + sslmode);
         }
+        else {
+            connectionUrl.append("?ssl=false&sslmode=disable");
+        }
 
         return connectionUrl.toString();
     }
@@ -989,6 +1044,10 @@ public class ConfigDefaults {
      */
     public int getTaskoChannelRepodataWorkers() {
         return Config.get().getInt(TASKOMATIC_CHANNEL_REPODATA_WORKERS, 1);
+    }
+
+    public int getTaskoClmDiffWorkers() {
+        return Config.get().getInt(TASKOMATIC_CLMDIFF_WORKERS, 1);
     }
 
     /**
@@ -1178,6 +1237,23 @@ public class ConfigDefaults {
         return Config.get().getInt(SALT_EVENTS_PER_COMMIT, 1);
     }
 
+    /**
+     * Returns the polling interval in milliseconds for checking PostgreSQL LISTEN/NOTIFY notifications.
+     * @return the polling interval in milliseconds
+     */
+    public int getSaltEventNotificationPollIntervalMs() {
+        return Config.get().getInt(SALT_EVENT_NOTIFICATION_POLL_INTERVAL_MS, 100);
+    }
+
+    /**
+     * Returns the connection watchdog interval in seconds for checking database connection health
+     * and recovering orphaned events.
+     * @return the watchdog interval in seconds
+     */
+    public int getSaltEventConnectionWatchdogIntervalSeconds() {
+        return Config.get().getInt(SALT_EVENT_CONNECTION_WATCHDOG_INTERVAL_SECONDS, 5);
+    }
+
 
     /**
      * Returns the notifications type disabled.
@@ -1193,14 +1269,6 @@ public class ConfigDefaults {
      */
     public boolean isSingleSignOnEnabled() {
         return Config.get().getBoolean(SINGLE_SIGN_ON_ENABLED);
-    }
-
-    /**
-     * Returns list of install type labels for which use salt for registration in kickstart profile.
-     * @return list of distributions
-     */
-    public List<String> getUserSelectedSaltInstallTypeLabels() {
-        return Config.get().getList(SALT_ENABLED_KICKSTART_INSTALL_TYPES);
     }
 
     /**
@@ -1306,6 +1374,13 @@ public class ConfigDefaults {
     }
 
     /**
+     * @return the number of OVAL definitions to be parsed in bulk.
+     */
+    public int getOvalDefinitionsBulkSize() {
+        return Config.get().getInt(OVAL_DEFINITIONS_BULK_SIZE, 500);
+    }
+
+    /**
      * Return the url to download advisory-map.csv, the map of errata patch id, announcement id and advisory URL
      *
      * @return the url to download advisory-map.csv, the map of errata patch id, announcement id and advisory URL
@@ -1314,4 +1389,21 @@ public class ConfigDefaults {
         return Config.get().getString(ERRATA_ADVISORY_MAP_CSV_DOWNLOAD_URL,
                 "https://ftp.suse.com/pub/projects/security/advisory-map.csv");
     }
+
+    /**
+     * Returns the path to the SCAP XCCDF profiles XSL transformation file.
+     * @return the path to the XSL file
+     */
+    public String getScapXccdfProfilesXsl() {
+        return Config.get().getString(SCAP_XCCDF_PROFILES_XSL, DEFAULT_SCAP_XCCDF_PROFILES_XSL);
+    }
+
+    /**
+     * Returns the path to the SCAP XCCDF resume XSL transformation file.
+     * @return the path to the XSL file
+     */
+    public String getScapXccdfResumeXsl() {
+        return Config.get().getString(SCAP_XCCDF_RESUME_XSL, DEFAULT_SCAP_XCCDF_RESUME_XSL);
+    }
+
 }

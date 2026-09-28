@@ -1183,6 +1183,24 @@
           <context context-type="sourcefile">/rhn/users/UserPreferences</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="preferences.jsp.betafeatures" xml:space="preserve">
+        <source> Enable beta features</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/users/UserPreferences</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="preferences.jsp.betaheader" xml:space="preserve">
+        <source>Beta Features</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/users/UserPreferences</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="preferences.jsp.betadescription" xml:space="preserve">
+        <source>Beta features are experimental and may not be fully tested. Enable this option to access new functionality that is still under development. Use with caution in production environments.</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/users/UserPreferences</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="preferences.jsp.listsize" xml:space="preserve">
         <source>@@PRODUCT_NAME@@ List Page Size</source>
         <context-group name="ctx">
@@ -1282,6 +1300,18 @@
       </trans-unit>
       <trans-unit id="preferences.subscription-warning.description" xml:space="preserve">
         <source> Show expired subscriptions warning.</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/users/UserPreferences</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="preferences.disk-check-warning.name" xml:space="preserve">
+        <source>Disk Check Warning</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/users/UserPreferences</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="preferences.disk-check-warning.description" xml:space="preserve">
+        <source> Show disk space warning when running low.</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/users/UserPreferences</context>
         </context-group>
@@ -1714,8 +1744,20 @@ button below, and &lt;b&gt;will be unable to log back in&lt;/b&gt;.</source>
           <context context-type="sourcefile">/rhn/users/CreateUser</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="usercreate.names" xml:space="preserve">
-        <source>First Name, Last Name</source>
+      <trans-unit id="usercreate.prefix" xml:space="preserve">
+        <source>Prefix</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/users/CreateUser</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="usercreate.firstName" xml:space="preserve">
+        <source>First Name</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/users/CreateUser</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="usercreate.lastName" xml:space="preserve">
+        <source>Last Name</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/users/CreateUser</context>
         </context-group>
@@ -3189,13 +3231,6 @@ button below, and &lt;b&gt;will be unable to log back in&lt;/b&gt;.</source>
       </trans-unit>
       <trans-unit id="erratalist.jsp.type" xml:space="preserve">
         <source>Type</source>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/errata/RelevantErrata</context>
-          <context context-type="sourcefile">/rhn/errata/AllErrata</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="erratalist.jsp.oval" xml:space="preserve">
-        <source>OVAL</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/errata/RelevantErrata</context>
           <context context-type="sourcefile">/rhn/errata/AllErrata</context>
@@ -7284,6 +7319,12 @@ organization. You may grant or remove the organization administrator role in the
           <context context-type="sourcefile">/rhn/systems/details/packages/LockPackages.do</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="pkg.lock.message.lockerror" xml:space="preserve">
+        <source>Failed to lock selected packages. Can't lock multiple versions of the same package.</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/systems/details/packages/LockPackages.do</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="pkg.lock.message.unlocksuccess" xml:space="preserve">
         <source>Packages has been requested for being unlocked.</source>
         <context-group name="ctx">
@@ -8999,16 +9040,16 @@ Please note that some manual configuration of these scripts may still be require
         <source>Default Distribution Channel Mappings cannot be deleted.</source>
       </trans-unit>
       <trans-unit id="distchannelmap.jsp.summary" xml:space="preserve">
-        <source>Distribution channel mappings are defined as default base channels that clients pick up according to their OS and architecture at registration time. These mappings may be overriden, but not deleted.</source>
+        <source>Distribution channel mappings are defined as default base channels that clients pick up according to their OS and architecture at registration time. These mappings may be overridden, but not deleted.</source>
       </trans-unit>
       <trans-unit id="distchannelmap.jsp.edit.summary" xml:space="preserve">
-        <source>Organization specific Distribution Channel Mappings may be edited here. Default Distribution Channel Mappings cannot be edited. They can only be overriden within every organization.</source>
+        <source>Organization specific Distribution Channel Mappings may be edited here. Default Distribution Channel Mappings cannot be edited. They can only be overridden within every organization.</source>
       </trans-unit>
       <trans-unit id="distchannelmap.jsp.delete.summary" xml:space="preserve">
         <source>Organization specific Distribution Channel Mapping will be deleted. If it is currently overriding a default channel mapping, the default mapping becomes effective.</source>
       </trans-unit>
       <trans-unit id="distchannelmap.jsp.delete.default.summary" xml:space="preserve">
-        <source>Default Distribution Channel Mappings cannot be deleted. They can only be overriden within every organization.</source>
+        <source>Default Distribution Channel Mappings cannot be deleted. They can only be overridden within every organization.</source>
       </trans-unit>
       <trans-unit id="toolbar.create.distchannelmap" xml:space="preserve">
         <source>Create Distribution Channel Mapping</source>
@@ -12715,6 +12756,12 @@ the &lt;strong&gt;@@ENTERPRISE_LINUX_NAME@@ System Administration Guide.&lt;/str
           <context context-type="sourcefile">Detailed view of SCAP XCCDF scan</context>
         </context-group>
         </trans-unit>
+        <trans-unit id="system.audit.xccdfdetails.jsp.action">
+          <source>Action</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">Detailed view of SCAP XCCDF scan</context>
+        </context-group>
+        </trans-unit>
         <trans-unit id="system.audit.xccdfdetails.jsp.unknown">
           <source>Unknown</source>
         <context-group name="ctx">
@@ -14723,7 +14770,7 @@ a file or files, or copy the latest version into a set of local overrides or int
         </context-group>
       </trans-unit>
       <trans-unit id="channeltarget.jsp.header1" xml:space="preserve">
-        <source>Target Systems</source>
+        <source>Eligible Systems</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/channels/TargetSystems.do</context>
         </context-group>
@@ -20017,6 +20064,12 @@ The Tree Path, Base Channel, and Installer Generation should always match. This 
           <context context-type="sourcefile">/rhn/systems/details/configuration/ConfigChannelList.do</context>
         </context-group>
         </trans-unit>
+        <trans-unit id="exportcolumn.cveNames">
+          <source>CVEs</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/errata/RelevantErrata</context>
+        </context-group>
+        </trans-unit>
         <trans-unit id="exportcolumn.affectedSystemCount">
           <source>Systems Affected</source>
         <context-group name="ctx">
@@ -23231,6 +23284,25 @@ given channel.</source>
           <context context-type="sourcefile">/rhn/channels/manage/Delete.do</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="channel.delete.jsp.actkeysheader" xml:space="preserve">
+        <source>Activation Keys</source>
+            <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/channels/manage/Delete.do</context>
+        </context-group>
+      </trans-unit>
+        <trans-unit id="channel.delete.jsp.actkeysparagraph" xml:space="preserve">
+        <source>Channel deletion will remove any Activation Key that has {0} as a base channel.
+         </source>
+            <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/channels/manage/Delete.do</context>
+        </context-group>
+      </trans-unit>
+        <trans-unit id="channel.delete.jsp.actkeysaffected" xml:space="preserve">
+        <source>Activation Keys Affected:</source>
+            <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/channels/manage/Delete.do</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="channel.delete.jsp.unsubheader" xml:space="preserve">
         <source>Unsubscribe Systems</source>
         <context-group name="ctx">
@@ -23540,6 +23612,12 @@ given channel.</source>
           <context context-type="sourcefile">/rhn/admin/BunchDetail.do</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="bunch.jsp.description.clm-diff-bunch" xml:space="preserve">
+        <source>Generates differences for CLM channels</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/admin/BunchDetail.do</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="bunch.jsp.description.cleanup-data-bunch" xml:space="preserve">
         <source>Cleans up orphaned and outdated data</source>
         <context-group name="ctx">
@@ -23608,6 +23686,12 @@ given channel.</source>
       </trans-unit>
       <trans-unit id="bunch.jsp.description.payg-dimension-computation-bunch" xml:space="preserve">
         <source>Collect data of managed clients for @@PRODUCT_NAME@@ PAYG</source>
+            <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/admin/BunchDetail.do</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="bunch.jsp.description.diskcheck-task-bunch" xml:space="preserve">
+        <source>Schedule a disk check</source>
             <context-group name="ctx">
           <context context-type="sourcefile">/rhn/admin/BunchDetail.do</context>
         </context-group>
@@ -23979,6 +24063,9 @@ given channel.</source>
       <trans-unit id="task.status.clear-log-history" xml:space="preserve">
         <source>Clean Log History</source>
       </trans-unit>
+      <trans-unit id="task.status.clm-channel-diff" xml:space="preserve">
+        <source>CLM Channel Comparison</source>
+      </trans-unit>
       <trans-unit id="task.status.cobbler-sync" xml:space="preserve">
         <source>Cobbler Sync</source>
       </trans-unit>
@@ -24005,6 +24092,9 @@ given channel.</source>
       </trans-unit>
       <trans-unit id="task.status.channel-repodata" xml:space="preserve">
         <source>Channel Repodata</source>
+      </trans-unit>
+      <trans-unit id="task.status.clm-diff" xml:space="preserve">
+        <source>Calculate CLM Differences</source>
       </trans-unit>
       <trans-unit id="task.status.cleanup-timeseries-data" xml:space="preserve">
         <source>TimeSeries Cleanup</source>
@@ -24060,6 +24150,10 @@ given channel.</source>
       <trans-unit id="task.status.ssh-service" xml:space="preserve">
         <source>Resume Action Chains and Checkin Salt SSH Systems </source>
       </trans-unit>
+      <trans-unit id="task.status.diskcheck-task" xml:space="preserve">
+        <source>Disk Check Actions</source>
+      </trans-unit>
+
       <trans-unit id="actions.jsp.pickedup" xml:space="preserve">
         <source>Picked Up</source>
       </trans-unit>
@@ -24096,6 +24190,15 @@ given channel.</source>
       </trans-unit>
       <trans-unit id="channel.jsp.sync.status.created" xml:space="preserve">
         <source> New Created </source>
+      </trans-unit>
+      <trans-unit id="channel.jsp.repoautosync" xml:space="preserve">
+        <source>Automatic Repository Synchronization</source>
+      </trans-unit>
+      <trans-unit id="channel.jsp.repoautosync.true" xml:space="preserve">
+        <source> Enabled </source>
+      </trans-unit>
+        <trans-unit id="channel.jsp.repoautosync.false" xml:space="preserve">
+        <source> Disabled </source>
       </trans-unit>
       <trans-unit id="channel.jsp.gpgcheck" xml:space="preserve">
         <source>Enable GPG Check </source>
@@ -24794,6 +24897,27 @@ given channel.</source>
       <trans-unit id="spmigration.jsp.allow.vendor.change">
         <source>Allow Vendor Change</source>
       </trans-unit>
+      <trans-unit id="spmigration.sles16.preflight.title" xml:space="preserve">
+        <source>Before Migrating to SLES 16 — Please ensure</source>
+      </trans-unit>
+      <trans-unit id="spmigration.sles16.preflight.patch.title" xml:space="preserve">
+        <source>System is fully up to date</source>
+      </trans-unit>
+      <trans-unit id="spmigration.sles16.preflight.diskspace.title" xml:space="preserve">
+        <source>Sufficient disk space is available</source>
+      </trans-unit>
+      <trans-unit id="spmigration.sles16.preflight.ssh.title" xml:space="preserve">
+        <source>Ensure SSH key-based access is available for at least one user. If root login is required, create /etc/ssh/sshd_config.d/50-permit-root-login.conf with: PermitRootLogin yes</source>
+      </trans-unit>
+      <trans-unit id="spmigration.sles16.preflight.kvmguests.title" xml:space="preserve">
+        <source>KVM guests are shut down (if applicable)</source>
+      </trans-unit>
+      <trans-unit id="spmigration.sles16.preflight.network.title" xml:space="preserve">
+        <source>Network configuration will be migrated from wicked to NetworkManager</source>
+      </trans-unit>
+      <trans-unit id="spmigration.sles16.preflight.selinux.title" xml:space="preserve">
+        <source>AppArmor profiles will be migrated to SELinux</source>
+      </trans-unit>
       <trans-unit id="spmigration.jsp.error.targetProductSelectedEmpty" xml:space="preserve">
         <source>Please select one target product to migrate</source>
       </trans-unit>
@@ -24826,9 +24950,6 @@ given channel.</source>
       </trans-unit>
       <trans-unit id="spmigration.jsp.error.unsupported" xml:space="preserve">
         <source>Product Migrations are supported for &lt;strong&gt;SUSE&lt;/strong&gt; systems only.</source>
-      </trans-unit>
-      <trans-unit id="spmigration.jsp.error.update-zypp-plugin" xml:space="preserve">
-        <source>Product Migrations are currently not supported for this system, please install the latest version of &lt;strong&gt;zypp-plugin-spacewalk&lt;/strong&gt;.</source>
       </trans-unit>
       <trans-unit id="spmigration.jsp.error.scheduled" xml:space="preserve">
         <source>A Product Migration is already &lt;a href="/rhn/systems/details/history/Event.do?sid={0}&amp;aid={1}"&gt;scheduled&lt;/a&gt; for this system.</source>

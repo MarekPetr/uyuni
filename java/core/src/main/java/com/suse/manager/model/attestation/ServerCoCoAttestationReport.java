@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024--2025 SUSE LLC
+ * Copyright (c) 2024--2026 SUSE LLC
  *
  * This software is licensed to you under the GNU General Public License,
  * version 2 (GPLv2). There is NO WARRANTY for this software, express or
@@ -16,7 +16,8 @@ import com.redhat.rhn.domain.server.Server;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -24,20 +25,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import javax.persistence.Column;
-import javax.persistence.Convert;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "suseServerCoCoAttestationReport")
@@ -47,7 +48,8 @@ public class ServerCoCoAttestationReport extends BaseDomainHelper implements Ser
     private Server server;
     private Action action;
     private CoCoEnvironmentType environmentType;
-    private CoCoAttestationStatus status;
+    private CoCoReportStatus status;
+    private Map<String, Object> configData = new TreeMap<>();
     private Map<String, Object> inData = new TreeMap<>();
     private Map<String, Object> outData = new TreeMap<>();
     private List<CoCoAttestationResult> results = new ArrayList<>();
@@ -57,8 +59,9 @@ public class ServerCoCoAttestationReport extends BaseDomainHelper implements Ser
      */
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "server_cocoatt_report_seq")
-    @SequenceGenerator(name = "server_cocoatt_report_seq", sequenceName = "suse_srvcocoatt_rep_id_seq",
-            allocationSize = 1)
+    @SequenceGenerator(
+            name = "server_cocoatt_report_seq", sequenceName = "suse_srvcocoatt_rep_id_seq", allocationSize = 1
+    )
     public Long getId() {
         return id;
     }
@@ -89,17 +92,23 @@ public class ServerCoCoAttestationReport extends BaseDomainHelper implements Ser
 
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
-    public CoCoAttestationStatus getStatus() {
+    public CoCoReportStatus getStatus() {
         return status;
     }
 
-    @Type(type = "json")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb", name = "config_data")
+    public Map<String, Object> getConfigData() {
+        return configData;
+    }
+
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", name = "in_data")
     public Map<String, Object> getInData() {
         return inData;
     }
 
-    @Type(type = "json")
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", name = "out_data")
     public Map<String, Object> getOutData() {
         return outData;
@@ -142,8 +151,15 @@ public class ServerCoCoAttestationReport extends BaseDomainHelper implements Ser
     /**
      * @param statusIn the status to set
      */
-    public void setStatus(CoCoAttestationStatus statusIn) {
+    public void setStatus(CoCoReportStatus statusIn) {
         status = statusIn;
+    }
+
+    /**
+     * @param configDataIn the config data to set
+     */
+    public void setConfigData(Map<String, Object> configDataIn) {
+        configData = configDataIn;
     }
 
     /**

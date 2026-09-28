@@ -1,4 +1,4 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
@@ -28,7 +28,7 @@
     <%@ include file="/WEB-INF/pages/common/fragments/systems/system_listdisplay.jspf" %>
       <rhn:submitted/>
       <div class="form-horizontal">
-          <div class="form-group">
+          <div class="row">
               <div class="col-md-12">
                   <button type="submit" class="btn btn-primary" name="dispatch"
                     value='<bean:message key="targetsystems.jsp.installpackage"/>'>

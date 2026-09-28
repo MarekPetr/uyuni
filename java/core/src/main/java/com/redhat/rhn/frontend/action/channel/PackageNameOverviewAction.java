@@ -22,6 +22,7 @@ import com.redhat.rhn.frontend.taglibs.list.ListTagHelper;
 import com.redhat.rhn.manager.rhnpackage.PackageManager;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.struts.action.ActionForm;
@@ -31,8 +32,8 @@ import org.apache.struts.action.ActionMapping;
 import java.util.Collections;
 import java.util.List;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 
 /**
@@ -55,12 +56,12 @@ public class PackageNameOverviewAction extends RhnAction {
         User user = ctx.getCurrentUser();
 
         List dr = Collections.emptyList();
-        if (StringUtils.equals(subscribedChannels, "yes")) {
+        if (Strings.CS.equals(subscribedChannels, "yes")) {
             dr = PackageManager.lookupPackageNameOverview(
                     user.getOrg(), pkgName);
         }
         else if (!StringUtils.isEmpty(channelFilter) &&
-                StringUtils.equals(subscribedChannels, "no") &&
+                Strings.CS.equals(subscribedChannels, "no") &&
                 channelArches == null) {
             Long filterChannelId = null;
             try {

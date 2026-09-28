@@ -266,20 +266,8 @@
           <context context-type="sourcefile">Navigation Menu</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="address type B" xml:space="preserve">
-        <source>Billing Address</source>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/users/Addresses</context>
-        </context-group>
-      </trans-unit>
       <trans-unit id="address type M" xml:space="preserve">
         <source>Mailing Address</source>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/users/Addresses</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="address type S" xml:space="preserve">
-        <source>Shipping Address</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/users/Addresses</context>
         </context-group>
@@ -394,6 +382,24 @@
       </trans-unit>
       <trans-unit id="All Scans" xml:space="preserve">
         <source>All Scans</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">Navigation Menu</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="SCAP Policies" xml:space="preserve">
+        <source>SCAP Policies</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">Navigation Menu</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="SCAP Content" xml:space="preserve">
+        <source>SCAP Content</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">Navigation Menu</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="Tailoring Files" xml:space="preserve">
+        <source>Tailoring Files</source>
         <context-group name="ctx">
           <context context-type="sourcefile">Navigation Menu</context>
         </context-group>
@@ -1561,6 +1567,12 @@
           <context context-type="sourcefile">/rhn/systems/Search</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="edit_address.jsp.country.select" xml:space="preserve">
+        <source>-- Select Country --</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/users/EditAddress</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="building" xml:space="preserve">
         <source>Building</source>
         <context-group name="ctx">
@@ -2526,7 +2538,7 @@ and try again.
           <context context-type="sourcefile">/rhn/account/UserDetails</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="Admin Access" xml:space="preserve">
+      <trans-unit id="user.admin.access" xml:space="preserve">
         <source>Admin Access</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/account/UserDetails</context>
@@ -5724,12 +5736,6 @@ Follow this url to see the full list of inactive systems:
           <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="kickstart.schedule.noup2date" xml:space="preserve">
-        <source>An autoinstallation was not scheduled for &lt;strong&gt;&lt;a href="/rhn/systems/details/Overview.do?sid={0}"&gt;{1}&lt;/a&gt;&lt;/strong&gt; because the package profile did not contain the 'up2date' package. An update of that system's package profile may be required.</source>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
-        </context-group>
-      </trans-unit>
       <trans-unit id="kickstart.session.newsession" xml:space="preserve">
         <source>A new autoinstall session was initiated for this system.</source>
         <context-group name="ctx">
@@ -5756,12 +5762,6 @@ Follow this url to see the full list of inactive systems:
       </trans-unit>
       <trans-unit id="kickstart.session.newprofile" xml:space="preserve">
         <source>Profile for autoinstall session {0}.</source>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="kickstart.schedule.noup2dateinchannel" xml:space="preserve">
-        <source>We require version {0} or greater of up2date in order to kickstart a system. &lt;strong&gt;{2}&lt;/strong&gt; has {1} installed but we could not find a version of up2date in this system's channels to upgrade it to the required version or above.</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
         </context-group>
@@ -6871,10 +6871,10 @@ Follow this url to see the full list of inactive systems:
           <context context-type="sourcefile">/rhn/systems/provisioning/preservation/PreservationListDelete.do</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="cobbler.powermanagement.poweron" xml:space="preserve">
+      <trans-unit id="cobbler.powermanagement.power_on" xml:space="preserve">
         <source>Power On</source>
       </trans-unit>
-      <trans-unit id="cobbler.powermanagement.poweroff" xml:space="preserve">
+      <trans-unit id="cobbler.powermanagement.power_off" xml:space="preserve">
         <source>Power Off</source>
       </trans-unit>
       <trans-unit id="cobbler.powermanagement.reboot" xml:space="preserve">
@@ -6893,7 +6893,7 @@ Follow this url to see the full list of inactive systems:
         </context-group>
       </trans-unit>
       <trans-unit id="cobbler.powermanagement.no_fence_agents" xml:space="preserve">
-        <source>This functionality is only available on @@PRODUCT_NAME@@ servers that have installed "fence agents," which are possibly availabe as "fence-agents", "fence-agents-all", or "fence-agents-ipmilan" packages depending on your operating system and desired power management infrastructure. Please install the fence agents. If fence agents are not available for your operating system then power management functionality is not supported.</source>
+        <source>This functionality is only available on @@PRODUCT_NAME@@ servers that have installed "fence agents," which are possibly available as "fence-agents", "fence-agents-all", or "fence-agents-ipmilan" packages depending on your operating system and desired power management infrastructure. Please install the fence agents. If fence agents are not available for your operating system then power management functionality is not supported.</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/systems/details/kickstart/PowerManagement.do</context>
         </context-group>
@@ -8168,6 +8168,10 @@ Follow this url to see the full list of inactive systems:
         <source>ARM64 Debian</source>
         <target>ARM64 Debian</target>
       </trans-unit>
+      <trans-unit id="ARMHF Debian" xml:space="preserve">
+        <source>ARMHF Debian</source>
+        <target>ARMHF Debian</target>
+      </trans-unit>
       <trans-unit id="armel-deb" xml:space="preserve">
         <source>ARMEL Debian</source>
         <target>ARMEL Debian</target>
@@ -8860,6 +8864,17 @@ Alternatively, you will want to download &lt;strong&gt;Incremental Channel Conte
       <trans-unit id="distupgrade.upgrade" xml:space="preserve">
         <source>Product Migration</source>
       </trans-unit>
+      <trans-unit id="distupgrade.sles16.migration.success" xml:space="preserve">
+        <source>SLES 16 migration completed successfully.{0}</source>
+      </trans-unit>
+      <trans-unit id="distupgrade.sles16.migration.success.post_steps" xml:space="preserve">
+        <source>Recommended post-migration steps:
+- Check for orphaned/unneeded packages: zypper packages --orphaned --unneeded
+- Check for updated config files: find /etc/ -name '*.rpmnew' -o -name '*.rpmsave'</source>
+      </trans-unit>
+      <trans-unit id="distupgrade.sles16.migration.failed" xml:space="preserve">
+        <source>SLES 16 migration failed or result not found.{0}</source>
+      </trans-unit>
       <trans-unit id="spmigration.message.scheduled" xml:space="preserve">
         <source>This system is &lt;a href="/rhn/systems/details/history/Event.do?sid={0}&amp;aid={1}"&gt;scheduled&lt;/a&gt; to be migrated to &lt;strong&gt;{2}&lt;/strong&gt;.</source>
       </trans-unit>
@@ -9072,6 +9087,9 @@ Alternatively, you will want to download &lt;strong&gt;Incremental Channel Conte
       </trans-unit>
       <trans-unit id="contentmanagement.filter_name_too_long" xml:space="preserve">
         <source>Name must not exceed 128 characters</source>
+      </trans-unit>
+       <trans-unit id="contentmanagement.invalid_issue_date" xml:space="preserve">
+        <source>Invalid date format. It must follow ISO 8601 offset format (e.g. 2026-06-04T22:00:00Z).</source>
       </trans-unit>
       <trans-unit id="contentmanagement.modules_error" xml:space="preserve">
         <source>Cannot get channel modules. Please check the server logs for detailed information.</source>
@@ -9294,6 +9312,12 @@ Alternatively, you will want to download &lt;strong&gt;Incremental Channel Conte
       </trans-unit>
       <trans-unit id="system_entitlements.addon.removed.success" xml:space="preserve">
         <source>Removed &lt;strong&gt;{1}&lt;/strong&gt; from &lt;strong&gt;{0}&lt;/strong&gt; system(s).</source>
+      </trans-unit>
+      <trans-unit id="system.entitle.added.peripheral_server" xml:space="preserve">
+        <source>&lt;strong&gt;Peripheral server&lt;/strong&gt; type has been applied.</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/systems/details/Overview.do</context>
+        </context-group>
       </trans-unit>
       <trans-unit id="system.entitle.added.container_build_host" xml:space="preserve">
         <source>&lt;strong&gt;Container Build Host&lt;/strong&gt; type has been applied.&lt;br/&gt;&lt;strong&gt;Note:&lt;/strong&gt; This action will &lt;em&gt;not&lt;/em&gt; result in state application. To apply the state, either use the &lt;a href="/rhn/manager/systems/details/highstate?sid={0}"&gt;states page&lt;/a&gt; or run &lt;code class="text-info"&gt;state.highstate&lt;/code&gt; from the command line.</source>
@@ -9604,6 +9628,9 @@ Alternatively, you will want to download &lt;strong&gt;Incremental Channel Conte
       <trans-unit id="endoflifeperiod" xml:space="preserve">
         <source>End of Life Period</source>
       </trans-unit>
+      <trans-unit id="diskcheckwarning" xml:space="preserve">
+        <source>Disk Check</source>
+      </trans-unit>
       <trans-unit id="subscriptionwarning" xml:space="preserve">
         <source>Subscription Warning</source>
       </trans-unit>
@@ -9612,6 +9639,9 @@ Alternatively, you will want to download &lt;strong&gt;Incremental Channel Conte
       </trans-unit>
       <trans-unit id="paygnotcompliantwarning" xml:space="preserve">
         <source>PAYG instance is not compliant</source>
+      </trans-unit>
+      <trans-unit id="pxeeventfailed" xml:space="preserve">
+        <source>PXE Event Failed</source>
       </trans-unit>
       <trans-unit id="sccoptoutwarning" xml:space="preserve">
         <source>SCC Data Sync Disabled</source>
@@ -9768,7 +9798,7 @@ For a detailed analysis, please refer to the log files.</source>
         <source>Calendar with id '{0}' does not exist</source>
       </trans-unit>
       <trans-unit id="maintenance.action.reschedule.error.cancel" xml:space="preserve">
-        <source>An error occured trying to cancel affected actions for schedule '{0}'</source>
+        <source>An error occurred trying to cancel affected actions for schedule '{0}'</source>
       </trans-unit>
       <trans-unit id="maintenance.action.reschedule.error.fail" xml:space="preserve">
         <source>Operation could not be performed. There are scheduled actions on systems</source>
@@ -9857,6 +9887,12 @@ For a detailed analysis, please refer to the log files.</source>
       <trans-unit id="notification.endoflife.expired.detail">
         <source>&lt;p&gt;@@PRODUCT_NAME@@ {0} has reached the end of its lifecycle. General support has ended on &lt;strong&gt;{1}&lt;/strong&gt;. To continue receiving support, this @@PRODUCT_NAME@@ server instance &lt;strong&gt;must be&lt;/strong&gt; upgraded.&lt;/p&gt;
           &lt;p&gt;For Additional information on how to upgrade @@PRODUCT_NAME@@, please review the section &lt;em&gt;Upgrade&lt;/em&gt; of the &lt;em&gt;Installation/Upgrade Guide&lt;/em&gt; in the official documentation.&lt;/p&gt;</source>
+      </trans-unit>
+      <trans-unit id="notification.diskcheck.summary">
+        <source>You are running out of space on your @@PRODUCT_NAME@@ {0}. This is {1}</source>
+      </trans-unit>
+      <trans-unit id="notification.diskcheck.details">
+        <source>You are running out of space on your @@PRODUCT_NAME@@ {0}. This is {1}. If you run out of disk space, @@PRODUCT_NAME@@ will stop running, and this could lead to a loss of data. @@PRODUCT_NAME@@ will shutdown automatically.</source>
       </trans-unit>
       <trans-unit id="notification.endoflife.expiring.summary">
         <source>@@PRODUCT_NAME@@ {0} is approaching end of life</source>
@@ -9977,6 +10013,18 @@ For a detailed analysis, please refer to the log files.
       <trans-unit id="coco.environment.kvm_amd_epyc_turin.label">
         <source>KVM on AMD Epyc - Turin</source>
       </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z16.description">
+        <source>KVM on IBM z16 series</source>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z16.label">
+        <source>KVM on IBM z16 series</source>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z17.description">
+        <source>KVM on IBM z17 series</source>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z17.label">
+        <source>KVM on IBM z17 series</source>
+      </trans-unit>
       <trans-unit id="coco.resultType.none.description">
         <source>Result Type not found</source>
       </trans-unit>
@@ -9992,6 +10040,12 @@ For a detailed analysis, please refer to the log files.
       <trans-unit id="coco.resultType.secure_boot.label">
         <source>Secure Boot</source>
       </trans-unit>
+      <trans-unit id="coco.resultType.ibm_pvattest.description">
+        <source>IBM Secure Execution (IBM SEL)</source>
+      </trans-unit>
+      <trans-unit id="coco.resultType.ibm_pvattest.label">
+        <source>IBM SEL PVATTEST</source>
+      </trans-unit>
       <trans-unit id="coco.status.pending.description">
         <source>Pending</source>
       </trans-unit>
@@ -10000,6 +10054,48 @@ For a detailed analysis, please refer to the log files.
       </trans-unit>
       <trans-unit id="coco.status.failed.description">
         <source>Failed</source>
+      </trans-unit>
+      <trans-unit id="coco.status.requested.description">
+        <source>Requested</source>
+      </trans-unit>
+      <trans-unit id="coco.status.queued.description">
+        <source>Queued</source>
+      </trans-unit>
+      <trans-unit id="coco.status.submitted.description">
+        <source>Submitted</source>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.missing_input_data">
+        <source>The mandatory input data is missing</source>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_missing">
+        <source>The secure execution header is missing.</source>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_wrong_format">
+        <source>The secure execution header is not a valid Base64 string.</source>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_empty">
+        <source>The secure execution header is empty.</source>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_too_short">
+        <source>The secure execution header is too short.</source>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_invalid_header">
+        <source>The secure execution header does not start with the expected byte sequence.</source>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_size_mismatch">
+        <source>The secure execution header size does not match the expected value.</source>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_wrong_format">
+        <source>The host key document is not a valid string.</source>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_not_valid_yet">
+        <source>The host key document is not valid yet.</source>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_expired">
+        <source>The host key document has expired.</source>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_failed">
+        <source>The host key document is not a valid PEM certificate.</source>
       </trans-unit>
       <trans-unit id="system.audit.coco.unsupported">
         <source>This system does not have any Confidential Computing capability.</source>

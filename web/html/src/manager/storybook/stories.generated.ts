@@ -1,7 +1,7 @@
 /**
  * NB! This is a generated file!
  * Any changes you make here will be lost.
- * See: web/html/src/build/plugins/generate-stories-plugin.js
+ * See: web/html/src/build/webpack/plugins/generate-stories-plugin.js
  */
 
 /* eslint-disable */
@@ -28,18 +28,6 @@ export const components_action_ActionStatus_example_tsx = {
   groupName: "action",
   component: components_action_ActionStatus_example_tsx_component,
   raw: components_action_ActionStatus_example_tsx_raw,
-};
-
-// @ts-ignore
-import components_buttons_index_example_tsx_component from "components/buttons/index.example.tsx";
-import components_buttons_index_example_tsx_raw from "components/buttons/index.example.tsx?raw";
-
-export const components_buttons_index_example_tsx = {
-  path: "components/buttons/index.example.tsx",
-  title: "index.example.tsx",
-  groupName: "buttons",
-  component: components_buttons_index_example_tsx_component,
-  raw: components_buttons_index_example_tsx_raw,
 };
 
 // @ts-ignore
@@ -427,6 +415,18 @@ export const components_toastr_toastr_example_tsx = {
 };
 
 // @ts-ignore
+import components_toggle_button_group_toggle_button_group_example_tsx_component from "components/toggle-button-group/toggle-button-group.example.tsx";
+import components_toggle_button_group_toggle_button_group_example_tsx_raw from "components/toggle-button-group/toggle-button-group.example.tsx?raw";
+
+export const components_toggle_button_group_toggle_button_group_example_tsx = {
+  path: "components/toggle-button-group/toggle-button-group.example.tsx",
+  title: "toggle-button-group.example.tsx",
+  groupName: "toggle-button-group",
+  component: components_toggle_button_group_toggle_button_group_example_tsx_component,
+  raw: components_toggle_button_group_toggle_button_group_example_tsx_raw,
+};
+
+// @ts-ignore
 import components_tooltip_tooltip_example_tsx_component from "components/tooltip/tooltip.example.tsx";
 import components_tooltip_tooltip_example_tsx_raw from "components/tooltip/tooltip.example.tsx?raw";
 
@@ -520,4 +520,16 @@ export const core_intl_index_example_tsx = {
   groupName: "intl",
   component: core_intl_index_example_tsx_component,
   raw: core_intl_index_example_tsx_raw,
+};
+
+// @ts-ignore
+import manager_admin_setup_products_product_check_ProductCheck_example_tsx_component from "manager/admin/setup/products/product-check/ProductCheck.example.tsx";
+import manager_admin_setup_products_product_check_ProductCheck_example_tsx_raw from "manager/admin/setup/products/product-check/ProductCheck.example.tsx?raw";
+
+export const manager_admin_setup_products_product_check_ProductCheck_example_tsx = {
+  path: "manager/admin/setup/products/product-check/ProductCheck.example.tsx",
+  title: "ProductCheck.example.tsx",
+  groupName: "product-check",
+  component: manager_admin_setup_products_product_check_ProductCheck_example_tsx_component,
+  raw: manager_admin_setup_products_product_check_ProductCheck_example_tsx_raw,
 };

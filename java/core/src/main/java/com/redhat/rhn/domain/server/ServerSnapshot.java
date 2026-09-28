@@ -21,6 +21,7 @@ import com.redhat.rhn.common.db.datasource.Row;
 import com.redhat.rhn.common.db.datasource.SelectMode;
 import com.redhat.rhn.domain.BaseDomainHelper;
 import com.redhat.rhn.domain.action.ActionFactory;
+import com.redhat.rhn.domain.action.ActionTypeEnum;
 import com.redhat.rhn.domain.channel.Channel;
 import com.redhat.rhn.domain.channel.ChannelFactory;
 import com.redhat.rhn.domain.config.ConfigChannel;
@@ -30,6 +31,7 @@ import com.redhat.rhn.domain.rhnpackage.PackageNevra;
 import com.redhat.rhn.domain.user.User;
 import com.redhat.rhn.frontend.dto.PackageListItem;
 import com.redhat.rhn.frontend.dto.PackageMetadata;
+import com.redhat.rhn.frontend.dto.PackageMetadataFactory;
 import com.redhat.rhn.manager.action.ActionManager;
 import com.redhat.rhn.manager.system.SystemManager;
 import com.redhat.rhn.taskomatic.TaskomaticApiException;
@@ -48,18 +50,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 
 /**
  *
@@ -488,7 +490,7 @@ public class ServerSnapshot extends BaseDomainHelper {
             List<Long> serverIds = new ArrayList<>();
             serverIds.add(this.server.getId());
             ActionManager.createConfigAction(user, revLongs, serverIds,
-                                  ActionFactory.TYPE_CONFIGFILES_DEPLOY, new Date());
+                                  ActionTypeEnum.TYPE_CONFIGFILES_DEPLOY, new Date());
         }
         return deployed;
     }
@@ -531,21 +533,9 @@ public class ServerSnapshot extends BaseDomainHelper {
             snapshotPkg.setVersion((String) pkgDiff.get("snapshot_version"));
             snapshotPkg.setRelease((String) pkgDiff.get("snapshot_release"));
 
-            PackageMetadata pm = new PackageMetadata(systemPkg, snapshotPkg);
-            int comparison;
-            switch (((Number) pkgDiff.get("comparison")).intValue()) {
-            case -2: comparison = PackageMetadata.KEY_OTHER_ONLY;
-                     break;
-            case -1: comparison = PackageMetadata.KEY_OTHER_NEWER;
-                     break;
-            case 1:  comparison = PackageMetadata.KEY_THIS_NEWER;
-                     break;
-            case 2:  comparison = PackageMetadata.KEY_THIS_ONLY;
-                     break;
-            default: comparison = PackageMetadata.KEY_NO_DIFF;
-            }
-            pm.setComparison(comparison);
-            pm.updateActionStatus();
+            PackageMetadata pm = PackageMetadataFactory.createFromPackageDiffComparison(
+                    ((Number) pkgDiff.get("comparison")).intValue(), systemPkg, snapshotPkg);
+
             pkgsMeta.add(pm);
         }
         return new DataResult<>(pkgsMeta);

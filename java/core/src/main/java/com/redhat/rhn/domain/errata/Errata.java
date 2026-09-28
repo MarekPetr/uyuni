@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 SUSE LLC
  * Copyright (c) 2009--2020 Red Hat, Inc.
  *
  * This software is licensed to you under the GNU General Public License,
@@ -22,38 +23,38 @@ import com.redhat.rhn.domain.rhnpackage.Package;
 import com.redhat.rhn.frontend.xmlrpc.InvalidParameterException;
 import com.redhat.rhn.manager.errata.ErrataManager;
 
-import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.hibernate.annotations.Type;
+import org.hibernate.type.YesNoConverter;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Inheritance;
-import javax.persistence.InheritanceType;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.OrderBy;
-import javax.persistence.OrderColumn;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 
 /**
  * Errata - Class representation of the table rhnErrata.
@@ -62,8 +63,6 @@ import javax.persistence.Table;
 @Table(name = "rhnErrata")
 @Inheritance(strategy = InheritanceType.JOINED)
 public class Errata extends BaseDomainHelper {
-
-    private static Logger log = LogManager.getLogger(Errata.class);
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "errata_seq")
@@ -75,14 +74,13 @@ public class Errata extends BaseDomainHelper {
                 name = "rhnErrataPackage",
                 joinColumns = @JoinColumn(name = "errata_id"),
                 inverseJoinColumns = @JoinColumn(name = "package_id"))
-    @OrderColumn(name = "package_id")
-    private Set<Package> packages;
+    @OrderBy("id ASC")
+    private Set<Package> packages = new HashSet<>();
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JoinTable(
-                name = "rhnChannelErrata",
-                joinColumns = @JoinColumn(name = "errata_id"),
-                inverseJoinColumns = @JoinColumn(name = "channel_id"))
+    @ManyToMany(
+            mappedBy = "erratas",
+            cascade = {CascadeType.MERGE, CascadeType.PERSIST, CascadeType.DETACH, CascadeType.REFRESH},
+            fetch = FetchType.LAZY)
     private Set<Channel> channels = new HashSet<>();
 
     @ManyToMany(cascade = {CascadeType.MERGE, CascadeType.PERSIST}, fetch = FetchType.LAZY)
@@ -99,7 +97,7 @@ public class Errata extends BaseDomainHelper {
     private String advisoryType;
 
     @Column(name = "advisory_status")
-    @Type(type = "com.redhat.rhn.domain.errata.AdvisoryStatusEnumType")
+    @Type(value = com.redhat.rhn.domain.errata.AdvisoryStatusEnumType.class)
     private AdvisoryStatus advisoryStatus = AdvisoryStatus.FINAL;
 
     @Column
@@ -139,7 +137,7 @@ public class Errata extends BaseDomainHelper {
     private Long advisoryRel;
 
     @Column(name = "locally_modified")
-    @Type(type = "yes_no")
+    @Convert(converter = YesNoConverter.class)
     private Boolean locallyModified;
 
     @Column(name = "last_modified", updatable = false, insertable = false)
@@ -155,11 +153,11 @@ public class Errata extends BaseDomainHelper {
 
     @OneToMany(mappedBy = "owningErrata", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @OrderBy("id ASC")
-    private Set<ErrataFile> files;
+    private Set<ErrataFile> files = new HashSet<>();
 
     @OneToMany(mappedBy = "errata", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @OrderBy("keyword ASC")
-    private Set<Keyword> keywords;
+    private Set<Keyword> keywords = new HashSet<>();
 
     @Column(name = "errata_from")
     private String errataFrom;
@@ -173,26 +171,23 @@ public class Errata extends BaseDomainHelper {
      * @return channels to get
      */
     public Set<Channel> getChannels() {
-        return channels;
+        return Collections.unmodifiableSet(channels);
     }
 
     /**
-     * @param channelsIn sets channels
+     * Internal helper for bidirectional relationship - adds a channel to this errata
+     * @param channel The channel to add
      */
-    public void setChannels(Set<Channel> channelsIn) {
-        this.channels = channelsIn;
+    public void addChannelInternal(Channel channel) {
+        channels.add(channel);
     }
 
     /**
-     * Adds a channel.
-     * @param channelIn the channel to add
+     * Internal helper for bidirectional relationship - removes a channel from this errata.
+     * @param channel The channel to remove
      */
-    public void addChannel(Channel channelIn) {
-        log.debug("addChannel called: {}", channelIn.getLabel());
-        if (this.channels == null) {
-            this.channels = new HashSet<>();
-        }
-        channels.add(channelIn);
+    public void removeChannelInternal(Channel channel) {
+        channels.remove(channel);
     }
 
     /**
@@ -775,10 +770,24 @@ public class Errata extends BaseDomainHelper {
      * @param packageIn The package to add.
      */
     public void addPackage(Package packageIn) {
-        if (this.packages == null) {
-            this.packages = new HashSet<>();
+        if (packageIn == null) {
+            return;
         }
         packages.add(packageIn);
+        packageIn.addErrataInternal(this);
+    }
+
+    /**
+     * Adds multiple packages to the errata
+     * @param packagesIn The collection of packages to add
+     */
+    public void addPackages(Collection<Package> packagesIn) {
+        if (packagesIn == null) {
+            return;
+        }
+        for (Package pkg : packagesIn) {
+            addPackage(pkg);
+        }
     }
 
     /**
@@ -786,21 +795,51 @@ public class Errata extends BaseDomainHelper {
      * @param packageIn The package to remove.
      */
     public void removePackage(Package packageIn) {
+        if (packageIn == null) {
+            return;
+        }
         packages.remove(packageIn);
+        packageIn.removeErrataInternal(this);
+    }
+
+
+    /**
+     * Removes multiple packages from the errata
+     * @param packagesIn The collection of packages to remove
+     */
+    public void removePackages(Collection<Package> packagesIn) {
+        if (packagesIn == null) {
+            return;
+        }
+        for (Package pkg : packagesIn) {
+            removePackage(pkg);
+        }
     }
 
     /**
      * @return Returns the packages.
      */
     public Set<Package> getPackages() {
-        return packages;
+        return Collections.unmodifiableSet(packages);
     }
 
     /**
-     * @param p The packages to set.
+     * Replace all packages with a new set, maintaining bidirectional sync
+     * @param packagesIn the new packages to set
      */
-    public void setPackages(Set<Package> p) {
-        this.packages = p;
+    public void replacePackages(Collection<Package> packagesIn) {
+        if (packagesIn == null) {
+            return;
+        }
+        clearPackages();
+        addPackages(packagesIn);
+    }
+
+    /**
+     * Clears out the Packages associated with this errata.
+     */
+    public void clearPackages() {
+        removePackages(new ArrayList<>(this.packages));
     }
 
     /**
@@ -833,13 +872,15 @@ public class Errata extends BaseDomainHelper {
      * Clears out the Channels associated with this errata.
      */
     public void clearChannels() {
-        if (this.getChannels() != null) {
-            this.getChannels().clear();
+        List<Channel> channelsCopy = new ArrayList<>(this.getChannels());
+        for (Channel channel : channelsCopy) {
+            channel.removeErrata(this);
         }
-        Iterator<ErrataFile> i = IteratorUtils.getIterator(this.getFiles());
-        while (i.hasNext()) {
-            ErrataFile pf = i.next();
-            pf.getChannels().clear();
+
+        for (ErrataFile errataFile : this.files) {
+            if (errataFile.getChannels() != null) {
+                errataFile.getChannels().clear();
+            }
         }
     }
 

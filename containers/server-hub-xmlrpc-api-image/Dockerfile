@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 #!BuildTag: uyuni/server-hub-xmlrpc-api:latest
 
-ARG BASE=registry.suse.com/bci/bci-base:15.7
+ARG BASE=registry.suse.com/bci/bci-base:16.0
 FROM $BASE
 
 RUN zypper --gpg-auto-import-keys --non-interactive install hub-xmlrpc-api && \
@@ -23,10 +23,11 @@ LABEL org.opencontainers.image.description="${PRODUCT} Hub XML-RPC API image"
 LABEL org.opencontainers.image.created="%BUILDTIME%"
 LABEL org.opencontainers.image.vendor="${VENDOR}"
 LABEL org.opencontainers.image.url="${URL}"
-LABEL org.opencontainers.image.version=5.2.4
+LABEL org.opencontainers.image.version=5.3.1
 LABEL org.openbuildservice.disturl="%DISTURL%"
 LABEL org.opensuse.reference="${REFERENCE_PREFIX}/server-hub-xmlrpc-api:${PRODUCT_VERSION}.%RELEASE%"
 # endlabelprefix
+LABEL io.artifacthub.package.readme-url="%SOURCEURL_WITH(README.md)%"
 LABEL org.uyuni.version="${PRODUCT_VERSION}"
 
 CMD update-ca-certificates && hub-xmlrpc-api

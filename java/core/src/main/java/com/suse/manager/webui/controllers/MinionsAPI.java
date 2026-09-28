@@ -27,7 +27,7 @@ import com.redhat.rhn.common.hibernate.HibernateFactory;
 import com.redhat.rhn.common.localization.LocalizationService;
 import com.redhat.rhn.domain.action.Action;
 import com.redhat.rhn.domain.action.ActionChain;
-import com.redhat.rhn.domain.action.ActionFactory;
+import com.redhat.rhn.domain.action.ActionTypeEnum;
 import com.redhat.rhn.domain.action.CoCoAttestationAction;
 import com.redhat.rhn.domain.action.dup.DistUpgradeAction;
 import com.redhat.rhn.domain.action.rhnpackage.PackageAction;
@@ -55,6 +55,7 @@ import com.redhat.rhn.taskomatic.TaskomaticApi;
 import com.redhat.rhn.taskomatic.TaskomaticApiException;
 
 import com.suse.cloud.CloudPaygManager;
+import com.suse.manager.attestation.AttestationInputDataValidatorFactory;
 import com.suse.manager.attestation.AttestationManager;
 import com.suse.manager.model.attestation.ServerCoCoAttestationConfig;
 import com.suse.manager.model.products.migration.MigrationChannelsRequest;
@@ -81,6 +82,7 @@ import com.suse.manager.webui.utils.gson.ResultJson;
 import com.suse.manager.webui.utils.gson.SaltMinionJson;
 import com.suse.manager.webui.utils.gson.ScheduledRequestJson;
 import com.suse.manager.webui.utils.gson.ServerSetProxyJson;
+import com.suse.manager.webui.utils.gson.SingleCoCoSettingsJson;
 import com.suse.manager.webui.utils.gson.SupportDataRequest;
 import com.suse.manager.webui.utils.gson.SystemScheduledRequestJson;
 import com.suse.manager.webui.utils.gson.SystemsCoCoSettingsJson;
@@ -482,11 +484,11 @@ public class MinionsAPI {
         List<String> allowedActions = new ArrayList<>();
         if (SystemManager.serverHasFeature(server.getId(), "ftr_package_remove") &&
             ServerFactory.isPtfUninstallationSupported(server)) {
-            allowedActions.add(ActionFactory.TYPE_PACKAGES_REMOVE.getLabel());
+            allowedActions.add(ActionTypeEnum.TYPE_PACKAGES_REMOVE.getLabel());
         }
 
         if (SystemManager.serverHasFeature(server.getId(), "ftr_package_updates")) {
-            allowedActions.add(ActionFactory.TYPE_PACKAGES_UPDATE.getLabel());
+            allowedActions.add(ActionTypeEnum.TYPE_PACKAGES_UPDATE.getLabel());
         }
 
         return result(response, ResultJson.success(allowedActions), new TypeToken<>() { });
@@ -564,10 +566,10 @@ public class MinionsAPI {
         try {
             PackageAction action;
 
-            if (ActionFactory.TYPE_PACKAGES_REMOVE.getLabel().equals(scheduleRequest.getActionType())) {
+            if (ActionTypeEnum.TYPE_PACKAGES_REMOVE.getLabel().equals(scheduleRequest.getActionType())) {
                 action = ActionChainManager.schedulePackageRemoval(user, server, pkgMap, earliestDate, chain);
             }
-            else if (ActionFactory.TYPE_PACKAGES_UPDATE.getLabel().equals(scheduleRequest.getActionType())) {
+            else if (ActionTypeEnum.TYPE_PACKAGES_UPDATE.getLabel().equals(scheduleRequest.getActionType())) {
                 action = ActionChainManager.schedulePackageInstall(user, server, pkgMap, earliestDate, chain);
             }
             else {
@@ -621,13 +623,13 @@ public class MinionsAPI {
      */
     public String getCoCoSettings(Request request, Response response, User user, Server server) {
         if (!server.doesOsSupportCoCoAttestation()) {
-            return json(GSON, response, ResultJson.success(new CoCoSettingsJson(false),
+            return json(GSON, response, ResultJson.success(new SingleCoCoSettingsJson(false),
                 LOCAL.getMessage("system.audit.coco.unsupported")), new TypeToken<>() { });
         }
 
-        CoCoSettingsJson jsonConfig = attestationManager.getConfig(user, server)
-            .map(cfg -> new CoCoSettingsJson(cfg))
-            .orElseGet(() -> new CoCoSettingsJson(true));
+        SingleCoCoSettingsJson jsonConfig = attestationManager.getConfig(user, server)
+            .map(cfg -> new SingleCoCoSettingsJson(cfg))
+            .orElseGet(() -> new SingleCoCoSettingsJson(true));
 
         return json(GSON, response, ResultJson.success(jsonConfig), new TypeToken<>() { });
     }
@@ -635,15 +637,23 @@ public class MinionsAPI {
 
     private String setCoCoSettings(Request request, Response response, User user, Server server) {
         if (!server.doesOsSupportCoCoAttestation()) {
-            return json(GSON, response, ResultJson.success(new CoCoSettingsJson(false),
+            return json(GSON, response, ResultJson.success(new SingleCoCoSettingsJson(false),
                     LOCAL.getMessage("system.audit.coco.unsupported")), new TypeToken<>() { });
         }
 
         CoCoSettingsJson jsonConfig = GSON.fromJson(request.body(), CoCoSettingsJson.class);
+
+        // Validate the input data, if needed
+        var validator = AttestationInputDataValidatorFactory.forEnvironment(jsonConfig.environmentType());
+        List<String> errors = validator.validate(jsonConfig.inputData());
+        if (CollectionUtils.isNotEmpty(errors)) {
+            return json(GSON, response, ResultJson.error(errors), new TypeToken<>() { });
+        }
+
         try {
             ServerCoCoAttestationConfig updatedConfig = updateServerCoCoConfiguration(user, server, jsonConfig);
 
-            return json(GSON, response, ResultJson.success(new CoCoSettingsJson(updatedConfig),
+            return json(GSON, response, ResultJson.success(new SingleCoCoSettingsJson(updatedConfig),
                 LOCAL.getMessage("system.audit.coco.configUpdated")), new TypeToken<>() { });
         }
         catch (RuntimeException ex) {
@@ -702,9 +712,16 @@ public class MinionsAPI {
     private String setAllCoCoSettings(Request request, Response response, User user) {
         SystemsCoCoSettingsJson jsonConfig = GSON.fromJson(request.body(), SystemsCoCoSettingsJson.class);
 
+        // Validate the input data, if needed
+        var validator = AttestationInputDataValidatorFactory.forEnvironment(jsonConfig.settings().environmentType());
+        List<String> errors = validator.validate(jsonConfig.settings().inputData());
+        if (CollectionUtils.isNotEmpty(errors)) {
+            return json(GSON, response, ResultJson.error(errors), new TypeToken<>() { });
+        }
+
         try {
-            MinionServerFactory.lookupByIds(jsonConfig.getServerIds())
-                .forEach(minionServer -> updateServerCoCoConfiguration(user, minionServer, jsonConfig));
+            MinionServerFactory.lookupByIds(jsonConfig.serverIds())
+                .forEach(minionServer -> updateServerCoCoConfiguration(user, minionServer, jsonConfig.settings()));
 
             return json(GSON, response, ResultJson.success(jsonConfig,
                 LOCAL.getMessage("system.audit.coco.configUpdated")), new TypeToken<>() { });
@@ -719,18 +736,20 @@ public class MinionsAPI {
                                                                       CoCoSettingsJson jsonConfig) {
         return attestationManager.getConfig(user, server)
             .map(cfg -> {
-                cfg.setEnabled(jsonConfig.isEnabled());
-                cfg.setEnvironmentType(jsonConfig.getEnvironmentType());
-                cfg.setAttestOnBoot(jsonConfig.isAttestOnBoot());
+                cfg.setEnabled(jsonConfig.enabled());
+                cfg.setEnvironmentType(jsonConfig.environmentType());
+                cfg.setAttestOnBoot(jsonConfig.attestOnBoot());
+                cfg.setInData(jsonConfig.inputData());
 
                 attestationManager.saveConfig(user, cfg);
 
                 return cfg;
             })
             .orElseGet(() -> attestationManager.createConfig(user, server,
-                jsonConfig.getEnvironmentType(),
-                jsonConfig.isEnabled(),
-                jsonConfig.isAttestOnBoot()
+                jsonConfig.environmentType(),
+                jsonConfig.enabled(),
+                jsonConfig.inputData(),
+                jsonConfig.attestOnBoot()
             ));
     }
 

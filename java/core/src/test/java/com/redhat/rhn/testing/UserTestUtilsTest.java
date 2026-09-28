@@ -26,7 +26,7 @@ import com.redhat.rhn.domain.user.User;
 import org.junit.jupiter.api.Test;
 
 
-public class UserTestUtilsTest {
+public class UserTestUtilsTest extends BaseTestCase {
 
     @Test
     void testCreateUserWhenAllParametersAreProvidedAndNonExistingOrg() {
@@ -90,7 +90,8 @@ public class UserTestUtilsTest {
     @Test
     void testCreateTestAddress() {
         User user = UserTestUtils.createUser();
-        Address address = UserTestUtils.createTestAddress(user);
+        Address address = UserTestUtils.createTestAddress();
+        user.setAddress(address);
         assertNotNull(address);
         assertEquals("444 Castro", address.getAddress1());
     }

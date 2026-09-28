@@ -310,26 +310,12 @@
         </context-group>
         <target state="translated">地址</target>
       </trans-unit>
-      <trans-unit id="address type B" xml:space="preserve">
-        <source>Billing Address</source>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/users/Addresses</context>
-        </context-group>
-        <target state="translated">帐单地址</target>
-      </trans-unit>
       <trans-unit id="address type M" xml:space="preserve">
         <source>Mailing Address</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/users/Addresses</context>
         </context-group>
         <target state="translated">通信地址</target>
-      </trans-unit>
-      <trans-unit id="address type S" xml:space="preserve">
-        <source>Shipping Address</source>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/users/Addresses</context>
-        </context-group>
-        <target state="translated">收货地址</target>
       </trans-unit>
       <trans-unit id="address not filled in" xml:space="preserve">
         <source>Address not filled in</source>
@@ -359,9 +345,9 @@
         </context-group>
         <target state="translated">所有</target>
       </trans-unit>
-      <trans-unit id="url" xml:space="preserve">
+      <trans-unit id="url" xml:space="preserve" approved="yes">
         <source>url</source>
-        <target state="translated">URL</target>
+        <target state="final">URL</target>
       </trans-unit>
       <trans-unit id="alphabet" xml:space="preserve">
         <source>A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</source>
@@ -1774,16 +1760,16 @@
         </context-group>
         <target state="translated">XCCDF 文档的路径</target>
       </trans-unit>
-      <trans-unit id="first" xml:space="preserve">
+      <trans-unit id="first" xml:space="preserve" approved="yes">
         <source>First Scan Id</source>
-        <target state="translated">第一个扫描 ID</target>
+        <target state="final">第一个扫描 ID</target>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/audit/scap/Diff.do</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="second" xml:space="preserve">
+      <trans-unit id="second" xml:space="preserve" approved="yes">
         <source>Second Scan Id</source>
-        <target state="translated">第二个扫描 ID</target>
+        <target state="final">第二个扫描 ID</target>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/audit/scap/Diff.do</context>
         </context-group>
@@ -1998,7 +1984,7 @@
         </context-group>
         <target state="translated">ACL handler 方法 [{0}] 无效。ACL handler 方法必须具有以下签名（可能是静态或非静态的），且没有申明的异常：public aclXXXX(Object, String[])</target>
       </trans-unit>
-      <trans-unit id="bad-syntax" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="bad-syntax" xml:space="preserve">
         <source>Could not parse ACL statement: "{0}"</source>
         <context-group name="ctx">
           <context context-type="sourcefile">Logfile error message</context>
@@ -2489,12 +2475,12 @@ and try again.
         </context-group>
         <target state="final">删除代码段</target>
       </trans-unit>
-      <trans-unit id="kickstart.iprange.url" xml:space="preserve">
+      <trans-unit id="kickstart.iprange.url" xml:space="preserve" approved="yes">
         <source>New systems can be autoinstalled based upon their ip address by appending &lt;code&gt;{0}&lt;/code&gt; to the kernel parameters for an autoinstallation.</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/kickstart/KickstartIpRangeEdit</context>
         </context-group>
-        <target state="translated">可以根据新系统的 IP 地址来进行自动安装。要自动安装，需要在内核参数后面加上 &lt;code&gt;{0}&lt;/code&gt;。</target>
+        <target state="final">可以根据新系统的 IP 地址来进行自动安装。要自动安装，需要在内核参数后面加上 &lt;code&gt;{0}&lt;/code&gt;。</target>
       </trans-unit>
       <trans-unit id="kickstart.partition.success" xml:space="preserve">
         <source>Kickstart profile options updated successfully.</source>
@@ -2794,13 +2780,6 @@ and try again.
         </context-group>
         <target state="translated">激活密钥管理员</target>
       </trans-unit>
-      <trans-unit id="Admin Access" xml:space="preserve">
-        <source>Admin Access</source>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/account/UserDetails</context>
-        </context-group>
-        <target state="translated">管理访问权限</target>
-      </trans-unit>
       <trans-unit id="neverinparens" xml:space="preserve">
         <source>(never)</source>
         <context-group name="ctx">
@@ -3081,7 +3060,7 @@ and try again.
         </context-group>
         <target state="translated">无法连接到搜索服务器。</target>
       </trans-unit>
-      <trans-unit id="packages.search.could_not_parse_query" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="packages.search.could_not_parse_query" xml:space="preserve">
         <source>Could not parse query '{0}'.</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/channels/Search</context>
@@ -6010,7 +5989,7 @@ user before attempting to deactivate their account.</source>
         </context-group>
         <target state="translated">参数无效</target>
       </trans-unit>
-      <trans-unit id="bootstrap.config.error.13" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="bootstrap.config.error.13" xml:space="preserve">
         <source>Could not parse httpd proxy URL</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/admin/config/CertificateConfig.do</context>
@@ -6255,12 +6234,12 @@ Follow this url to see the full list of inactive systems:
 请使用此 URL 查看完整的非活动系统列表：
 {1}</target>
       </trans-unit>
-      <trans-unit id="taskomatic.daily.sid" xml:space="preserve">
+      <trans-unit id="taskomatic.daily.sid" xml:space="preserve" approved="yes">
         <source>System Id</source>
         <context-group name="ctx">
           <context context-type="sourcefile">Daily Summary Email</context>
         </context-group>
-        <target state="translated">系统 ID</target>
+        <target state="final">系统 ID</target>
       </trans-unit>
       <trans-unit id="taskomatic.daily.systemname" xml:space="preserve">
         <source>System Name</source>
@@ -6515,13 +6494,6 @@ Follow this url to see the full list of inactive systems:
         </context-group>
         <target state="translated">无法自动安装系统 {0}，因为它没有 &lt;strong&gt; {1} &lt;/strong&gt; 网络设备。</target>
       </trans-unit>
-      <trans-unit id="kickstart.schedule.noup2date" xml:space="preserve">
-        <source>An autoinstallation was not scheduled for &lt;strong&gt;&lt;a href="/rhn/systems/details/Overview.do?sid={0}"&gt;{1}&lt;/a&gt;&lt;/strong&gt; because the package profile did not contain the 'up2date' package. An update of that system's package profile may be required.</source>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
-        </context-group>
-        <target state="translated">没有为 &lt;strong&gt;&lt;a href="/rhn/systems/details/Overview.do?sid={0}"&gt;{1}&lt;/a&gt;&lt;/strong&gt; 安排自动安装，因为软件包配置文件未包含 "up2date" 软件包。可能需要更新该系统的软件包配置文件。</target>
-      </trans-unit>
       <trans-unit id="kickstart.session.newsession" xml:space="preserve">
         <source>A new autoinstall session was initiated for this system.</source>
         <context-group name="ctx">
@@ -6556,13 +6528,6 @@ Follow this url to see the full list of inactive systems:
           <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
         </context-group>
         <target state="translated">自动安装会话 {0} 的配置文件。</target>
-      </trans-unit>
-      <trans-unit id="kickstart.schedule.noup2dateinchannel" xml:space="preserve">
-        <source>We require version {0} or greater of up2date in order to kickstart a system. &lt;strong&gt;{2}&lt;/strong&gt; has {1} installed but we could not find a version of up2date in this system's channels to upgrade it to the required version or above.</source>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
-        </context-group>
-        <target state="translated">要以无人值守方式安装系统，需要使用 up2date {0} 或更高版本。&lt;strong&gt;{2}&lt;/strong&gt; 已安装 {1}，但我们在此系统的通道中未找到 up2date 版本，无法将其升级到所需或更高的版本。</target>
       </trans-unit>
       <trans-unit id="kickstart.state.guesttimedout" xml:space="preserve">
         <source>&lt;p&gt;The guest system has not communicated with @@PRODUCT_NAME@@ in the past {0} minutes. The install process might be progressing slowly due to hardware constraints, or it might be frozen.&lt;/p&gt; &lt;p&gt;You may wish to troubleshoot this issue by running &lt;em&gt;virsh console &lt;strong&gt;guestname&lt;/strong&gt;&lt;/em&gt; on the host system. This command will allow you to connect to the text console of the guest as it is installing, which may provide additional information about this guest system's installation status.&lt;/p&gt;</source>
@@ -7065,19 +7030,19 @@ Follow this url to see the full list of inactive systems:
         <target state="translated">配置通道说明</target>
       </trans-unit>
       <!-- config-file form-bean I18N -->
-      <trans-unit id="cffUid" xml:space="preserve">
+      <trans-unit id="cffUid" xml:space="preserve" approved="yes">
         <source>User name or id</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/configuration/file/FileDetails.do</context>
         </context-group>
-        <target state="translated">用户名或 ID</target>
+        <target state="final">用户名或 ID</target>
       </trans-unit>
-      <trans-unit id="cffGid" xml:space="preserve">
+      <trans-unit id="cffGid" xml:space="preserve" approved="yes">
         <source>Group name or id</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/configuration/file/FileDetails.do</context>
         </context-group>
-        <target state="translated">组名称或 ID</target>
+        <target state="final">组名称或 ID</target>
       </trans-unit>
       <trans-unit id="cffPermissions" xml:space="preserve">
         <source>File permissions setting</source>
@@ -7832,11 +7797,11 @@ Follow this url to see the full list of inactive systems:
         </context-group>
         <target state="translated">{0} 个文件列表无法删除。</target>
       </trans-unit>
-      <trans-unit id="cobbler.powermanagement.poweron" xml:space="preserve">
+      <trans-unit id="cobbler.powermanagement.power_on" xml:space="preserve">
         <source>Power On</source>
         <target state="translated">打开</target>
       </trans-unit>
-      <trans-unit id="cobbler.powermanagement.poweroff" xml:space="preserve">
+      <trans-unit id="cobbler.powermanagement.power_off" xml:space="preserve">
         <source>Power Off</source>
         <target state="translated">关闭</target>
       </trans-unit>
@@ -7859,11 +7824,11 @@ Follow this url to see the full list of inactive systems:
         <target state="translated">无法对没有保存配置的系统进行电源管理。</target>
       </trans-unit>
       <trans-unit id="cobbler.powermanagement.no_fence_agents" xml:space="preserve">
-        <source>This functionality is only available on @@PRODUCT_NAME@@ servers that have installed "fence agents," which are possibly availabe as "fence-agents", "fence-agents-all", or "fence-agents-ipmilan" packages depending on your operating system and desired power management infrastructure. Please install the fence agents. If fence agents are not available for your operating system then power management functionality is not supported.</source>
+        <source>This functionality is only available on @@PRODUCT_NAME@@ servers that have installed "fence agents," which are possibly available as "fence-agents", "fence-agents-all", or "fence-agents-ipmilan" packages depending on your operating system and desired power management infrastructure. Please install the fence agents. If fence agents are not available for your operating system then power management functionality is not supported.</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/systems/details/kickstart/PowerManagement.do</context>
         </context-group>
-        <target state="translated">只能在安装了 "隔离代理" 的 @@PRODUCT_NAME@@ 服务器中使用这个功能，根据您使用的操作系统以及所需电源管理基础结构，需要的软件包可能为 "fence-agents"、"fence-agents-all" 或 "fence-agents-ipmilan"。请安装隔离代理。如果您的操作系统无法使用隔离代理，将不会支持电源管理功能。</target>
+        <target state="needs-adaptation">只能在安装了 "隔离代理" 的 @@PRODUCT_NAME@@ 服务器中使用这个功能，根据您使用的操作系统以及所需电源管理基础结构，需要的软件包可能为 "fence-agents"、"fence-agents-all" 或 "fence-agents-ipmilan"。请安装隔离代理。如果您的操作系统无法使用隔离代理，将不会支持电源管理功能。</target>
       </trans-unit>
       <trans-unit approved="yes" id="cobbler.powermanagement.alom" xml:space="preserve">
         <source>Advanced Lights Out Manager</source>
@@ -8621,9 +8586,9 @@ Follow this url to see the full list of inactive systems:
         <source>The server is not configured to support PAM authentication. Refer to the reference guide for instructions on how to set up PAM.</source>
         <target state="translated">此服务器未配置为支持 PAM 身份验证。请参见参考指南获得有关如何设置 PAM 的说明。</target>
       </trans-unit>
-      <trans-unit id="api.org.migrationtosameorg" xml:space="preserve">
+      <trans-unit id="api.org.migrationtosameorg" xml:space="preserve" approved="yes">
         <source>User cannot migrate a system where the origination and destination organizations are the same.  Org Id: {0}, System Id: {1}.</source>
-        <target state="translated">用户无法迁移原始组织和目标组织相同的系统。组织 ID：{0}，系统 ID：{1}。</target>
+        <target state="final">用户无法迁移原始组织和目标组织相同的系统。组织 ID：{0}，系统 ID：{1}。</target>
       </trans-unit>
       <trans-unit id="api.org.nosuchorg" xml:space="preserve">
         <source>No such organization: {0}</source>
@@ -8733,9 +8698,9 @@ Follow this url to see the full list of inactive systems:
         <source>Multiple base channels selected for subscription.  The channels {0} and {1} were both selected for subscription, but a system can only be subscribed to a single base channel.</source>
         <target state="translated">选择订阅了多个基础通道。通道 {0} 和 {1} 均已选择订阅，但一个系统只能订阅一个基础通道。</target>
       </trans-unit>
-      <trans-unit id="api.channel.invalidchannellist" xml:space="preserve">
+      <trans-unit id="api.channel.invalidchannellist" xml:space="preserve" approved="yes">
         <source>The channel list provided is invalid.  It must contain a list of channel labels or ids, but not a mixture of both.</source>
-        <target state="translated">提供的通道列表无效。必须包含通道标签或 ID 列表，但不能是二者的混合。</target>
+        <target state="final">提供的通道列表无效。必须包含通道标签或 ID 列表，但不能是二者的混合。</target>
       </trans-unit>
       <trans-unit id="channel.invalidchannelarch" xml:space="preserve">
         <source>The channel arch specified ({0}) is invalid.</source>
@@ -9013,23 +8978,23 @@ Follow this url to see the full list of inactive systems:
           <context context-type="sourcefile">/rhn/systems/Search</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="systemIdForCsv" xml:space="preserve">
+      <trans-unit id="systemIdForCsv" xml:space="preserve" approved="yes">
         <source>System Id</source>
-        <target>系统 ID</target>
+        <target state="final">系统 ID</target>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/systems/VirtualList</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="hostSystemIdForCsv" xml:space="preserve">
+      <trans-unit id="hostSystemIdForCsv" xml:space="preserve" approved="yes">
         <source>Host System Id</source>
-        <target>主机系统 ID</target>
+        <target state="final">主机系统 ID</target>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/systems/VirtualList</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="xid" xml:space="preserve">
+      <trans-unit id="xid" xml:space="preserve" approved="yes">
         <source>Xid</source>
-        <target state="translated">XID</target>
+        <target state="final">XID</target>
       </trans-unit>
       <trans-unit id="testResult" xml:space="preserve">
         <source>Idref of TestResult</source>
@@ -9309,17 +9274,17 @@ Follow this url to see the full list of inactive systems:
             未包含在此系统所订阅的软件通道中。如果您选择继续去除，
             您将无法将此系统回滚到此快照或以前的任何一个快照。</target>
       </trans-unit>
-      <trans-unit id="list.filter.iprange" xml:space="preserve">
+      <trans-unit id="list.filter.iprange" xml:space="preserve" approved="yes">
         <source>Single Ip Address</source>
-        <target state="translated">单个 IP 地址</target>
+        <target state="final">单个 IP 地址</target>
       </trans-unit>
-      <trans-unit id="api.kickstart.iprange.duplicate" xml:space="preserve">
+      <trans-unit id="api.kickstart.iprange.duplicate" xml:space="preserve" approved="yes">
         <source>The Ip Range specified, {0}, conflicts with an existing Ip Range.</source>
-        <target state="translated">指定的 IP 范围 {0} 与现有 IP 范围冲突。</target>
+        <target state="final">指定的 IP 范围 {0} 与现有 IP 范围冲突。</target>
       </trans-unit>
-      <trans-unit id="api.kickstart.ip.invalid" xml:space="preserve">
+      <trans-unit id="api.kickstart.ip.invalid" xml:space="preserve" approved="yes">
         <source>The Ip Address specified, {0}, is not valid..</source>
-        <target state="translated">指定的 IP 地址 {0} 无效。</target>
+        <target state="final">指定的 IP 地址 {0} 无效。</target>
       </trans-unit>
       <trans-unit id="api.kickstart.filelist.exists" xml:space="preserve">
         <source>A file list with label {0} already exists.</source>
@@ -9666,17 +9631,17 @@ Follow this url to see the full list of inactive systems:
         <source>The repository label '{0}' is already in use, please choose a different label</source>
         <target state="translated">储存库标签 "{0}" 已被使用，请选择其他标签</target>
       </trans-unit>
-      <trans-unit id="edit.channel.repo.invalidrepotype" xml:space="preserve">
+      <trans-unit id="edit.channel.repo.invalidrepotype" xml:space="preserve" approved="yes">
         <source>The repository type '{0}' is invalid or already in use with given url, please choose a different type</source>
-        <target>储存库类型 "{0}" 无效或已在给定的 URL 中使用，请选择其他类型</target>
+        <target state="final">储存库类型 "{0}" 无效或已在给定的 URL 中使用，请选择其他类型</target>
       </trans-unit>
-      <trans-unit id="edit.channel.repo.repourlinuse" xml:space="preserve">
+      <trans-unit id="edit.channel.repo.repourlinuse" xml:space="preserve" approved="yes">
         <source>There's already a defined repository with given url, please reuse it.</source>
-        <target state="translated">已有定义的储存库使用给定 URL，请重复使用该储存库。</target>
+        <target state="final">已有定义的储存库使用给定 URL，请重复使用该储存库。</target>
       </trans-unit>
-      <trans-unit id="edit.channel.repo.repourlinvalid" xml:space="preserve">
+      <trans-unit id="edit.channel.repo.repourlinvalid" xml:space="preserve" approved="yes">
         <source>The given url is invalid. Please enter an url with valid syntax (e.g. specify the protocol).</source>
-        <target>给定的 URL 无效。请使用有效语法输入 URL（例如，指定协议）。</target>
+        <target state="final">给定的 URL 无效。请使用有效语法输入 URL（例如，指定协议）。</target>
       </trans-unit>
       <trans-unit id="edit.channel.repo.clientcertmissing" xml:space="preserve">
         <source>Please set SSL Client Certificate, if you've set SSL Client Key.</source>
@@ -10470,9 +10435,9 @@ Alternatively, you will want to download &lt;strong&gt;Incremental Channel Conte
         <source>Channel &lt;a href="/rhn/channels/ChannelDetail.do?cid={0}"&gt;{1}&lt;/a&gt; sync completed</source>
         <target>已完成通道 &lt;a href="/rhn/channels/ChannelDetail.do?cid={0}"&gt;{1}&lt;/a&gt; 的同步</target>
       </trans-unit>
-      <trans-unit id="notification.onboardingfailed" xml:space="preserve">
+      <trans-unit id="notification.onboardingfailed" xml:space="preserve" approved="yes">
         <source>Error registering minion id: {0}</source>
-        <target>注册受控端 ID 时出错：{0}</target>
+        <target state="final">注册受控端 ID 时出错：{0}</target>
       </trans-unit>
       <trans-unit id="notification.bootstraprepofailed" xml:space="preserve">
         <source>Error generating bootstrap repo for: {0}</source>
@@ -10587,14 +10552,14 @@ Alternatively, you will want to download &lt;strong&gt;Incremental Channel Conte
         </context-group>
         <target state="translated">无法解析某些模块化依赖项。</target>
       </trans-unit>
-      <trans-unit id="contentmanagement.validation.nomodulefilters" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="contentmanagement.validation.nomodulefilters" xml:space="preserve">
         <source>No module filters attached. Module metadata will be cloned to target.</source>
         <context-group name="ctx">
           <context context-type="sourcefile">com.redhat.rhn.domain.contentmgmt.validation.ModularSourcesValidator</context>
         </context-group>
         <target state="final">未关联模块过滤器。模块元数据将克隆到目标。</target>
       </trans-unit>
-      <trans-unit id="contentmanagement.validation.nomodularsources" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="contentmanagement.validation.nomodularsources" xml:space="preserve">
         <source>No modular source attached. Module filters will be ignored.</source>
         <context-group name="ctx">
           <context context-type="sourcefile">com.redhat.rhn.domain.contentmgmt.validation.ModularSourcesValidator</context>
@@ -10625,17 +10590,17 @@ Alternatively, you will want to download &lt;strong&gt;Incremental Channel Conte
         <source>Calendar '{0}' does not exist</source>
         <target state="translated">日历 "{0}" 不存在</target>
       </trans-unit>
-      <trans-unit id="maintenance.schedule.id.not.exists" xml:space="preserve">
+      <trans-unit id="maintenance.schedule.id.not.exists" xml:space="preserve" approved="yes">
         <source>Schedule with id '{0}' does not exist</source>
-        <target state="translated">ID 为 "{0}" 的日程安排不存在</target>
+        <target state="final">ID 为 "{0}" 的日程安排不存在</target>
       </trans-unit>
-      <trans-unit id="maintenance.calendar.id.not.exists" xml:space="preserve">
+      <trans-unit id="maintenance.calendar.id.not.exists" xml:space="preserve" approved="yes">
         <source>Calendar with id '{0}' does not exist</source>
-        <target state="translated">ID 为 "{0}" 的日历不存在</target>
+        <target state="final">ID 为 "{0}" 的日历不存在</target>
       </trans-unit>
       <trans-unit id="maintenance.action.reschedule.error.cancel" xml:space="preserve">
-        <source>An error occured trying to cancel affected actions for schedule '{0}'</source>
-        <target state="translated">尝试取消日程安排 "{0}" 的受影响操作时出错</target>
+        <source>An error occurred trying to cancel affected actions for schedule '{0}'</source>
+        <target state="needs-adaptation">尝试取消日程安排 "{0}" 的受影响操作时出错</target>
       </trans-unit>
       <trans-unit id="maintenance.action.reschedule.error.fail" xml:space="preserve">
         <source>Operation could not be performed. There are scheduled actions on systems</source>
@@ -10656,9 +10621,9 @@ Alternatively, you will want to download &lt;strong&gt;Incremental Channel Conte
         </context-group>
         <target state="final">Redfish</target>
       </trans-unit>
-      <trans-unit id="task.status.ssh-minion-action-executor" xml:space="preserve">
+      <trans-unit id="task.status.ssh-minion-action-executor" xml:space="preserve" approved="yes">
         <source>Execute actions on ssh minions</source>
-        <target state="translated">在 SSH 受控端上执行操作</target>
+        <target state="final">在 SSH 受控端上执行操作</target>
       </trans-unit>
       <trans-unit id="task.status.minion-action-chain-executor" xml:space="preserve">
         <source>Execute action chains on minions</source>
@@ -11003,7 +10968,7 @@ Alternatively, you will want to download &lt;strong&gt;Incremental Channel Conte
         <context-group name="ctx">
           <context context-type="sourcefile">Navigation Menu</context>
         </context-group>
-        <target state="final">外设服务器</target>
+        <target state="final">外围服务器</target>
       </trans-unit>
       <trans-unit approved="yes" id="Report Database Schema" xml:space="preserve">
         <source>Report Database Schema</source>
@@ -11596,7 +11561,7 @@ To amend this situation, please add SCC credentials &lt;a href="/rhn/admin/setup
       </trans-unit>
       <trans-unit approved="yes" id="hub.register_peripheral_success" xml:space="preserve">
         <source>Server {0} has been successfully registered as peripheral</source>
-        <target state="final">服务器 {0} 已成功注册为外设</target>
+        <target state="final">服务器 {0} 已成功注册为外围</target>
       </trans-unit>
       <trans-unit approved="yes" id="hub.invalid_request" xml:space="preserve">
         <source>The request to perform the operation was rejected. Please check the server logs.</source>
@@ -11725,7 +11690,7 @@ To amend this situation, please add SCC credentials &lt;a href="/rhn/admin/setup
       </trans-unit>
       <trans-unit approved="yes" id="hub.migration.fail_channel_config" xml:space="preserve">
         <source>Unable to configure channels for peripheral {0}: {1}</source>
-        <target state="final">无法为外设 {0} 配置通道：{1}</target>
+        <target state="final">无法为外围 {0} 配置通道：{1}</target>
       </trans-unit>
       <trans-unit approved="yes" id="hub.migration.removal_slave" xml:space="preserve">
         <source>Unable remove ISSv1 data for slave {0}: {1}</source>
@@ -11733,11 +11698,11 @@ To amend this situation, please add SCC credentials &lt;a href="/rhn/admin/setup
       </trans-unit>
       <trans-unit approved="yes" id="hub.migration.removal_peripheral" xml:space="preserve">
         <source>Unable to remove partially migrated peripheral {0}: {1}</source>
-        <target state="final">无法去除部分迁移的外设 {0}：{1}</target>
+        <target state="final">无法去除部分迁移的外围 {0}：{1}</target>
       </trans-unit>
       <trans-unit approved="yes" id="hub.invalid_id" xml:space="preserve">
         <source>The specified peripheral id is invalid.</source>
-        <target state="final">指定的外设 ID 无效。</target>
+        <target state="final">指定的外围 ID 无效。</target>
       </trans-unit>
       <trans-unit approved="yes" id="onboardingfailed" xml:space="preserve">
         <source>Onboarding failed</source>
@@ -11785,7 +11750,7 @@ To amend this situation, please add SCC credentials &lt;a href="/rhn/admin/setup
       </trans-unit>
       <trans-unit approved="yes" id="hubregistrationchanged" xml:space="preserve">
         <source>Hub Registration Changed</source>
-        <target state="final">Hub 注册已更改</target>
+        <target state="final">中心注册已更改</target>
       </trans-unit>
       <trans-unit approved="yes" id="notification.not_found" xml:space="preserve">
         <source>Cannot retry: a notification with id '{0}' does not exist.</source>
@@ -11813,31 +11778,31 @@ To amend this situation, please add SCC credentials &lt;a href="/rhn/admin/setup
       </trans-unit>
       <trans-unit approved="yes" id="notification.hub.registered.summary" xml:space="preserve">
         <source>This server is now a peripheral of {0}</source>
-        <target state="final">此服务器现在是 {0} 的外设</target>
+        <target state="final">此服务器现在是 {0} 的外围</target>
       </trans-unit>
       <trans-unit approved="yes" id="notification.hub.registered.details" xml:space="preserve">
         <source>&lt;p&gt;This server has been registered as a peripheral of hub {0} and will start to receive data from it.&lt;/p&gt; &lt;p&gt;Check the &lt;a href="/rhn/manager/admin/hub/hub-details"&gt;Hub details page&lt;/a&gt; for more information.&lt;/p&gt;</source>
-        <target state="final">&lt;p&gt;此服务器已注册为 Hub {0} 的外设，将开始接收来自该 Hub 的数据。&lt;/p&gt; &lt;p&gt;有关详细信息，请参见 &lt;a href="/rhn/manager/admin/hub/hub-details"&gt;Hub 详细信息页面&lt;/a&gt;。&lt;/p&gt;</target>
+        <target state="final">&lt;p&gt;此服务器已注册为中心 {0} 的外围，将开始接收来自该中心的数据。&lt;/p&gt; &lt;p&gt;有关详细信息，请参见&lt;a href="/rhn/manager/admin/hub/hub-details"&gt;中心详细信息页面&lt;/a&gt;。&lt;/p&gt;</target>
       </trans-unit>
       <trans-unit approved="yes" id="notification.hub.hub_deregistered.summary" xml:space="preserve">
         <source>This server is no longer a peripheral of {0}</source>
-        <target state="final">此服务器不再是 {0} 的外设</target>
+        <target state="final">此服务器不再是 {0} 的外围</target>
       </trans-unit>
       <trans-unit approved="yes" id="notification.hub.hub_deregistered.details" xml:space="preserve">
         <source>&lt;p&gt;The hub {0} has de-registered this server, which means it is no longer acting as its peripheral.&lt;/p&gt; &lt;p&gt;Review your configuration, as all the channels that were previously synced from the hub will no loger be updated.&lt;/p&gt;</source>
-        <target state="final">&lt;p&gt;Hub {0} 已将此服务器取消注册，也就是说，此服务器不再是其外设。&lt;/p&gt; &lt;p&gt;请检查您的配置，因为之前与该 Hub 同步的所有通道都将不再更新。&lt;/p&gt;</target>
+        <target state="final">&lt;p&gt;中心 {0} 已将此服务器取消注册，也就是说，此服务器不再是其外围。&lt;/p&gt; &lt;p&gt;请检查您的配置，因为之前与该中心同步的所有通道都将不再更新。&lt;/p&gt;</target>
       </trans-unit>
       <trans-unit approved="yes" id="notification.hub.peripheral_deregistered.summary" xml:space="preserve">
         <source>Server {0} is no longer a peripheral.</source>
-        <target state="final">服务器 {0} 不再是外设。</target>
+        <target state="final">服务器 {0} 不再是外围。</target>
       </trans-unit>
       <trans-unit approved="yes" id="notification.hub.peripheral_deregistered.details" xml:space="preserve">
         <source>&lt;p&gt;The peripheral {0} has de-registered from this hub, and it is no longer manageable as a peripheral..&lt;/p&gt; &lt;p&gt;Any existing synchronization configuration has been removed.&lt;/p&gt;</source>
-        <target state="final">&lt;p&gt;外设 {0} 已从此 Hub 取消注册，不再可作为外设进行管理。&lt;/p&gt; &lt;p&gt;系统已去除所有现有的同步配置。&lt;/p&gt;</target>
+        <target state="final">&lt;p&gt;外围 {0} 已从此中心取消注册，不再可作为外围进行管理。&lt;/p&gt; &lt;p&gt;系统已去除所有现有的同步配置。&lt;/p&gt;</target>
       </trans-unit>
       <trans-unit approved="yes" id="hub.error_peripheral_not_registrable" xml:space="preserve">
         <source>The server {0} cannot be registered as a peripheral of this hub</source>
-        <target state="final">服务器 {0} 无法注册为此 Hub 的外设</target>
+        <target state="final">服务器 {0} 无法注册为此中心的外围</target>
       </trans-unit>
       <trans-unit approved="yes" id="hub.sync_bunch_error" xml:space="preserve">
         <source>Error when triggering the channels sync.</source>
@@ -11896,7 +11861,7 @@ To amend this situation, please add SCC credentials &lt;a href="/rhn/admin/setup
       </trans-unit>
       <trans-unit approved="yes" id="system.details.support.invalid_case_number" xml:space="preserve">
         <source>The case number {0} is not valid.</source>
-        <target state="final">案例 ID {0} 无效。</target>
+        <target state="final">案例编号 {0} 无效。</target>
       </trans-unit>
       <trans-unit approved="yes" id="system.details.support.invalid_region" xml:space="preserve">
         <source>The region {0] is not valid.</source>
@@ -11938,7 +11903,7 @@ To amend this situation, please add SCC credentials &lt;a href="/rhn/admin/setup
       </trans-unit>
       <trans-unit approved="yes" id="notification.reportdbupdatefailed.details.hub" xml:space="preserve">
         <source>The following error was generated while trying to fetch the data from the peripheral server {0}:</source>
-        <target state="final">尝试从外设服务器 {0} 获取数据时产生以下错误：</target>
+        <target state="final">尝试从外围服务器 {0} 获取数据时产生以下错误：</target>
       </trans-unit>
       <trans-unit approved="yes" id="system.migration.noServersSelected" xml:space="preserve">
         <source>Unable to identify the selected systems for the migration.</source>
@@ -12000,124 +11965,287 @@ To amend this situation, please add SCC credentials &lt;a href="/rhn/admin/setup
         <source>Unable to identify a valid migration target for the selected systems.</source>
         <target state="final">无法为所选系统识别有效的迁移目标。</target>
       </trans-unit>
-      <trans-unit id="virt.refresh_list" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="virt.refresh_list" xml:space="preserve">
         <source>Virtualization List Refresh</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/schedule/ActionDetails.do</context>
         </context-group>
         <target state="final">虚拟化列表刷新</target>
       </trans-unit>
-      <trans-unit id="notification.proxybackupfailed" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="notification.proxybackupfailed" xml:space="preserve">
         <source>Failed to process proxy backup event</source>
         <target state="final">代理备份事件处理失败</target>
       </trans-unit>
-      <trans-unit id="notification.proxybackupnominion" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="notification.proxybackupnominion" xml:space="preserve">
         <source>No system with {0} name</source>
         <target state="final">没有名称为 {0} 的系统</target>
       </trans-unit>
-      <trans-unit id="notification.pxeeventfailed" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="notification.pxeeventfailed" xml:space="preserve">
         <source>Processing of a PXE event for the minion {0} failed</source>
         <target state="final">受控端 {0} 的 PXE 事件处理失败</target>
       </trans-unit>
-      <trans-unit id="event.proxymigrationstarted" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.proxymigrationstarted" xml:space="preserve">
         <source>Proxy migration: started</source>
         <target state="final">代理迁移：已启动</target>
       </trans-unit>
-      <trans-unit id="event.proxymigrationstarteddetails" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.proxymigrationstarteddetails" xml:space="preserve">
         <source>Received event with client side data, starting data migration</source>
         <target state="final">接收到含客户端数据的事件，正在启动数据迁移</target>
       </trans-unit>
-      <trans-unit id="event.proxymigrationfailed" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.proxymigrationfailed" xml:space="preserve">
         <source>Proxy migration: failed</source>
         <target state="final">代理迁移：失败</target>
       </trans-unit>
-      <trans-unit id="event.proxymigrationfailedincomplete" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.proxymigrationfailedincomplete" xml:space="preserve">
         <source>Received incomplete backup data. Try retrying the migration.</source>
         <target state="final">接收到不完整的备份数据。请重试迁移操作。</target>
       </trans-unit>
-      <trans-unit id="event.proxymigrationfailedparsing" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.proxymigrationfailedparsing" xml:space="preserve">
         <source>Unable to parse uploaded data. See log file for details</source>
-        <target state="final">无法解析上载的数据。请查看日志文件了解详细信息。</target>
+        <target state="final">无法解析上载的数据。请查看日志文件了解详细信息</target>
       </trans-unit>
-      <trans-unit id="event.proxymigrationcreated" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.proxymigrationcreated" xml:space="preserve">
         <source>Proxy migration: new configuration created</source>
         <target state="final">代理迁移：已创建新配置</target>
       </trans-unit>
-      <trans-unit id="event.proxymigrationcreateddetails" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.proxymigrationcreateddetails" xml:space="preserve">
         <source>Reinstallation of the proxy will now autoconfigure it on the first boot</source>
         <target state="final">代理重新安装后，将在首次引导时自动完成配置</target>
       </trans-unit>
-      <trans-unit id="event.rbsmigrationstarted" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.rbsmigrationstarted" xml:space="preserve">
         <source>Retail Branch Server migration: started</source>
         <target state="final">零售分支服务器迁移：已启动</target>
       </trans-unit>
-      <trans-unit id="event.rbsmigrationstarteddetails" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.rbsmigrationstarteddetails" xml:space="preserve">
         <source>Proxy detected as a Retail Branch Server, migration started</source>
         <target state="final">检测到该代理为零售分支服务器，迁移已启动</target>
       </trans-unit>
-      <trans-unit id="event.rbsmigrationfinishedok" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.rbsmigrationfinishedok" xml:space="preserve">
         <source>Retail Branch Server migration: finished successfully</source>
         <target state="final">零售分支服务器迁移：成功完成</target>
       </trans-unit>
-      <trans-unit id="event.rbsmigrationfinishederror" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.rbsmigrationfinishederror" xml:space="preserve">
         <source>Retail Branch Server migration: finished with errors</source>
         <target state="final">零售分支服务器迁移：已完成，但出现错误</target>
       </trans-unit>
-      <trans-unit id="event.rbsmigrationfinisheddetails" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.rbsmigrationfinisheddetails" xml:space="preserve">
         <source>Proxy was detected to be a Retail Branch Server, branch migration was performed.<ul>{0}</ul></source>
         <target state="final">检测到该代理为零售分支服务器，已执行分支迁移。<ul>{0}</ul></target>
       </trans-unit>
-      <trans-unit id="event.rbsmigrationfailed" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.rbsmigrationfailed" xml:space="preserve">
         <source>Retail Branch Server migration: failed</source>
         <target state="final">零售分支服务器迁移：失败</target>
       </trans-unit>
-      <trans-unit id="event.rbsmigrationfaileddetails" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.rbsmigrationfaileddetails" xml:space="preserve">
         <source>Failed to migrate the branch server. See log files for details.</source>
         <target state="final">分支服务器迁移失败。请查看日志文件了解详细信息。</target>
       </trans-unit>
-      <trans-unit id="event.proxymigrationfinished" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.proxymigrationfinished" xml:space="preserve">
         <source>Proxy migration: finished</source>
         <target state="final">代理迁移：已完成</target>
       </trans-unit>
-      <trans-unit id="event.proxymigrationfinisheddetails" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.proxymigrationfinisheddetails" xml:space="preserve">
         <source>All data were migrated. Proceed with reinstallation of the proxy host.</source>
         <target state="final">所有数据均已迁移。请继续执行代理主机的重新安装操作。</target>
       </trans-unit>
-      <trans-unit id="event.pxemigrationnoentries" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.pxemigrationnoentries" xml:space="preserve">
         <source>No PXE entries found in a backup configuration for branch {0}</source>
         <target state="final">在分支 {0} 的备份配置中未找到 PXE 条目</target>
       </trans-unit>
-      <trans-unit id="event.pxemigrationlost" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.pxemigrationlost" xml:space="preserve">
         <source>Lost and found: system with HW address {0} in branch {1} was not found as registered system.</source>
         <target state="final">异常记录：检测到分支 {1} 中硬件地址为 {0} 的系统不是已注册系统。</target>
       </trans-unit>
-      <trans-unit id="event.pxemigrationduplicate" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.pxemigrationduplicate" xml:space="preserve">
         <source>Multiple minions found with the same MAC address {0}. Cannot choose one, ignoring</source>
         <target state="final">发现多个受控端使用相同的 MAC 地址 {0}。无法选择单个受控端，已忽略</target>
       </trans-unit>
-      <trans-unit id="event.pxemigrationnogroup" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.pxemigrationnogroup" xml:space="preserve">
         <source>Not processing minion '{0}' as it is not part of a branch group.</source>
         <target state="final">不处理受控端 '{0}'，因为其不属于分支组。</target>
       </trans-unit>
-      <trans-unit id="event.pxemigrationnoimage" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.pxemigrationnoimage" xml:space="preserve">
         <source>Image not found: system '{0}' is using unknown image '{1}'. Using default boot image.</source>
         <target state="final">未找到映像：系统 '{0}' 正在使用未知映像 '{1}'。已启用默认引导映像。</target>
       </trans-unit>
-      <trans-unit id="event.pxemigrationsaltboot" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="event.pxemigrationsaltboot" xml:space="preserve">
         <source>Failed to create Saltboot system: {0}</source>
         <target state="final">Saltboot 系统创建失败：{0}</target>
       </trans-unit>
-      <trans-unit id="rbsmigration.lostfounddescription" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="rbsmigration.lostfounddescription" xml:space="preserve">
         <source>Collection of systems not registered, but present in branch {0} pxe entries.</source>
         <target state="final">未注册但存在于分支 {0} PXE 条目中的系统集合。</target>
       </trans-unit>
-      <trans-unit id="Access Control" xml:space="preserve" approved="yes">
+      <trans-unit approved="yes" id="Access Control" xml:space="preserve">
         <source>Access Control</source>
         <context-group name="ctx">
           <context context-type="sourcefile">Navigation Menu</context>
         </context-group>
         <target state="final">访问控制</target>
       </trans-unit>
-    </body>
+      <trans-unit id="pxeeventfailed" xml:space="preserve" approved="yes">
+        <source>PXE Event Failed</source>
+        <target state="final">PXE 事件失败</target>
+      </trans-unit>
+      <trans-unit id="ARMHF Debian" xml:space="preserve">
+        <source>ARMHF Debian</source>
+        <target>ARMHF Debian</target>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="diskcheckwarning" xml:space="preserve" approved="yes">
+        <source>Disk Check</source>
+        <target state="final">磁盘检查</target>
+      </trans-unit>
+      <trans-unit id="notification.diskcheck.summary" xml:space="preserve" approved="yes">
+        <source>You are running out of space on your @@PRODUCT_NAME@@ {0}. This is {1}</source>
+        <target state="final">您的 @@PRODUCT_NAME@@ {0} 存储空间即将不足。当前状态为 {1}</target>
+      </trans-unit>
+      <trans-unit id="notification.diskcheck.details" xml:space="preserve" approved="yes">
+        <source>You are running out of space on your @@PRODUCT_NAME@@ {0}. This is {1}. If you run out of disk space, @@PRODUCT_NAME@@ will stop running, and this could lead to a loss of data. @@PRODUCT_NAME@@ will shutdown automatically.</source>
+        <target state="final">您的 @@PRODUCT_NAME@@ {0} 存储空间即将不足。当前状态为 {1}。一旦磁盘空间耗尽，@@PRODUCT_NAME@@ 将停止运行，还可能造成数据丢失，@@PRODUCT_NAME@@ 将会自动关闭。</target>
+      </trans-unit>
+      <trans-unit id="SCAP Policies" xml:space="preserve" approved="yes">
+        <source>SCAP Policies</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">Navigation Menu</context>
+        </context-group>
+        <target state="final">SCAP 策略</target>
+      </trans-unit>
+      <trans-unit id="SCAP Content" xml:space="preserve" approved="yes">
+        <source>SCAP Content</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">Navigation Menu</context>
+        </context-group>
+        <target state="final">SCAP 内容</target>
+      </trans-unit>
+      <trans-unit id="Tailoring Files" xml:space="preserve" approved="yes">
+        <source>Tailoring Files</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">Navigation Menu</context>
+        </context-group>
+        <target state="final">剪裁文件</target>
+      </trans-unit>
+      <trans-unit id="distupgrade.sles16.migration.success" xml:space="preserve" approved="yes">
+        <source>SLES 16 migration completed successfully.{0}</source>
+        <target state="final">SLES 16 迁移已成功完成。{0}</target>
+      </trans-unit>
+      <trans-unit id="distupgrade.sles16.migration.success.post_steps" xml:space="preserve" approved="yes">
+        <source>Recommended post-migration steps:
+- Check for orphaned/unneeded packages: zypper packages --orphaned --unneeded
+- Check for updated config files: find /etc/ -name '*.rpmnew' -o -name '*.rpmsave'</source>
+        <target state="final">迁移后建议执行以下操作：
+- 检查孤立/无用软件包：zypper packages --orphaned --unneeded
+- 检查已更新的配置文件：find /etc/ -name '*.rpmnew' -o -name '*.rpmsave'</target>
+      </trans-unit>
+      <trans-unit id="distupgrade.sles16.migration.failed" xml:space="preserve" approved="yes">
+        <source>SLES 16 migration failed or result not found.{0}</source>
+        <target state="final">SLES 16 迁移失败或未找到迁移结果。{0}</target>
+      </trans-unit>
+      <trans-unit id="user.admin.access" xml:space="preserve">
+        <source>Admin Access</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/account/UserDetails</context>
+        </context-group>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z16.description" xml:space="preserve">
+        <source>KVM on IBM z16 series</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z16.label" xml:space="preserve">
+        <source>KVM on IBM z16 series</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z17.description" xml:space="preserve">
+        <source>KVM on IBM z17 series</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z17.label" xml:space="preserve">
+        <source>KVM on IBM z17 series</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.resultType.ibm_pvattest.description" xml:space="preserve">
+        <source>IBM Secure Execution (IBM SEL)</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.resultType.ibm_pvattest.label" xml:space="preserve">
+        <source>IBM SEL PVATTEST</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.status.requested.description" xml:space="preserve">
+        <source>Requested</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.status.queued.description" xml:space="preserve">
+        <source>Queued</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.status.submitted.description" xml:space="preserve">
+        <source>Submitted</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.missing_input_data" xml:space="preserve">
+        <source>The mandatory input data is missing</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_missing" xml:space="preserve">
+        <source>The secure execution header is missing.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_wrong_format" xml:space="preserve">
+        <source>The secure execution header is not a valid Base64 string.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_empty" xml:space="preserve">
+        <source>The secure execution header is empty.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_too_short" xml:space="preserve">
+        <source>The secure execution header is too short.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_invalid_header" xml:space="preserve">
+        <source>The secure execution header does not start with the expected byte sequence.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_size_mismatch" xml:space="preserve">
+        <source>The secure execution header size does not match the expected value.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_wrong_format" xml:space="preserve">
+        <source>The host key document is not a valid string.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_not_valid_yet" xml:space="preserve">
+        <source>The host key document is not valid yet.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_expired" xml:space="preserve">
+        <source>The host key document has expired.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_failed" xml:space="preserve">
+        <source>The host key document is not a valid PEM certificate.</source>
+        <target state="new"/>
+      </trans-unit>
+    <trans-unit id="contentmanagement.invalid_issue_date" xml:space="preserve">
+        <source>Invalid date format. It must follow ISO 8601 offset format (e.g. 2026-06-04T22:00:00Z).</source>
+      <target state="new"/>
+  </trans-unit>
+      <trans-unit id="edit_address.jsp.country.select" xml:space="preserve">
+        <source>-- Select Country --</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/users/EditAddress</context>
+        </context-group>
+      <target state="new"/>
+  </trans-unit>
+      <trans-unit id="system.entitle.added.peripheral_server" xml:space="preserve">
+        <source>&lt;strong&gt;Peripheral server&lt;/strong&gt; type has been applied.</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/systems/details/Overview.do</context>
+        </context-group>
+      <target state="new"/>
+  </trans-unit>
+      </body>
   </file>
 </xliff>

@@ -15,6 +15,8 @@
 
 package com.suse.oval.vulnerablepkgextractor.redhat;
 
+import com.redhat.rhn.domain.rhnpackage.PackageEvr;
+
 import com.suse.oval.OsFamily;
 import com.suse.oval.ovaltypes.Advisory;
 import com.suse.oval.ovaltypes.BaseCriteria;
@@ -68,7 +70,7 @@ public class RedHatVulnerablePackageExtractorFromPatchDefinition extends Criteri
         }
 
         String packageName = matcher.group("packageName");
-        String evr = matcher.group("evr");
+        PackageEvr evr = PackageEvr.parseRpm(matcher.group("evr"));
 
         VulnerablePackage vulnerablePackage = new VulnerablePackage();
         vulnerablePackage.setName(packageName);
@@ -112,7 +114,9 @@ public class RedHatVulnerablePackageExtractorFromPatchDefinition extends Criteri
     public boolean isValidDefinition(DefinitionType definitionTypeIn) {
         boolean isPatchDefinition =
                 definitionTypeIn.getDefinitionClass() == DefinitionClassEnum.PATCH;
-        boolean isRedHatOVAL = definitionTypeIn.getOsFamily() == OsFamily.REDHAT_ENTERPRISE_LINUX;
+        boolean isRedHatOVAL = definitionTypeIn.getOsFamily() == OsFamily.REDHAT_ENTERPRISE_LINUX ||
+                definitionTypeIn.getOsFamily() == OsFamily.ALMA_LINUX ||
+                definitionTypeIn.getOsFamily() == OsFamily.ORACLE_LINUX;
 
         boolean hasCVEs = !definitionTypeIn.getCves().isEmpty();
 

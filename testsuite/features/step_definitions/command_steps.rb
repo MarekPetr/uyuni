@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2025 SUSE LLC.
+# Copyright (c) 2014-2026 SUSE LLC.
 # Licensed under the terms of the MIT license.
 
 ### This file contains the definitions for all steps concerning the execution of commands on a system.
@@ -137,6 +137,16 @@ Then(/^The amount of packages in channel "([^"]*)" should be the same as before$
   end
 end
 
+Then(/^the channel "([^"]*)" should not be empty$/) do |channel_label|
+  channels = $api_test.channel.list_all_channels
+  raise ScriptError, "Channel #{channel_label} does not exist" unless channels.key?(channel_label)
+
+  packages = channels[channel_label]['packages'].to_i
+  raise ScriptError, "Channel #{channel_label} is empty, its synchronization stored no package" if packages.zero?
+
+  log "Channel #{channel_label} contains #{packages} packages"
+end
+
 Then(/^The amount of packages in channel "([^"]*)" should be fewer than before$/) do |channel_label|
   add_context('channels', $api_test.channel.list_all_channels)
   if get_context('channels').key?(channel_label) && get_context('channels')[channel_label]['packages'] >= $package_amount
@@ -145,7 +155,7 @@ Then(/^The amount of packages in channel "([^"]*)" should be fewer than before$/
 end
 
 When(/^I delete these channels with spacewalk-remove-channel:$/) do |table|
-  channels_cmd = 'spacewalk-remove-channel '
+  channels_cmd = 'spacewalk-remove-channel --username admin --password admin'
   table.raw.each { |x| channels_cmd = "#{channels_cmd} -c #{x[0]}" }
   $command_output, _return_code = get_target('server').run(channels_cmd, check_errors: false)
 end
@@ -162,6 +172,12 @@ end
 When(/^I use spacewalk-common-channel to add channel "([^"]*)" with arch "([^"]*)"$/) do |child_channel, arch|
   command = "spacewalk-common-channels -u admin -p admin -a #{arch} #{child_channel}"
   $command_output, _code = get_target('server').run(command)
+  if product_version_full == 'uyuni-main' && bypass_channel_repo_if_needed("#{child_channel}-#{arch}")
+    # The URL of the repo has been bypassed. We must kill running reposync and trigger it again
+    channel_label = "#{child_channel}-#{arch}"
+    kill_reposync_for_channel(channel_label)
+    get_target('server').run("spacecmd -u admin -p admin softwarechannel_syncrepos #{channel_label}", check_errors: false, verbose: true)
+  end
 end
 
 When(/^I use spacewalk-common-channel to add all "([^"]*)" channels with arch "([^"]*)"$/) do |channel, architecture|
@@ -174,6 +190,10 @@ When(/^I use spacewalk-common-channel to add all "([^"]*)" channels with arch "(
     command = "spacewalk-common-channels -u admin -p admin -a #{architecture} #{os_product_version_channel.gsub("-#{architecture}", '')}"
     get_target('server').run(command, verbose: true)
     log "Channel #{os_product_version_channel} added"
+    next unless product_version_full == 'uyuni-main' && bypass_channel_repo_if_needed(os_product_version_channel)
+    # The URL of the repo has been bypassed. We must kill running reposync and trigger it again
+    kill_reposync_for_channel(os_product_version_channel)
+    get_target('server').run("spacecmd -u admin -p admin softwarechannel_syncrepos #{os_product_version_channel}", check_errors: false, verbose: true)
   end
 end
 
@@ -181,10 +201,12 @@ When(/^I use spacewalk-repo-sync to sync channel "([^"]*)"$/) do |channel|
   $command_output, _code = get_target('server').run("spacewalk-repo-sync -c #{channel}", check_errors: false, verbose: true)
 end
 
+When(/^I use spacewalk-repo-sync to sync channel "([^"]*)" including "([^"]*)" packages?$/) do |channel, packages|
+  $command_output = sync_channel_including_packages(channel, packages.split)
+end
+
 When(/^I use spacewalk-repo-sync to sync channel "([^"]*)" including only client tools dependencies$/) do |channel|
-  packages = CLIENT_TOOLS_DEPENDENCIES_BY_BASE_CHANNEL[channel]
-  append_includes = packages.map { |pkg| "--include #{pkg}" }.join(' ')
-  $command_output, _code = get_target('server').run("spacewalk-repo-sync -c #{channel} #{append_includes}", check_errors: false, verbose: true)
+  $command_output = sync_channel_including_packages(channel, CLIENT_TOOLS_DEPENDENCIES_BY_BASE_CHANNEL[channel])
 end
 
 Then(/^I should get "([^"]*)"$/) do |value|
@@ -290,7 +312,7 @@ end
 When(/^I wait until "([^"]*)" container is active$/) do |service|
   node = get_target('server')
   cmd = "systemctl is-active #{service}"
-  node.run_local_until_ok(cmd)
+  node.run_until_ok(cmd, runs_in_container: false)
 end
 
 When(/^I wait until "([^"]*)" service is active on "([^"]*)"$/) do |service, host|
@@ -375,25 +397,7 @@ When(/^I kill running spacewalk-repo-sync for "([^"]*)"$/) do |os_product_versio
 end
 
 When(/^I kill running spacewalk-repo-sync for "([^"]*)" channel$/) do |channel|
-  time_spent = 0
-  checking_rate = 5
-  repeat_until_timeout(timeout: 60, message: 'Some reposync processes were not killed properly', dont_raise: true) do
-    command_output, _code = get_target('server').run('ps axo pid,cmd | grep spacewalk-repo-sync | grep -v grep', verbose: true, check_errors: false)
-    process = command_output.split("\n")[0]
-    channel_synchronizing = process.split[5].strip
-    if process.nil?
-      log "#{time_spent / 60} minutes waiting for '#{channel}' channel to start its repo-sync processes." if ((time_spent += checking_rate) % 60).zero?
-      sleep checking_rate
-      next
-    elsif channel_synchronizing == channel
-      pid = process.split[0]
-      get_target('server').run("kill #{pid}", verbose: true, check_errors: false)
-      log "Reposync of channel #{channel} killed"
-      break
-    else
-      log "Warning: Repo-sync process for channel '#{channel_synchronizing}' running."
-    end
-  end
+  kill_reposync_for_channel(channel)
 end
 
 Then(/^the reposync logs should not report errors$/) do
@@ -424,70 +428,73 @@ Then(/^solver file for "([^"]*)" should reference "([^"]*)"$/) do |channel, pkg|
 end
 
 When(/^I wait until the channel "([^"]*)" has been synced$/) do |channel|
-  time_spent = 0
-  checking_rate = 10
-  timeout = channel_timeout(channel)
-
-  begin
-    repeat_until_timeout(timeout: timeout, message: 'Channel not fully synced') do
-      break if channel_sync_completed?(channel)
-
-      log "#{time_spent / 60} minutes out of #{timeout / 60} waiting for '#{channel}' channel to be synchronized" if ((time_spent += checking_rate) % 60).zero?
-      sleep checking_rate
-    end
-  rescue Timeout::Error
-    warn "Hit timeout during channel #{channel} reposync."
-  rescue StandardError => e
-    log e.message
-    unless $build_validation
-      # It might be that the MU repository is wrong, but we want to continue in any case
-      raise ScriptError, "This channel was not fully synced: #{channel}"
-    end
-  end
+  margin = channel.include?('custom_channel') || channel.include?('ptf') ? 0 : 900
+  wait_for_channels([channel], "channel '#{channel}'", margin: margin)
 end
 
 When(/^I wait until all synchronized channels for "([^"]*)" have finished$/) do |os_product_version|
-  channels_to_reposync = CHANNEL_TO_SYNC_BY_OS_PRODUCT_VERSION.dig(product, os_product_version).clone
-  channels_to_reposync = filter_channels(channels_to_reposync, ['beta']) unless $beta_enabled
-  raise ScriptError, "Synchronization error, channels for #{os_product_version} in #{product} not found" if channels_to_reposync.nil?
+  channels_to_sync = CHANNEL_TO_SYNC_BY_OS_PRODUCT_VERSION.dig(product, os_product_version)&.clone
+  raise ScriptError, "Sync error: #{os_product_version} not found" if channels_to_sync.nil?
 
-  time_spent = 0
+  channels_to_sync = filter_channels(channels_to_sync, ['beta']) unless $beta_enabled
+  wait_for_channels(channels_to_sync, "product '#{os_product_version}'")
+end
+
+When(/^I wait until all synchronized channels have solved their dependencies$/) do
+  add_context('channels_failed_without_solv_file', [])
+  channels_to_wait_solv_file = get_context('channels_to_wait_solv_file').uniq
+  accumulated_timeout = get_context('channels_timeout')
   checking_rate = 10
-  # Let's start with a timeout margin aside from the sum of the timeouts for each channel
-  timeout =
-    channels_to_reposync.reduce(900) do |sum, channel|
-      sum + channel_timeout(channel)
-    end
+
+  if channels_to_wait_solv_file.empty?
+    log 'No channels pending dependency solving, skipping wait'
+    next
+  end
+
+  remaining_channels_timeout = calculate_remaining_channels_timeout(channels_to_wait_solv_file)
+  optimized_timeout = [accumulated_timeout, remaining_channels_timeout].min
+
+  log "Waiting for #{channels_to_wait_solv_file.count} channel(s) to solve dependencies (timeout: #{optimized_timeout}s)"
 
   begin
-    repeat_until_timeout(timeout: timeout, message: 'Product not fully synced') do
-      channels_to_reposync.delete_if do |channel|
-        if channel_sync_completed?(channel)
-          log "Channel #{channel} finished reposync"
-          true
-        else
-          false
-        end
+    start = Time.now
+    deadline_elapsed = optimized_timeout
+    repeat_until_timeout(timeout: optimized_timeout, message: 'Product not fully initialized') do
+      prev_count = channels_to_wait_solv_file.count
+      channels_to_wait_solv_file.reject! { |channel| channel_is_synced?(channel) }
+      break if channels_to_wait_solv_file.empty?
+
+      if channels_to_wait_solv_file.count < prev_count
+        elapsed = Time.now - start
+        recalc_timeout = calculate_remaining_channels_timeout(channels_to_wait_solv_file)
+        deadline_elapsed = [deadline_elapsed, elapsed + recalc_timeout].min
       end
 
-      break if channels_to_reposync.empty?
-
-      if ((time_spent += checking_rate) % 60).zero?
-        log "#{(time_spent / 60).to_i} minutes out of #{(timeout / 60).to_i} waiting for '#{os_product_version}' channels to finish reposync"
+      if Time.now - start >= deadline_elapsed
+        raise Timeout::Error,
+              "Metadata generation timed out for: #{channels_to_wait_solv_file.join(', ')}"
       end
 
       sleep checking_rate
     end
-  rescue Timeout::Error
-    raise ScriptError, "Hit timeout during reposync. These channels did not complete:\n #{channels_to_reposync}"
   rescue StandardError => e
+    log "These channels were not initialized: #{channels_to_wait_solv_file}. #{e.message}"
+    add_context('channels_failed_without_solv_file', get_context('channels_failed_without_solv_file') + channels_to_wait_solv_file)
     # It might be that the MU repository is wrong, but on BV we want to continue in any case
-    unless $build_validation
-      raise ScriptError, "Error during reposync:\n#{e.message}\nReposync for these channels did not complete:\n #{channels_to_reposync}"
-    end
+    raise unless $build_validation
   end
+end
 
-  log "All channels for #{os_product_version} have been fully synced"
+Then(/^all channels have been synced without errors$/) do
+  channels_failed_downloading = get_context('channels_failed_downloading') || []
+  channels_failed_without_solv_file = get_context('channels_failed_without_solv_file') || []
+  next if channels_failed_downloading.empty? && channels_failed_without_solv_file.empty?
+
+  error_details = []
+  error_details << "Download failed for: #{channels_failed_downloading.join(', ')}" if channels_failed_downloading.any?
+  error_details << "Metadata generation failed for: #{channels_failed_without_solv_file.join(', ')}" if channels_failed_without_solv_file.any?
+
+  raise ScriptError, "Synchronization encountered errors:\n* #{error_details.join("\n* ")}"
 end
 
 When(/^I execute mgr-bootstrap "([^"]*)"$/) do |arg1|
@@ -535,6 +542,27 @@ end
 Then(/^the log messages should not contain out of memory errors$/) do
   output, code = get_target('server').run('grep -i "Out of memory: Killed process" /var/log/messages', check_errors: false)
   raise ScriptError, "Out of memory errors in /var/log/messages:\n#{output}" if code.zero?
+end
+
+Then(/^the server log should not contain "([^"]*)" errors$/) do |component|
+  log_file = '/var/log/rhn/rhn_web_ui.log'
+  output, _code = get_target('server').run("cat #{log_file}")
+
+  records = []
+  output.each_line do |line|
+    if records.empty? || line.match?(/\A\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/)
+      records << line
+    else
+      records.last << line
+    end
+  end
+
+  errors = records.select { |record| record.match?(/exception/i) && record.match?(/#{Regexp.escape(component)}/i) }
+  unless errors.empty?
+    details = errors.take(5)
+    details << "... and #{errors.size - details.size} more" if errors.size > details.size
+    raise ScriptError, "#{errors.size} error(s) related to \"#{component}\" found in #{log_file}!\n#{details.join("\n")}"
+  end
 end
 
 When(/^I restart the spacewalk service$/) do
@@ -630,19 +658,27 @@ When(/^the controller starts mocking a Redfish host$/) do
   file_extract(get_target('server'), key_path.strip, '/root/controller.key')
   file_extract(get_target('server'), crt_path.strip, '/root/controller.crt')
 
-  `curl --output /root/DSP2043_2019.1.zip https://www.dmtf.org/sites/default/files/standards/documents/DSP2043_2019.1.zip`
-  `unzip /root/DSP2043_2019.1.zip -d /root/`
+  data_dir = "#{File.dirname(__FILE__)}/../upload_files/Redfish-Mockup-Server/data/public-catfish"
+  log_file = '/tmp/redfish_mockup_server.log'
   cmd = "/usr/bin/python3 #{File.dirname(__FILE__)}/../upload_files/Redfish-Mockup-Server/redfishMockupServer.py " \
         "-H #{hostname} -p 8443 " \
-        '-S -D /root/DSP2043_2019.1/public-catfish/ ' \
+        "-S -D #{data_dir} " \
         '--ssl --cert /root/controller.crt --key /root/controller.key ' \
-        '< /dev/null > /dev/null 2>&1 &'
+        "< /dev/null > #{log_file} 2>&1 &"
   `#{cmd}`
+  begin
+    repeat_until_timeout(timeout: 30, message: 'Redfish mock server did not start on port 8443') do
+      result = `curl -sk --connect-timeout 2 --max-time 3 https://#{hostname}:8443/redfish/v1 2>/dev/null`
+      break unless result.empty?
+      sleep 1
+    end
+  rescue Timeout::Error
+    raise ScriptError, "Redfish mock server did not start on port 8443:\n#{`tail -n 20 #{log_file} 2>&1`}"
+  end
 end
 
 When(/^the controller stops mocking a Redfish host$/) do
   `pkill -e -f #{File.dirname(__FILE__)}/../upload_files/Redfish-Mockup-Server/redfishMockupServer.py`
-  `rm -rf /root/DSP2043_2019.1*`
 end
 
 When(/^I install a user-defined state for "([^"]*)" on the server$/) do |host|
@@ -766,16 +802,32 @@ end
 
 Then(/^files on container volumes should all have the proper SELinux label$/) do
   node = get_target('server')
-  cmd = '[ "$(sestatus 2>/dev/null | head -n 1 | grep enabled)" != "" ] && ' \
-        '(find /var/lib/containers/storage/volumes/*/_data -exec ls -Zd {} \; | grep -v ":object_r:container_file_t:s0 ")'
-  output, _code = node.run_local(cmd, check_errors: false)
-  log output if output != ''
-  raise ScriptError, 'Wrong SELinux labels' if output != ''
+  # Check SELinux is enabled
+  sestatus, = node.run_local('sestatus | head -n 1', check_errors: false)
+  raise ScriptError, "SELinux is NOT enabled on the server host." unless sestatus.include?('enabled')
+
+  volume_path = '/var/lib/containers/storage/volumes/*/_data'
+  expected_context = ':object_r:container_file_t:s0'
+  # Get containers' labels
+  output, = node.run_local("find #{volume_path} -exec ls -Zd {} +", check_errors: false)
+  # Filter out files with the expected label
+  invalid_files = output.split("\n").reject { |line| line.include?(expected_context) }
+  # If any file with an unexpected label remains, log it and fail
+  if invalid_files.any?
+    log "Found files with incorrect SELinux labels:"
+    invalid_files.each { |f| log "  #{f}" }
+    raise ScriptError, "SELinux Label Validation Failed: #{invalid_files.size} files incorrectly labeled."
+  end
 end
 
 When(/^I run "([^"]*)" on "([^"]*)"$/) do |cmd, host|
   node = get_target(host)
   node.run(cmd)
+end
+
+When(/^I run "([^"]*)" on "([^"]*)" outside the container$/) do |cmd, host|
+  node = get_target(host)
+  node.run(cmd, runs_in_container: false)
 end
 
 When(/^I run "([^"]*)" on "([^"]*)" with logging$/) do |cmd, host|
@@ -1015,6 +1067,9 @@ end
 
 When(/^I remove packages? "([^"]*)" from this "([^"]*)"((?: without error control)?)$/) do |package, host, error_control|
   node = get_target(host)
+  # Split the input string into an array to handle multiple packages
+  package_list = package.split
+
   if rh_host?(host)
     cmd = "yum -y remove #{package}"
     successcodes = [0]
@@ -1022,10 +1077,22 @@ When(/^I remove packages? "([^"]*)" from this "([^"]*)"((?: without error contro
     cmd = "dpkg --remove #{package}"
     successcodes = [0]
   elsif transactional_system?(host)
-    cmd = "transactional-update pkg rm -y #{package}"
+    # Pre-filter: transactional-update fails and rolls back the whole snapshot if a package isn't found (exit code 104).
+    # By only passing installed packages, we ensure a 0 exit code and prevent automatic rollback of the transaction.
+    check_cmd = "rpm -q --qf '%{NAME}\\n' #{package_list.join(' ')} 2>/dev/null"
+    raw_output, = node.run(check_cmd, check_errors: false)
+    # To avoid using | grep -v 'not installed' in command, use select to verify lane match the packages to remove
+    packages_to_remove = raw_output.split("\n").select { |line| package_list.include?(line.strip) }
+    if packages_to_remove.empty?
+      puts "None of the packages (#{package}) are installed on #{host}. Skipping."
+      next
+    end
+    # Use --continue to ensure we build upon the existing pending snapshot if one exists
+    cmd = "transactional-update --continue pkg rm -y #{packages_to_remove.join(' ')}"
     successcodes = [0, 100, 101, 102, 103, 106]
   else
     cmd = "zypper --non-interactive remove -y #{package}"
+    # Zypper is fine with 104 (package not found), but transactional-update is not
     successcodes = [0, 100, 101, 102, 103, 104, 106]
   end
   node.run(cmd, check_errors: error_control.empty?, successcodes: successcodes)
@@ -1034,8 +1101,16 @@ end
 When(/I copy "([^"]*)" from "([^"]*)" to "([^"]*)" via scp in the path "([^"]*)"$/) do |file, origin, dest, dest_folder|
   node_origin = get_target(origin)
   node_dest = get_target(dest)
-  dest_hostname = node_dest.hostname
+  dest_hostname = node_dest.full_hostname
   _command_output, return_code = node_origin.run("/usr/bin/scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r #{file} root@#{dest_hostname}:#{dest_folder}")
+  raise StandardError, "File could not be sent from #{origin} to #{dest}" unless return_code.zero?
+end
+
+When(/I copy "([^"]*)" from "([^"]*)" outside the container to "([^"]*)" via scp in the path "([^"]*)"$/) do |file, origin, dest, dest_folder|
+  node_origin = get_target(origin)
+  node_dest = get_target(dest)
+  dest_hostname = node_dest.full_hostname
+  _command_output, return_code = node_origin.run("/usr/bin/scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r #{file} root@#{dest_hostname}:#{dest_folder}", runs_in_container: false)
   raise StandardError, "File could not be sent from #{origin} to #{dest}" unless return_code.zero?
 end
 
@@ -1053,12 +1128,15 @@ end
 When(/I obtain and extract the supportconfig from the server$/) do
   supportconfig_path = '/root/server-supportconfig.tar.gz'
   test_runner_file = '/root/server-supportconfig.tar.gz'
+  localhost = get_target('localhost')
   get_target('server').scp_download(supportconfig_path, test_runner_file)
-  `rm -rf /root/server-supportconfig`
-  `mkdir /root/server-supportconfig && tar xzvf /root/server-supportconfig.tar.gz -C /root/server-supportconfig`
-  `mv /root/server-supportconfig/scc_* /root/server-supportconfig/test-server`
-  `tar xJvf /root/server-supportconfig/test-server/*supportconfig.txz -C /root/server-supportconfig`
-  `mv /root/server-supportconfig/scc_suse_*/ /root/server-supportconfig/uyuni-server-supportconfig/`
+  localhost.run('rm -rf /root/server-supportconfig')
+  localhost.run('mkdir /root/server-supportconfig && tar xzvf /root/server-supportconfig.tar.gz -C /root/server-supportconfig')
+  localhost.run('mv /root/server-supportconfig/scc_*/uyuni-server-container-*/ /root/server-supportconfig/uyuni-server-supportconfig')
+  file_count, _code = localhost.run('ls /root/server-supportconfig/uyuni-server-supportconfig/ | wc -l', check_errors: false)
+  raise 'Extracted supportconfig is empty or inaccessible' unless file_count.strip.to_i.positive?
+
+  add_context(:supportconfig_path, '/root/server-supportconfig/uyuni-server-supportconfig')
 end
 
 When(/I remove the autoinstallation files from the server$/) do
@@ -1469,17 +1547,29 @@ Then(/^I should be able to connect to the ReportDB with the ReportDB admin user$
   node = get_target('server')
 
   # connection from the controller to the reportdb in the server
-  reportdb_admin_conn = PG.connect(host: node.public_ip, port: 5432, dbname: 'reportdb', user: $reportdb_admin_user, password: $reportdb_admin_password)
-  raise SystemCallError, 'Couldn\'t connect to ReportDB with admin from external machine' unless reportdb_admin_conn.status.zero?
+  reportdb_admin_conn = nil
+  begin
+    reportdb_admin_conn = PG.connect(host: node.public_ip, port: 5432, dbname: 'reportdb', user: $reportdb_admin_user, password: $reportdb_admin_password)
+    raise SystemCallError, 'Couldn\'t connect to ReportDB with admin from external machine' unless reportdb_admin_conn.status.zero?
+  ensure
+    # Close the communication
+    reportdb_admin_conn&.close if reportdb_admin_conn && !reportdb_admin_conn.finished?
+  end
 end
 
 Then(/^I should not be able to connect to product database with the ReportDB admin user$/) do
   node = get_target('server')
 
   dbname = 'susemanager'
-  reportdb_admin_conn = PG.connect(host: node.public_ip, port: 5432, dbname: dbname, user: $reportdb_admin_user, password: $reportdb_admin_password)
-  assert_raises PG::InsufficientPrivilege do
-    reportdb_admin_conn.exec('select * from rhnserver;')
+  reportdb_admin_conn = nil
+  begin
+    assert_raises(PG::ConnectionBad, PG::InsufficientPrivilege, PG::InvalidAuthorizationSpecification) do
+      reportdb_admin_conn = PG.connect(host: node.public_ip, port: 5432, dbname: dbname, user: $reportdb_admin_user, password: $reportdb_admin_password)
+      reportdb_admin_conn.exec('select * from rhnserver;')
+    end
+  ensure
+    # Close the communication even when assert_raises itself fails.
+    reportdb_admin_conn&.close if reportdb_admin_conn && !reportdb_admin_conn.finished?
   end
 end
 
@@ -1568,6 +1658,11 @@ end
 When(/^I wait until port "([^"]*)" is listening on "([^"]*)" (host|container)$/) do |port, host, location|
   node = get_target(host)
   node.run_until_ok("lsof  -i:#{port}", runs_in_container: location == 'container')
+end
+
+When(/^I check that "([^"]*)" (host|container) is listening on TCP port "([^"]*)"$/) do |host, location, port|
+  node = get_target(host)
+  node.run_until_ok("timeout 2 bash -c 'cat < /dev/null > /dev/tcp/$(hostname -f)/#{port}'", runs_in_container: location == 'container')
 end
 
 Then(/^port "([^"]*)" should be (open|closed)$/) do |port, selection|
@@ -1679,7 +1774,7 @@ When(/^I run spacewalk-hostname-rename command on the server$/) do
 
   # Reset the API client to take the new CA into account
   log 'Resetting the API client'
-  $api_test = new_api_client
+  $api_test = new_api_client unless uyuni_not_installed?
 
   raise SystemCallError, 'Error while running spacewalk-hostname-rename command - see logs above' unless result_code.zero?
   raise ScriptError, 'Error in the output logs - see logs above' if out_spacewalk.include? 'No such file or directory'
@@ -1694,7 +1789,7 @@ When(/^I check all certificates after renaming the server hostname$/) do
 
   raise SystemCallError, 'Error getting server certificate serial!' unless result_code.zero?
 
-  targets = %w[proxy sle_minion ssh_minion rhlike_minion deblike_minion build_host]
+  targets = %w[proxy sle_minion sshminion rhlike_minion deblike_minion build_host]
   targets.each do |target|
     os_family = get_target(target).os_family
     # get all defined minions from the environment variables and check their certificate serial
@@ -1793,9 +1888,19 @@ When(/^I start the health check tool with supportconfig "([^"]*)" on "([^"]*)"$/
   node.run("mgr-health-check -v -s #{supportconfig} start", check_errors: true, verbose: true)
 end
 
-When(/^I stop health check tool on "([^"]*)"$/) do |host|
+When(/^I start the health check tool with the extracted supportconfig on "([^"]*)"$/) do |host|
+  supportconfig_path = get_context(:supportconfig_path)
+  raise 'No supportconfig path in context - did the extraction step succeed?' if supportconfig_path.nil? || supportconfig_path.empty?
+
   node = get_target(host)
-  node.run('mgr-health-check stop', check_errors: true, verbose: true)
+  node.run("mgr-health-check -v -s #{supportconfig_path} start", check_errors: true, verbose: true)
+end
+
+When(/^I stop the health check tool on "([^"]*)"$/) do |host|
+  node = get_target(host)
+  node.run('mgr-health-check stop', check_errors: false, verbose: true)
+  node.run("podman rm -f #{HEALTH_CHECK_CONTAINERS.join(' ')}", check_errors: false)
+  node.run('podman network rm -f health-check-network', check_errors: false)
 end
 
 Then(/^the word "([^']*)" does not occur more than (\d+) times in "(.*)" on "([^"]*)"$/) do |word, threshold, path, host|
@@ -1804,14 +1909,52 @@ Then(/^the word "([^']*)" does not occur more than (\d+) times in "(.*)" on "([^
   raise "The word #{word} occured #{occurences} times, which is more more than #{threshold} times in file #{path}" if occurences > threshold
 end
 
-Then(/^I upgrade "([^"]*)" with the last "([^"]*)" version$/) do |host, package|
+When(/^I store the current last event id for "([^"]*)"$/) do |host|
+  add_context(:last_event_baseline, get_last_events(host).first)
+end
+
+When(/^I wait until a new "([^"]*)" event is completed for "([^"]*)"$/) do |event_summary, host|
+  baseline = get_context(:last_event_baseline)
+  raise 'No baseline event stored - did the previous scenario run the store step?' if baseline.nil?
+
+  target_event = nil
+  repeat_until_timeout(message: "Waiting for new '#{event_summary}' event to be created for #{host}") do
+    target_event =
+      get_last_events(host, 10).find do |e|
+        e["id"] > baseline["id"] && e["summary"].include?(event_summary)
+      end
+    break if target_event
+
+    sleep 2
+  end
+  wait_action_complete(target_event['id'])
+end
+
+When(/^I (upgrade|install) "([^"]*)" on "([^"]*)" using the API$/) do |action, package, host|
   system_name = get_system_name(host)
-  last_event_before_upgrade = get_last_event(host)
-  last_event = last_event_before_upgrade
-  trigger_upgrade(system_name, package)
+  last_event_before_action = get_last_events(host).first
+  last_event = last_event_before_action
+  case action
+  when 'upgrade'
+    trigger_upgrade(system_name, package)
+  when 'install'
+    trigger_install(system_name, package)
+  end
   repeat_until_timeout(timeout: DEFAULT_TIMEOUT, message: 'Waiting for the new event to be created') do
-    last_event = get_last_event(host)
-    break if last_event['id'] > last_event_before_upgrade['id'] && (last_event['summary'].include? 'Package Install/Upgrade')
+    last_event = get_last_events(host).first
+    break if last_event['id'] > last_event_before_action['id'] && (last_event['summary'].include? 'Package Install/Upgrade')
+  end
+  wait_action_complete(last_event['id'])
+end
+
+When(/^I remove "([^"]*)" on "([^"]*)" using the API$/) do |package, host|
+  system_name = get_system_name(host)
+  last_event_before_action = get_last_events(host).first
+  last_event = last_event_before_action
+  trigger_remove(system_name, package)
+  repeat_until_timeout(timeout: DEFAULT_TIMEOUT, message: 'Waiting for the new event to be created') do
+    last_event = get_last_events(host).first
+    break if last_event['id'] > last_event_before_action['id'] && (last_event['summary'].include? 'Package Removal')
   end
   wait_action_complete(last_event['id'])
 end
@@ -1821,12 +1964,59 @@ Then(/^I check that the health check tool exposes metrics on "([^"]*)"$/) do |ho
   node.run("curl -s localhost:9000/metrics.json | python3 -c 'import sys, json; print(json.load(sys.stdin).keys())'", check_errors: true, verbose: true)
 end
 
-Then(/^I check that the health check tool (is|is not) running on "([^"]*)"$/) do |action, host|
+Then(/^the health check tool should expose the expected metrics on "([^"]*)"$/) do |host|
   node = get_target(host)
-  node.run("test $(podman ps | grep health-check | wc -l) == #{action == 'is' ? '4' : '0'}", check_errors: true, verbose: true)
+  expected_keys = %w[java_config config apache postgresql hw memory disk salt_configuration salt_keys salt_jobs misc]
+  output, _code = node.run("curl -s localhost:9000/metrics.json | python3 -c 'import sys, json; [print(k) for k in json.load(sys.stdin).keys()]'", check_errors: true, verbose: true)
+  actual_keys = output.strip.split("\n")
+  missing_keys = expected_keys - actual_keys
+  raise "Health check metrics missing expected keys: #{missing_keys.join(', ')}" unless missing_keys.empty?
 end
 
-Then(/^I remove test supportconfig on "([^"]*)"$/) do |host|
+Then(/^the health check Grafana dashboard should be accessible on "([^"]*)"$/) do |host|
   node = get_target(host)
-  node.run('rm /root/server-supportconfig -rf')
+  code = 0
+  http_code = ''
+  repeat_until_timeout(timeout: DEFAULT_TIMEOUT, message: 'Waiting for Grafana to be up and running') do
+    http_code, code = node.run("curl -s -o /dev/null -w '%{http_code}' localhost:3000", check_errors: false)
+    break if http_code.strip == '200'
+  end
+  raise "Grafana dashboard not accessible: curl failed with exit code #{code}" unless code.zero?
+  raise "Grafana dashboard not accessible: expected HTTP 200, got #{http_code.strip}" unless http_code.strip == '200'
+end
+
+Then(/^the health check tool (should be|should not be) running on "([^"]*)"$/) do |action, host|
+  node = get_target(host)
+  expected = action == 'should be' ? HEALTH_CHECK_CONTAINERS : []
+  running, _code = node.run('podman ps --format "{{.Names}}"', check_errors: true, verbose: true)
+  running_containers = running.lines.map(&:strip).grep(/^health[-_]check/)
+  missing = expected - running_containers
+  unexpected = running_containers - expected
+  next if missing.empty? && unexpected.empty?
+
+  problems = []
+  problems << "not running: #{missing.join(', ')}" unless missing.empty?
+  problems << "unexpectedly running: #{unexpected.join(', ')}" unless unexpected.empty?
+  output, _code = node.run('podman ps -a --format "{{.Names}} {{.Status}}"', check_errors: true)
+  containers = output.lines.map(&:strip).grep(/^health[-_]check/)
+  statuses = containers.empty? ? 'no health check containers found' : containers.join("\n")
+  raise "Health check containers #{problems.join('; ')}\n#{statuses}"
+end
+
+Then(/^podman container "([^"]*)" should be (running|healthy) on "([^"]*)"$/) do |container, state, host|
+  node = get_target(host)
+  case state
+  when 'running'
+    node.run("podman inspect --format '{{.State.Running}}' #{container} | grep -x true", check_errors: true, verbose: true, runs_in_container: false)
+  when 'healthy'
+    node.run("podman inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' #{container} | grep -x healthy", check_errors: true, verbose: true, runs_in_container: false)
+  else
+    raise "Unsupported container state '#{state}'"
+  end
+end
+
+When(/^I remove test supportconfig on "([^"]*)"$/) do |host|
+  node = get_target(host)
+  node.run('rm -rf /root/server-supportconfig')
+  node.run('rm -rf /root/server-supportconfig.tar.gz')
 end

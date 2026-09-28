@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { useState } from "react";
 
 import { docsLocale, productName } from "core/user-preferences";
 
@@ -11,6 +11,7 @@ import { getFormMessages, getGlobalMessages } from "../messages";
 import useLoginApi from "../use-login-api";
 import logo from "./footer-logo.svg";
 import styles from "./login.module.scss";
+import uyuniLogo from "./uyuni-logo.svg";
 
 const UyuniThemeLogin = (props: ThemeProps) => {
   const loginInput = useInputValue("");
@@ -21,7 +22,7 @@ const UyuniThemeLogin = (props: ThemeProps) => {
   const { product } = props;
 
   return (
-    <Fragment>
+    <>
       <header className="navbar-pf navbar" role="presentation" />
       <div className="spacewalk-main-column-layout">
         <section className={styles.contentArea}>
@@ -30,12 +31,19 @@ const UyuniThemeLogin = (props: ThemeProps) => {
               props.validationErrors,
               props.schemaUpgradeRequired,
               props.diskspaceSeverity,
+              props.dbDiskspaceSeverity,
               props.sccForwardWarning
             )}
           />
           <div className={styles.content}>
             <div className={`${styles.half} ${styles.left}`}>
-              <h1 className={styles.h1}>{product.bodyTitle}</h1>
+              <h1 className={styles.h1}>
+                {productName === "Uyuni" ? (
+                  <img src={uyuniLogo} alt={product.productName} className={styles.uyuniLogo} />
+                ) : (
+                  product.bodyTitle
+                )}
+              </h1>
               <p>{t("Discover a new way of managing your servers, packages, patches and more via one interface.")}</p>
               <p>
                 {t("Learn more about {productName}:", {
@@ -113,7 +121,9 @@ const UyuniThemeLogin = (props: ThemeProps) => {
               {t("{productName} release {versionNumber}", {
                 productName,
                 versionNumber: (
-                  <a href={`/docs/${docsLocale}/release-notes/release-notes-server.html`}>{props.webVersion}</a>
+                  <a key="version" href={`/docs/${docsLocale}/release-notes/release-notes-server.html`}>
+                    {props.webVersion}
+                  </a>
                 ),
               })}
             </div>
@@ -124,7 +134,7 @@ const UyuniThemeLogin = (props: ThemeProps) => {
           </div>
         </div>
       </div>
-    </Fragment>
+    </>
   );
 };
 

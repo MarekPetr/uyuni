@@ -12,28 +12,28 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Spacewalk\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-22 09:58+0200\n"
-"PO-Revision-Date: 2018-03-16 10:54+0000\n"
-"Last-Translator: Copied by Zanata <copied-by-zanata@zanata.org>\n"
-"Language-Team: Swedish (http://www.transifex.com/projects/p/fedora/language/sv/)\n"
+"POT-Creation-Date: 2026-08-28 09:41+0200\n"
+"PO-Revision-Date: 2026-04-23 11:04+0000\n"
+"Last-Translator: Luna  Jernberg <bittin@opensuse.org>\n"
+"Language-Team: Swedish <https://l10n.opensuse.org/projects/uyuni/backend/sv/>\n"
 "Language: sv\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Zanata 4.6.2\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: Weblate 5.17\n"
 
-#: ../server/apacheAuth.py:72
+#: ../server/apacheAuth.py:80
 #, python-format
 msgid "incomplete proxy authentication token: %s"
 msgstr "ofullständig proxy-autenticeringsnyckel: %s"
 
-#: ../server/apacheAuth.py:103
+#: ../server/apacheAuth.py:111
 #, python-format
 msgid "Sent proxy signature %s does not match ours %s."
 msgstr "Skickad proxy-signatur %s stämmer inte med våran %s."
 
-#: ../server/apacheAuth.py:142
+#: ../server/apacheAuth.py:150
 msgid "declined proxy authentication"
 msgstr "nekad proxy-autenticering"
 
@@ -79,9 +79,9 @@ msgstr ""
 "                   Kontakta din organisationsadministratör för mer hjälp."
 
 #: ../server/handlers/xmlrpc/proxy.py:71
-#, fuzzy, python-format
+#, python-format
 msgid "SUSE Multi-Linux Manager Proxy service not enabled for server profile: \"%s\""
-msgstr "RHN-proxy-tjänst inte aktiverat för serverprofilen: \"%s\""
+msgstr "SUSE Multi-Linux Manager proxy-tjänst inte aktiverat för serverprofilen: \"%s\""
 
 #: ../server/handlers/xmlrpc/proxy.py:94
 msgid "Invalid session key"
@@ -112,15 +112,15 @@ msgid "You are not allowed to manage channel %s, or that channel does not exist"
 msgstr "Du har inte tillåtelse att hantera kanal %s, eller så finns inte kanalen"
 
 #: ../server/importlib/userAuth.py:229
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "\n"
 "               %s Account has been deactivated on this server.\n"
 "               Please contact your Org administrator for more help."
 msgstr ""
 "\n"
-"                   %s-kontot har avaktiverats på denna server.\n"
-"                   Kontakta din organisationsadministratör för mer hjälp."
+"               %s konto har avaktiverats på denna server.\n"
+"                   Vänligen kontakta din organisationsadministratör för mer hjälp."
 
 #: ../server/rhnChannel.py:2216
 #, python-format
@@ -189,20 +189,20 @@ msgstr ""
 #. Invalid server certificate.
 #: ../server/rhnHandler.py:62
 msgid "Please run rhn_register as root on this client"
-msgstr ""
+msgstr "Vänligen kör rhn_register som root på den här klienten"
 
 #: ../server/rhnHandler.py:76
 #, python-format
 msgid "Service not enabled for system profile: \"%s\""
 msgstr "Drift ej aktiverat för systemprofilen: \"%s\""
 
-#: ../server/rhnPackage.py:52 ../server/rhnPackage.py:98
-#: ../server/rhnPackage.py:118 ../server/rhnPackage.py:179
+#: ../server/rhnPackage.py:51 ../server/rhnPackage.py:97
+#: ../server/rhnPackage.py:117 ../server/rhnPackage.py:179
 #, python-format
 msgid "Invalid RPM package %s requested"
 msgstr "Ogiltigt RPM-paket %s begärt"
 
-#: ../server/rhnPackage.py:124
+#: ../server/rhnPackage.py:123
 msgid "Package not found"
 msgstr "Paketet finns inte"
 
@@ -230,85 +230,85 @@ msgstr "Kunde inte lägga till en server till gruppen %s"
 msgid "Maximum usage count of %s reached"
 msgstr "Maximalt antal användingar på %s uppnått"
 
-#: ../server/rhnServer/server_token.py:869
+#: ../server/rhnServer/server_token.py:866
 msgid "Stacking of re-registration tokens with different base entitlements is not supported"
 msgstr "Att lägga samman omregistreringsnycklar med olika baskanalrättigheter stöds inte"
 
-#: ../server/rhnServer/server_token.py:946
+#: ../server/rhnServer/server_token.py:943
 #, python-format
 msgid "Could not find token '%s'"
 msgstr "Nyckeln \"%s\" finns inte"
 
 #. Cannot use activation keys from different orgs
-#: ../server/rhnServer/server_token.py:979
+#: ../server/rhnServer/server_token.py:976
 msgid "Tokens from mismatching orgs"
 msgstr "Nycklar från organisationer som inte stämmer överens"
 
 #. Two tokens with different kickstart sessions
-#: ../server/rhnServer/server_token.py:989
+#: ../server/rhnServer/server_token.py:986
 msgid "Kickstart session mismatch"
 msgstr "Kickstart-sessioner stämmer inte överens"
 
-#: ../server/rhnServer/server_token.py:1013
+#: ../server/rhnServer/server_token.py:1010
 msgid "Stacking of re-registration tokens is not supported"
 msgstr "Att lägga samman omregistreringsnycklar stöds inte"
 
-#: ../server/rhnUser.py:327 ../server/rhnUser.py:330
+#: ../server/rhnUser.py:321 ../server/rhnUser.py:324
 msgid "Invalid username/password combination"
 msgstr "Ogiltigt användarnamn/lösenords-kombination"
 
 #. nope, not reserved either
-#: ../server/rhnUser.py:527
+#: ../server/rhnUser.py:505
 #, python-format
 msgid "Username `%s' has not been reserved"
 msgstr "Användarnamnet \"%s\" har inte reserverats"
 
 #. New accounts have to specify an e-mail address
-#: ../server/rhnUser.py:533
+#: ../server/rhnUser.py:511
 msgid "E-mail address not specified"
 msgstr "E-postadress inte angiven"
 
-#: ../server/rhnUser.py:575
+#: ../server/rhnUser.py:553
 #, python-format
 msgid "username should be at least %d characters"
 msgstr "användarnamn skall vara åtminstone %d tecken"
 
-#: ../server/rhnUser.py:579
+#: ../server/rhnUser.py:557
 #, python-format
 msgid "username should be less than %d characters"
 msgstr "användarman skall vara mindre än %d tecken"
 
-#: ../server/rhnUser.py:593
+#: ../server/rhnUser.py:571
 #, python-format
 msgid "username = `%s', invalid character `%s'"
 msgstr "användarnamn = \"%s\", otiltigt tecken \"%s\""
 
-#: ../server/rhnUser.py:614
+#: ../server/rhnUser.py:592
 #, python-format
 msgid "Please limit your e-mail address to %s chars"
 msgstr "Begränsa din e-postadress till %s tecken"
 
-#: ../server/rhnUser.py:704
+#: ../server/rhnUser.py:690
 #, python-format
 msgid "password must be at least %d characters"
 msgstr "lösenord måste vara åtminstone %d tecken"
 
-#: ../server/rhnUser.py:708
+#: ../server/rhnUser.py:694
 #, python-format
 msgid "Password must be shorter than %d characters"
 msgstr "Lösenord måste vara kortare än %d tecken"
 
-#: ../server/rhnUser.py:724
+#: ../server/rhnUser.py:710
 #, python-format
 msgid "password contains character `%s'"
 msgstr "lösenordet innehåller tecknet \"%s\""
 
-#: ../server/rhnUser.py:733
+#: ../server/rhnUser.py:719
 #, python-format
 msgid "username should be at least %d characters long"
 msgstr "användarnamn skall vara åtminstone %d tecken långa"
 
-#: ../server/rhnUser.py:744
+#: ../server/rhnUser.py:730
 #, python-format
 msgid "Cannot register usernames ending with %s"
 msgstr "Det går inte att registrera användarnamn som slutar med %s"
@@ -692,12 +692,11 @@ msgstr "Maximal längd på lösenord överskriden"
 
 #: ../common/rhnException.py:202
 msgid "This user has read only API access. Action denied."
-msgstr ""
+msgstr "Den här användaren har endast läsbehörighet till API:et. Åtgärd nekad."
 
 #: ../common/rhnException.py:203
-#, fuzzy
 msgid "System Name cannot be less than 1 character"
-msgstr "användarman skall vara mindre än %d tecken"
+msgstr "Systemnamn får inte vara mindre än 1 tecken"
 
 #. 1000-1999: Proxy specific errors:
 #. issued by a Proxy to the client
@@ -886,20 +885,19 @@ msgstr "Kan inte jämföra filer med olika filtyp"
 #. 5100 - 5199: scap results reporting error
 #: ../common/rhnException.py:267
 msgid "SCAP results file transfer is invalid or incomplete"
-msgstr ""
+msgstr "Filöverföringen av SCAP-resultat är ogiltig eller ofullständig"
 
 #: ../common/rhnException.py:268
 msgid "Error composing directory path for detailed SCAP results"
-msgstr ""
+msgstr "Fel vid sammanställning av katalogsökväg för detaljerade SCAP-resultat"
 
 #: ../common/rhnException.py:269
 msgid "Error composing file path for detailed SCAP results"
-msgstr ""
+msgstr "Fel vid sammanställning av katalogsökväg för detaljerade SCAP-resultat"
 
 #: ../common/rhnException.py:270
-#, fuzzy
 msgid "Invalid content encoding"
-msgstr "Ogiltig elementkod"
+msgstr "Ogiltig innehållskodning"
 
 #: ../common/rhnException.py:317
 #, fuzzy
@@ -944,7 +942,7 @@ msgstr "Förklaring: %s"
 #: ../common/rhnTB.py:220
 #, python-format
 msgid "ERROR: %s %s: %s"
-msgstr ""
+msgstr "FEL: %s %s: %s"
 
 #: ../common/rhnTB.py:221
 #, python-format
@@ -955,7 +953,7 @@ msgstr ""
 #: ../satellite_tools/disk_dumper/iss.py:1640
 #, python-format
 msgid "format of %s should be at least YYYYMMDD.\n"
-msgstr ""
+msgstr "format av %s bör vara minst ÅÅÅÅMMDD.\n"
 
 #: ../satellite_tools/messages.py:28
 #, python-format
@@ -983,6 +981,9 @@ msgid ""
 "ERROR: there was a problem synchronizing the information.\n"
 "       Error message: %s\n"
 msgstr ""
+"\n"
+"FEL: det uppstod ett problem med att synkronisera informationen.\n"
+"       Felmeddelande: %s\n"
 
 #: ../satellite_tools/messages.py:52
 #, python-format
@@ -1017,7 +1018,7 @@ msgstr ""
 #: ../satellite_tools/messages.py:77
 #, python-format
 msgid "  ERROR: not enough free space (%s KB) on device."
-msgstr ""
+msgstr "  FEL:inte tillräckligt med ledigt utrymme (%s KB) på enhet."
 
 #: ../satellite_tools/messages.py:79
 #, python-format
@@ -1025,19 +1026,19 @@ msgid "    %3d/%s Fetch successful: %s (%s bytes)"
 msgstr ""
 
 #: ../satellite_tools/messages.py:80
-#, fuzzy, python-format
+#, python-format
 msgid "    Extinct package:  %s"
-msgstr "Ett paket förväntades, inte: %s"
+msgstr "    Utdött paket:  %s"
 
 #: ../satellite_tools/messages.py:81
 #, python-format
 msgid "   Total size: %s"
-msgstr ""
+msgstr "   Total storlek: %s"
 
 #: ../satellite_tools/messages.py:83
 #, python-format
 msgid "      Downloaded %s of %s. Estimated remaining time: %s"
-msgstr ""
+msgstr "      Nedladdat %s av %s. Beräknad återstående tid: %s"
 
 #: ../satellite_tools/messages.py:85
 #, python-format
@@ -1052,12 +1053,12 @@ msgstr ""
 #: ../satellite_tools/messages.py:87
 #, python-format
 msgid "       success: %d"
-msgstr ""
+msgstr "       lyckades: %d"
 
 #: ../satellite_tools/messages.py:88
 #, python-format
 msgid "       failed:  %d"
-msgstr ""
+msgstr "       misslyckades:  %d"
 
 #: ../satellite_tools/messages.py:89
 #, python-format
@@ -1091,12 +1092,11 @@ msgstr ""
 
 #: ../satellite_tools/messages.py:96
 msgid "   * WARNING: this may be a slow process."
-msgstr ""
+msgstr "   * VARNING: detta kan vara en långsam process."
 
 #: ../satellite_tools/messages.py:97
-#, fuzzy
 msgid "Linking packages to channels"
-msgstr "Baskanaler i konflikt"
+msgstr "Länkar paket till kanaler"
 
 #: ../satellite_tools/messages.py:98
 #, python-format
@@ -1117,18 +1117,18 @@ msgstr ""
 msgid "Imported kickstartable trees (%d)"
 msgstr ""
 
-#: ../satellite_tools/reposync.py:138
+#: ../satellite_tools/reposync.py:148
 msgid "+++ sending log as an email +++"
-msgstr ""
+msgstr "+++ skickar logg som ett e-post +++"
 
-#: ../satellite_tools/reposync.py:141
+#: ../satellite_tools/reposync.py:151
 #, python-format
 msgid "%s sync. report from %s"
 msgstr ""
 
-#: ../satellite_tools/reposync.py:151
+#: ../satellite_tools/reposync.py:161
 msgid "+++ email requested, but there is nothing to send +++"
-msgstr ""
+msgstr "+++ e-postadress begärt, men det finns inget att skicka +++"
 
 #, fuzzy
 #~ msgid "ISS is disabled on this server."

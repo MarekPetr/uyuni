@@ -16,7 +16,6 @@ package com.redhat.rhn.frontend.action.channel.manage;
 
 import com.redhat.rhn.common.db.datasource.DataResult;
 import com.redhat.rhn.common.hibernate.HibernateFactory;
-import com.redhat.rhn.common.localization.LocalizationService;
 import com.redhat.rhn.common.security.PermissionException;
 import com.redhat.rhn.domain.access.AccessGroupFactory;
 import com.redhat.rhn.domain.channel.Channel;
@@ -48,8 +47,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * ChannelPackagesAction
@@ -73,7 +72,7 @@ public class ChannelPackagesAddConfirmAction extends RhnAction {
         Channel chan = ChannelFactory.lookupByIdAndUser(cid, user);
 
         if (!UserManager.verifyChannelAdmin(user, chan)) {
-              throw new PermissionException(AccessGroupFactory.CHANNEL_ADMIN);
+              throw new PermissionException(AccessGroupFactory.getChannelAdmin());
         }
         if (chan.getOrg() == null) {
             throw new PermissionCheckFailureException();
@@ -89,10 +88,9 @@ public class ChannelPackagesAddConfirmAction extends RhnAction {
         request.setAttribute(ListTagHelper.PARENT_URL, request.getRequestURI());
         request.setAttribute(RequestContext.PAGE_LIST, result);
 
-        String button = LocalizationService.getInstance().getMessage(
-        "channel.jsp.package.addconfirmbutton");
+        String confirm = request.getParameter("confirm");
 
-        if (button.equals(request.getParameter("confirm")) && !set.isEmpty()) {
+        if (confirm != null && confirm.equals("confirmadd") && !set.isEmpty()) {
             int setSize = set.size();
             addPackages(user, chan, set);
             ActionMessages msg = new ActionMessages();

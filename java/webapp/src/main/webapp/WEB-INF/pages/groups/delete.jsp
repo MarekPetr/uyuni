@@ -1,5 +1,5 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.functions" prefix="fn" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
@@ -29,7 +29,7 @@
         <rhn:csrf />
         <rhn:submitted/>
         <html:hidden property="sgid" value="${param.sgid}" />
-        <div class="form-group">
+        <div class="row">
             <div class="col-md-12">
                 <html:submit property="delete_button" styleClass="btn btn-danger">
                     <bean:message key="systemgroup.delete.confirm"/>

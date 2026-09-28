@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 SUSE LLC
+# Copyright (c) 2024-2026 SUSE LLC
 # Licensed under the terms of the MIT license.
 #
 # The scenarios in this feature are skipped if:
@@ -44,7 +44,7 @@ Feature: Setup containerized proxy
     When I wait until onboarding is completed for "proxy"
 
   Scenario: Upgrade mgrpxy tool
-    When I upgrade "proxy" with the last "mgrpxy" version
+    When I upgrade "mgrpxy" on "proxy" using the API
 
 @transactional_server
   Scenario: Reboot after mgrpxy upgrade
@@ -67,10 +67,17 @@ Feature: Setup containerized proxy
     And I wait until "uyuni-proxy-squid" service is active on "proxy"
     And I wait until "uyuni-proxy-ssh" service is active on "proxy"
     And I wait until "uyuni-proxy-tftpd" service is active on "proxy"
-    And I wait until port "8022" is listening on "proxy" container
-    And I wait until port "80" is listening on "proxy" container
-    And I wait until port "443" is listening on "proxy" container
+    And I check that "proxy" host is listening on TCP port "8022"
+    And I check that "proxy" host is listening on TCP port "80"
+    And I check that "proxy" host is listening on TCP port "443"
     And I visit "Proxy" endpoint of this "proxy"
+
+  Scenario: Podman containers are running on the proxy
+    Then podman container "uyuni-proxy-httpd" should be running on "proxy"
+    And podman container "uyuni-proxy-salt-broker" should be running on "proxy"
+    And podman container "uyuni-proxy-squid" should be running on "proxy"
+    And podman container "uyuni-proxy-ssh" should be running on "proxy"
+    And podman container "uyuni-proxy-tftpd" should be running on "proxy"
 
   Scenario: The containerized proxy should be registered automatically
     When I follow the left menu "Systems"

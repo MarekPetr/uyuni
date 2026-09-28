@@ -1,4 +1,4 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="jakarta.tags.core" prefix="c"%>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn"%>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean"%>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html"%>
@@ -33,19 +33,12 @@
                 <bean:message key="spmigration.jsp.error.up-to-date" />
             </div>
         </c:when>
-        <c:when test="${not isMinion and zyppPluginInstalled and not upgradeSupported}">
-            <div class="alert alert-warning">
-                <bean:message key="spmigration.jsp.error.update-zypp-plugin" />
-            </div>
-        </c:when>
-        <c:when test="${(isMinion and not (isSUSEMinion or isRedHatMinion))
-                       or (not isMinion and not zyppPluginInstalled)
-                       or targetProducts == null}">
+        <c:when test="${not (isSUSEMinion or isRedHatMinion) or targetProducts == null}">
             <div class="alert alert-warning">
                 <bean:message key="spmigration.jsp.error.unsupported" />
             </div>
         </c:when>
-        <c:when test="${isMinion and not isSaltUpToDate}">
+        <c:when test="${not isSaltUpToDate}">
             <div class="alert alert-warning">
                 <bean:message key="spmigration.jsp.error.update-salt-package-needed" arg0="${saltPackage}"/>
             </div>
@@ -71,11 +64,24 @@
                     <bean:message key="spmigration.jsp.error.updatestack-update-needed" />
                 </div>
             </c:if>
-
+            <%-- SLES 16 pre-flight checklist — shown only when source is SLES 15 and target is SLES 16.0 --%>
+               <c:if test="${hasSLES16Target}">
+                <div class="alert alert-warning">
+                    <strong><bean:message key="spmigration.sles16.preflight.title" /></strong>
+                    <ul>
+                        <li><bean:message key="spmigration.sles16.preflight.patch.title" /></li>
+                        <li><bean:message key="spmigration.sles16.preflight.diskspace.title" /></li>
+                        <li><bean:message key="spmigration.sles16.preflight.ssh.title" /></li>
+                        <li><bean:message key="spmigration.sles16.preflight.kvmguests.title" /></li>
+                        <li><bean:message key="spmigration.sles16.preflight.network.title" /></li>
+                        <li><bean:message key="spmigration.sles16.preflight.selinux.title" /></li>
+                    </ul>
+                </div>
+            </c:if>
             <html:form method="post" styleId="migrationForm"
                 action="/systems/details/SPMigration.do?sid=${system.id}">
                 <div class="form-horizontal">
-                    <div class="form-group">
+                    <div class="row">
                         <label class="col-sm-2 control-label">
                             <bean:message key="spmigration.jsp.setup.installed-products" />
                         </label>
@@ -96,7 +102,7 @@
                             </ul>
                         </div>
                     </div>
-                    <div class="form-group">
+                    <div class="row">
                         <label class="col-sm-2 control-label"> <bean:message
                                 key="spmigration.jsp.setup.target-products" />
                         </label>
@@ -137,7 +143,7 @@
                 </div>
 
                 <div class="form-horizontal">
-                    <div class="form-group">
+                    <div class="row">
                         <div class="col-sm-offset-2 offset-sm-2 col-sm-10">
                             <button type="submit" name="dispatch" class="btn btn-primary" id="submitButton"
                                 value='<bean:message key="spmigration.jsp.target.submit" />'>

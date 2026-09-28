@@ -1,7 +1,7 @@
 #
 # spec file for package spacewalk-backend
 #
-# Copyright (c) 2025 SUSE LLC
+# Copyright (c) 2026 SUSE LLC
 # Copyright (c) 2008-2018 Red Hat, Inc.
 #
 # All modifications and additions to the file contributed by third parties
@@ -21,24 +21,13 @@
 
 %{!?_unitdir: %global _unitdir /lib/systemd/system}
 
-%{!?python3_sitelib: %global python3_sitelib %(%{__python3} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
+%{!?python3_sitelib: %global python3_sitelib %(python3 -c "import sysconfig; print(sysconfig.get_path('purelib'))")}
 %global rhnroot %{_datadir}/rhn
 %global rhnconfigdefaults %{rhnroot}/config-defaults
 %global rhnconf %{_sysconfdir}/rhn
 %global m2crypto m2crypto
 %global python3rhnroot %{python3_sitelib}/spacewalk
 
-%if 0%{?fedora} || 0%{?rhel}
-%global apacheconfd %{_sysconfdir}/httpd/conf.d
-%global apache_user root
-%global apache_group root
-%global apache_pkg httpd
-%global documentroot %{_localstatedir}/www/html
-%global m2crypto python3-m2crypto
-%global sslrootcert %{_sysconfdir}/pki/ca-trust/source/anchors/
-%endif
-
-%if 0%{?suse_version}
 %global apacheconfd %{_sysconfdir}/apache2/conf.d
 %global apache_user wwwrun
 %global apache_group www
@@ -46,10 +35,9 @@
 %global documentroot /srv/www/htdocs
 %global m2crypto python3-M2Crypto
 %global sslrootcert %{_sysconfdir}/pki/trust/anchors/
-%endif
 
 Name:           spacewalk-backend
-Version:        5.2.4
+Version:        5.3.1
 Release:        0
 Summary:        Common programs needed to be installed on the %{productprettyname} servers/proxies
 License:        GPL-2.0-only
@@ -57,36 +45,34 @@ Group:          System/Management
 URL:            https://github.com/uyuni-project/uyuni
 #!CreateArchive: %{name}
 Source0:        %{name}-%{version}.tar.gz
-%if !0%{?suse_version} || 0%{?suse_version} >= 1120
-BuildArch:      noarch
-%endif
-
-Requires:       python3
-# /etc/rhn is provided by uyuni-base-common
-Requires(pre):  uyuni-base-common
-BuildRequires:  uyuni-base-common
-Requires:       python3-rhnlib >= 2.5.74
-Requires:       python3-rpm
-Requires:       python3-uyuni-common-libs
-Requires(pre):  %{apache_pkg}
-Requires:       %{apache_pkg}
-Requires:       python3-pycurl
-Requires:       python3-libmodulemd
-# for Debian support
-Requires:       python3-debian >= 0.1.44
-BuildRequires:  %{m2crypto}
 BuildRequires:  /usr/bin/docbook2man
 BuildRequires:  /usr/bin/msgfmt
+BuildRequires:  %{m2crypto}
 BuildRequires:  docbook-utils
 BuildRequires:  fdupes
 BuildRequires:  make
 BuildRequires:  python3
 BuildRequires:  python3-debian
-BuildRequires:  python3-spacewalk-client-tools
 BuildRequires:  python3-rhnlib >= 2.5.74
 BuildRequires:  python3-rpm
 BuildRequires:  python3-rpm-macros
+BuildRequires:  python3-spacewalk-client-tools
 BuildRequires:  python3-uyuni-common-libs
+BuildRequires:  uyuni-base-common
+Requires:       %{apache_pkg}
+
+Requires:       python3
+# for Debian support
+Requires:       python3-debian >= 0.1.44
+Requires:       python3-libmodulemd
+Requires:       python3-pycurl
+Requires:       python3-rhnlib >= 2.5.74
+Requires:       python3-rpm
+Requires:       python3-uyuni-common-libs
+Requires(pre):  %{apache_pkg}
+# /etc/rhn is provided by uyuni-base-common
+Requires(pre):  uyuni-base-common
+BuildArch:      noarch
 
 %description
 Generic program files needed by the %{productprettyname} server machines.
@@ -95,9 +81,9 @@ This package includes the common code required by all servers/proxies.
 %package sql
 Summary:        Core functions providing SQL connectivity for the %{productprettyname} backend modules
 Group:          System/Management
-Requires(pre):  %{name} = %{version}-%{release}
 Requires:       %{name} = %{version}-%{release}
 Requires:       %{name}-sql-virtual = %{version}-%{release}
+Requires(pre):  %{name} = %{version}-%{release}
 
 %description sql
 This package contains the basic code that provides SQL connectivity for
@@ -114,16 +100,16 @@ This package contains provides PostgreSQL connectivity for the %{productprettyna
 backend modules.
 
 %package server
+# cobbler-web is known to break our configuration
 Summary:        Basic code that provides %{productprettyname} Server functionality
 Group:          System/Management
-Requires(pre):  %{name}-sql = %{version}-%{release}
 Requires:       %{name}-sql = %{version}-%{release}
-Requires:       spacewalk-config
 Requires:       (apache2-mod_wsgi or python3-mod_wsgi)
 Requires:       (python3-pam or python3-python-pam)
 Requires:       python3-defusedxml
+Requires:       spacewalk-config
+Requires(pre):  %{name}-sql = %{version}-%{release}
 
-# cobbler-web is known to break our configuration
 Conflicts:      cobbler-web
 
 %description server
@@ -152,7 +138,6 @@ Requires:       %{name}-server = %{version}-%{release}
 These are the files required for running the /APP handler.
 Calls to /APP are used by internal maintenance tools (rhnpush).
 
-
 %package package-push-server
 Summary:        Listener for rhnpush (non-XMLRPC version)
 Group:          System/Management
@@ -162,44 +147,32 @@ Requires:       %{name}-server = %{version}-%{release}
 Listener for rhnpush (non-XMLRPC version)
 
 %package tools
+Requires:       python3-spacewalk-client-tools
 Summary:        %{productprettyname} Services Tools
 Group:          System/Management
+BuildRequires:  systemd
+Requires:       %{m2crypto}
 Requires:       %{name}
 Requires:       %{name}-app = %{version}-%{release}
+Requires:       %{name}-xml-export-libs
 Requires:       %{name}-xmlrpc = %{version}-%{release}
-Requires:       systemd
-BuildRequires:  systemd
-%if 0%{?is_opensuse} || 0%{?sle_version} >= 150000
+Requires:       (python3-dateutil or python3-python-dateutil)
+Requires:       apache2-prefork
+Requires:       cobbler
 # bsc#1234304
 Requires:       libzypp >= 17.35.16
-%endif
-%if 0%{?rhel}
-Requires:       python3-dnf
-BuildRequires:  systemd-rpm-macros
-%else
-%{?systemd_requires}
-%endif
+Requires:       python3-requests
+Requires:       python3-rhnlib >= 2.5.57
 
-Requires:       python3-spacewalk-client-tools
 Requires:       python3-solv
 Requires:       python3-urlgrabber >= 4
+Requires:       python3-zypp-plugin
 Requires:       spacewalk-admin >= 0.1.1-0
 Requires:       spacewalk-certs-tools
 Requires:       susemanager-tools
-Requires:       (python3-dateutil or python3-python-dateutil)
-%if 0%{?suse_version}
+Requires:       systemd
 Requires(pre):  libzypp(plugin:system) >= 0
-Requires:       apache2-prefork
-Requires:       python3-zypp-plugin
-%endif
-%if 0%{?fedora} || 0%{?rhel}
-Requires:       mod_ssl
-%endif
-Requires:       %{m2crypto}
-Requires:       %{name}-xml-export-libs
-Requires:       cobbler
-Requires:       python3-requests
-Requires:       python3-rhnlib  >= 2.5.57
+%{?systemd_requires}
 
 %description tools
 Various utilities for the %{productprettyname} Server.
@@ -216,15 +189,15 @@ Libraries required by various exporting tools
 %setup -q
 
 %build
-make -f Makefile.backend all PYTHON_BIN=python3
+%make_build -f Makefile.backend all PYTHON_BIN=python3
 
 # Fixing shebang for Python 3
 for i in `find . -type f`;
 do
-	sed -i '1s=^#!/usr/bin/\(python\|env python\)[0-9.]*=#!/usr/bin/python3=' $i;
+	sed -i '1s=^#!%{_bindir}/\(python\|env python\)[0-9.]*=#!%{_bindir}/python3=' $i;
 done
 
-%if !0%{?is_opensuse} && 0%{?sle_version}
+%if !0%{?is_opensuse}
 sed -i "s/PRODUCT_NAME = \"Uyuni\"/PRODUCT_NAME = \"%{productprettyname}\"/" common/rhnConfig.py
 %endif
 
@@ -253,14 +226,11 @@ cd -
 
 install -m 644 rhn-conf/signing.cnf %{buildroot}%{rhnconf}/signing.conf
 
-install -m 644 satellite_tools/spacewalk-diskcheck.service %{buildroot}/%{_unitdir}
-install -m 644 satellite_tools/spacewalk-diskcheck.timer %{buildroot}/%{_unitdir}
-
 install -m 644 satellite_tools/ulnauth.py %{buildroot}/%{python3rhnroot}/satellite_tools
 
 %find_lang %{name}-server
 
-%if 0%{?is_opensuse} || 0%{?fedora} || 0%{?rhel}
+%if 0%{?is_opensuse}
 sed -i 's/^product_name.*/product_name = Uyuni/' %{buildroot}%{rhnconfigdefaults}/rhn.conf
 %endif
 
@@ -274,10 +244,8 @@ sed -i 's/#LOGROTATE-3.8#//' %{buildroot}%{_sysconfdir}/logrotate.d/spacewalk-ba
 sed -i 's/@HTTPD_GROUP@/%{apache_group}/' %{buildroot}%{_sysconfdir}/logrotate.d/spacewalk-backend-*
 sed -i 's/@HTTPD_USER@/%{apache_user}/' %{buildroot}%{_sysconfdir}/logrotate.d/spacewalk-backend-*
 
-%if 0%{?suse_version}
 %py3_compile -O %{buildroot}/%{python3rhnroot}
 %fdupes %{buildroot}/%{python3rhnroot}
-%endif
 
 install -m 755 satellite_tools/mgr-update-pkg-extra-tags %{buildroot}%{_prefix}/lib/susemanager/bin/
 
@@ -287,47 +255,16 @@ install satellite_tools/spacewalk-uln-resolver %{buildroot}%{_prefix}/lib/zypp/p
 install satellite_tools/spacewalk-extra-http-headers %{buildroot}%{_prefix}/lib/zypp/plugins/urlresolver/spacewalk-extra-http-headers
 
 %post server
-%if 0%{?suse_version}
 sysconf_addword %{_sysconfdir}/sysconfig/apache2 APACHE_MODULES wsgi
-%endif
 if [ ! -e %{rhnconf}/rhn.conf ]; then
     exit 0
 fi
 
-%pre tools
-%if !0%{?rhel}
-%service_add_pre spacewalk-diskcheck.service spacewalk-diskcheck.timer
-%endif
-
-%post tools
-%if 0%{?rhel}
-%{systemd_post} spacewalk-diskcheck.service
-%{systemd_post} spacewalk-diskcheck.timer
-%else
-%service_add_post spacewalk-diskcheck.service spacewalk-diskcheck.timer
-%endif
 if test -f %{_localstatedir}/log/rhn/rhn_server_satellite.log; then
     chown -f %{apache_user}:%{apache_group} %{_localstatedir}/log/rhn/rhn_server_satellite.log
 fi
 
-%preun tools
-%if 0%{?rhel}
-%systemd_preun spacewalk-diskcheck.service
-%systemd_preun spacewalk-diskcheck.timer
-%else
-%service_del_preun spacewalk-diskcheck.service spacewalk-diskcheck.timer
-%endif
-
-%postun tools
-%if 0%{?rhel}
-%{systemd_postun} spacewalk-diskcheck.service
-%{systemd_postun} spacewalk-diskcheck.timer
-%else
-%service_del_postun spacewalk-diskcheck.service spacewalk-diskcheck.timer
-%endif
-
 %files
-%defattr(-,root,root)
 %{!?_licensedir:%global license %doc}
 %license LICENSE
 %dir %{python3rhnroot}
@@ -335,11 +272,7 @@ fi
 %dir %{_prefix}/lib/susemanager/bin
 %{python3rhnroot}/__init__.py*
 %{python3rhnroot}/common
-%if 0%{?rhel}
-%dir %{_var}/log/rhn
-%else
 %attr(770,root,%{apache_group}) %dir %{_var}/log/rhn
-%endif
 # Workaround for strict-whitespace-enforcement in httpd
 %attr(644,root,%{apache_group}) %config %{apacheconfd}/aa-spacewalk-server.conf
 # config files
@@ -356,7 +289,6 @@ fi
 %{python3rhnroot}/__pycache__/*
 
 %files sql
-%defattr(-,root,root)
 %{!?_licensedir:%global license %doc}
 %license LICENSE
 %dir %{rhnroot}/server
@@ -376,14 +308,12 @@ fi
 %exclude %{python3rhnroot}/server/rhnSQL/__pycache__/driver_postgresql.*
 
 %files sql-postgresql
-%defattr(-,root,root)
 %{!?_licensedir:%global license %doc}
 %license LICENSE
 %{python3rhnroot}/server/rhnSQL/driver_postgresql.py*
 %{python3rhnroot}/server/rhnSQL/__pycache__/driver_postgresql.*
 
 %files server -f %{name}-server.lang
-%defattr(-,root,root)
 %{!?_licensedir:%global license %doc}
 %license LICENSE
 %dir %{rhnroot}/server
@@ -474,7 +404,6 @@ fi
 %dir %{rhnroot}/server/handlers
 
 %files xmlrpc
-%defattr(-,root,root)
 %{!?_licensedir:%global license %doc}
 %license LICENSE
 %dir %{rhnroot}/server/handlers/xmlrpc
@@ -486,7 +415,6 @@ fi
 %dir %{rhnroot}/server/handlers
 
 %files app
-%defattr(-,root,root)
 %{!?_licensedir:%global license %doc}
 %license LICENSE
 %dir %{rhnroot}/server
@@ -497,7 +425,6 @@ fi
 %config(noreplace) %{_sysconfdir}/logrotate.d/spacewalk-backend-app
 
 %files package-push-server
-%defattr(-,root,root)
 %{!?_licensedir:%global license %doc}
 %license LICENSE
 %dir %{rhnroot}/upload_server
@@ -510,7 +437,6 @@ fi
 %config(noreplace) %{_sysconfdir}/logrotate.d/spacewalk-backend-package-push-server
 
 %files tools
-%defattr(-,root,root)
 %{!?_licensedir:%global license %doc}
 %license LICENSE
 %doc README.ULN
@@ -583,25 +509,22 @@ fi
 %{python3rhnroot}/satellite_tools/disk_dumper/__pycache__/*
 %{python3rhnroot}/satellite_tools/repo_plugins/__pycache__/*
 %config %attr(644,root,%{apache_group}) %{rhnconfigdefaults}/rhn_server_iss.conf
-%{_mandir}/man8/rhn-charsets.8*
-%{_mandir}/man8/rhn-schema-version.8*
-%{_mandir}/man8/rhn-ssl-dbstore.8*
-%{_mandir}/man8/rhn-db-stats.8*
-%{_mandir}/man8/rhn-schema-stats.8*
-%{_mandir}/man8/spacewalk-debug.8*
-%{_mandir}/man8/satpasswd.8*
-%{_mandir}/man8/satwho.8*
-%{_mandir}/man8/spacewalk-fips-tool.8*
-%{_mandir}/man8/spacewalk-remove-channel.8*
-%{_mandir}/man8/spacewalk-repo-sync.8*
-%{_mandir}/man8/spacewalk-data-fsck.8*
-%{_mandir}/man8/spacewalk-update-signatures.8*
-%{_mandir}/man8/update-packages.8*
-%attr(644, root, root) %{_unitdir}/spacewalk-diskcheck.service
-%attr(644, root, root) %{_unitdir}/spacewalk-diskcheck.timer
+%{_mandir}/man8/rhn-charsets.8%{?ext_man}
+%{_mandir}/man8/rhn-schema-version.8%{?ext_man}
+%{_mandir}/man8/rhn-ssl-dbstore.8%{?ext_man}
+%{_mandir}/man8/rhn-db-stats.8%{?ext_man}
+%{_mandir}/man8/rhn-schema-stats.8%{?ext_man}
+%{_mandir}/man8/spacewalk-debug.8%{?ext_man}
+%{_mandir}/man8/satpasswd.8%{?ext_man}
+%{_mandir}/man8/satwho.8%{?ext_man}
+%{_mandir}/man8/spacewalk-fips-tool.8%{?ext_man}
+%{_mandir}/man8/spacewalk-remove-channel.8%{?ext_man}
+%{_mandir}/man8/spacewalk-repo-sync.8%{?ext_man}
+%{_mandir}/man8/spacewalk-data-fsck.8%{?ext_man}
+%{_mandir}/man8/spacewalk-update-signatures.8%{?ext_man}
+%{_mandir}/man8/update-packages.8%{?ext_man}
 
 %files xml-export-libs
-%defattr(-,root,root)
 %{!?_licensedir:%global license %doc}
 %license LICENSE
 %dir %{python3rhnroot}/satellite_tools

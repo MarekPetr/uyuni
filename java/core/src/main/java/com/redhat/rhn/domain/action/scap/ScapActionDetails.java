@@ -19,17 +19,16 @@ import com.redhat.rhn.common.hibernate.HibernateFactory;
 import com.redhat.rhn.domain.BaseDomainHelper;
 import com.redhat.rhn.domain.action.Action;
 
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 
 /**
  * ScapActionDetails
@@ -51,6 +50,15 @@ public class ScapActionDetails extends BaseDomainHelper {
 
     @Column
     private byte[] parameters;
+
+    @Column(name = "scap_policy_id")
+    private Integer scapPolicyId;
+
+    @Column(name = "scap_content_id")
+    private Long scapContentId;
+
+    @Column(name = "tailoring_file_id")
+    private Long tailoringFileId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "action_id", updatable = false, nullable = false, insertable = true)
@@ -168,5 +176,53 @@ public class ScapActionDetails extends BaseDomainHelper {
      */
     public void setParentAction(Action parentActionIn) {
         this.parentAction = parentActionIn;
+    }
+
+    /**
+     * Gets the SCAP policy ID associated with this action
+     * @return Returns the scapPolicyId.
+     */
+    public Integer getScapPolicyId() {
+        return scapPolicyId;
+    }
+
+    /**
+     * Sets the SCAP policy ID associated with this action
+     * @param scapPolicyIdIn The scapPolicyId to set.
+     */
+    public void setScapPolicyId(Integer scapPolicyIdIn) {
+        this.scapPolicyId = scapPolicyIdIn;
+    }
+
+    /**
+     * Gets the SCAP content ID associated with this action
+     * @return Returns the scapContentId.
+     */
+    public Long getScapContentId() {
+        return scapContentId;
+    }
+
+    /**
+     * Sets the SCAP content ID associated with this action
+     * @param scapContentIdIn The scapContentId to set.
+     */
+    public void setScapContentId(Long scapContentIdIn) {
+        this.scapContentId = scapContentIdIn;
+    }
+
+    /**
+     * Gets the tailoring file ID associated with this action
+     * @return Returns the tailoringFileId.
+     */
+    public Long getTailoringFileId() {
+        return tailoringFileId;
+    }
+
+    /**
+     * Sets the tailoring file ID associated with this action
+     * @param tailoringFileIdIn The tailoringFileId to set.
+     */
+    public void setTailoringFileId(Long tailoringFileIdIn) {
+        this.tailoringFileId = tailoringFileIdIn;
     }
 }

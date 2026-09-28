@@ -105,7 +105,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import javax.persistence.NoResultException;
+import jakarta.persistence.NoResultException;
 
 
 /**
@@ -206,7 +206,7 @@ public class ChannelSoftwareHandler extends BaseHandler {
         Channel channel = lookupChannelByLabel(loggedInUser, channelLabel);
         //Verify permissions
         if (!(UserManager.verifyChannelAdmin(loggedInUser, channel) ||
-                loggedInUser.isMemberOf(AccessGroupFactory.CHANNEL_ADMIN))) {
+                loggedInUser.isMemberOf(AccessGroupFactory.getChannelAdmin()))) {
             throw new PermissionCheckFailureException();
         }
 
@@ -423,7 +423,7 @@ public class ChannelSoftwareHandler extends BaseHandler {
      */
     @ReadOnly
     public int isGloballySubscribable(User loggedInUser, String channelLabel) {
-        // TODO: this should return a boolean NOT an int
+        // OLDTODO: this should return a boolean NOT an int
 
         // Make sure the channel exists:
         lookupChannelByLabel(loggedInUser, channelLabel);
@@ -1011,7 +1011,7 @@ public class ChannelSoftwareHandler extends BaseHandler {
         Channel channel = lookupChannelByLabel(loggedInUser, channelLabel);
         //Verify permissions
         if (!(UserManager.verifyChannelAdmin(loggedInUser, channel) ||
-              loggedInUser.isMemberOf(AccessGroupFactory.CHANNEL_ADMIN))) {
+              loggedInUser.isMemberOf(AccessGroupFactory.getChannelAdmin()))) {
             throw new PermissionCheckFailureException();
         }
 
@@ -1061,7 +1061,7 @@ public class ChannelSoftwareHandler extends BaseHandler {
         }
         //Verify permissions
         if (!(UserManager.verifyChannelAdmin(loggedInUser, channel) ||
-              loggedInUser.isMemberOf(AccessGroupFactory.CHANNEL_ADMIN))) {
+              loggedInUser.isMemberOf(AccessGroupFactory.getChannelAdmin()))) {
             throw new PermissionCheckFailureException();
         }
 
@@ -1102,7 +1102,7 @@ public class ChannelSoftwareHandler extends BaseHandler {
         Channel channel = lookupChannelByLabel(loggedInUser.getOrg(), channelLabel);
         //Verify permissions
         if (!(UserManager.verifyChannelAdmin(loggedInUser, channel) ||
-              loggedInUser.isMemberOf(AccessGroupFactory.CHANNEL_ADMIN))) {
+              loggedInUser.isMemberOf(AccessGroupFactory.getChannelAdmin()))) {
             throw new PermissionCheckFailureException();
         }
 
@@ -1155,7 +1155,7 @@ public class ChannelSoftwareHandler extends BaseHandler {
         }
         //Verify permissions
         if (!(UserManager.verifyChannelAdmin(loggedInUser, channel) ||
-              loggedInUser.isMemberOf(AccessGroupFactory.CHANNEL_ADMIN))) {
+              loggedInUser.isMemberOf(AccessGroupFactory.getChannelAdmin()))) {
             throw new PermissionCheckFailureException();
         }
 
@@ -1889,7 +1889,7 @@ public class ChannelSoftwareHandler extends BaseHandler {
                 differentPackages.add(pack);
             }
         }
-        mergeTo.getPackages().addAll(differentPackages);
+        mergeTo.addPackages(differentPackages);
         ChannelFactory.save(mergeTo);
         ChannelManager.refreshWithNewestPackages(mergeTo, "java::mergePackages");
 
@@ -2197,8 +2197,8 @@ public class ChannelSoftwareHandler extends BaseHandler {
          // check SSL-certificates parameters
          if (!StringUtils.isEmpty(sslCaCert)) {
              try {
-                 // FIXME: Allow to set multiple SSL sets per custom repo - new API calls?
-                 repoCmd.addSslSet(getKeyId(loggedInUser, sslCaCert),
+                 // OLDTODO: Allow to set multiple SSL sets per custom repo - new API calls?
+                 repoCmd.addSslContentSource(getKeyId(loggedInUser, sslCaCert),
                          getKeyId(loggedInUser, sslCliCert),
                          getKeyId(loggedInUser, sslCliKey));
              }
@@ -2405,9 +2405,9 @@ public class ChannelSoftwareHandler extends BaseHandler {
         // set new SSL Certificates for the repository
         if (!StringUtils.isEmpty(sslCaCert)) {
             try {
-                // FIXME: Allow to set multiple SSL sets per custom repo - new API calls?
-                repoEditor.deleteAllSslSets();
-                repoEditor.addSslSet(getKeyId(loggedInUser, sslCaCert),
+                // OLDTODO: Allow to set multiple SSL sets per custom repo - new API calls?
+                repoEditor.deleteAllSslContentSources();
+                repoEditor.addSslContentSource(getKeyId(loggedInUser, sslCaCert),
                         getKeyId(loggedInUser, sslCliCert),
                         getKeyId(loggedInUser, sslCliKey));
             }
@@ -2825,7 +2825,7 @@ public class ChannelSoftwareHandler extends BaseHandler {
             throw new PermissionCheckFailureException("Only Org Admins can remove repo filters.");
         }
 
-        //TODO is this necessary?
+        //OLDTODO is this necessary?
         lookupContentSourceByLabel(label, loggedInUser.getOrg());
 
         String flag = filterProps.get("flag");
@@ -3141,6 +3141,50 @@ public class ChannelSoftwareHandler extends BaseHandler {
         catch (com.redhat.rhn.taskomatic.TaskomaticApiException e) {
             throw new TaskomaticApiException(e.getMessage());
         }
+    }
+
+    /**
+     * Returns whether the channel is synchronized automatically by taskomatic job
+     * @param loggedInUser The current user
+     * @param channelLabel The label for the channel in question
+     * @return whether the channel is synchronized automatically
+     *
+     * @apidoc.doc Returns whether is synchronized automatically
+     * @apidoc.param #session_key()
+     * @apidoc.param #param_desc("string", "channelLabel", "label of the channel")
+     * @apidoc.returntype #param_desc("boolean", "result", "true if the channel is synchronized automatically")
+     */
+    @ReadOnly
+    public boolean isAutoSync(User loggedInUser, String channelLabel) {
+        return lookupChannelByLabel(loggedInUser, channelLabel).isAutoSync();
+    }
+
+
+    /**
+     * Set whether the channel must be synchronized automatically by taskomatic job
+     * @param loggedInUser The current user
+     * @param channelLabel The label for the channel in question
+     * @param autoSync Boolean telling if the channel should be automatically synchronized
+     * @return The value set to the channel automatic synchronized option
+     *
+     * @apidoc.doc Sets whether the channel is synchronized automatically
+     * @apidoc.param #session_key()
+     * @apidoc.param #param_desc("string", "channelLabel", "label of the channel")
+     * @apidoc.param #param_desc("Boolean", "autoSync", "Value to set on the channel automatic synchronization")
+     * @apidoc.returntype #param_desc("boolean", "result", "The value set to the channel automatic synchronized option")
+     */
+    public boolean setAutoSync(User loggedInUser, String channelLabel, Boolean autoSync) {
+        Channel channel = lookupChannelByLabel(loggedInUser, channelLabel);
+
+        // we also need to check for sat_admin so that users can change the flag for vendor channels
+        if (!UserManager.verifyChannelAdmin(loggedInUser, channel) &&
+                !loggedInUser.hasRole(RoleFactory.SAT_ADMIN)) {
+            throw new PermissionCheckFailureException();
+        }
+
+        channel.setAutoSync(autoSync);
+        ChannelFactory.save(channel);
+        return autoSync;
     }
 
     private ContentSource lookupContentSourceById(Long repoId, Org org) {

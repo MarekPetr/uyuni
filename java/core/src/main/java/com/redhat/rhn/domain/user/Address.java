@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 SUSE LLC
  * Copyright (c) 2009--2010 Red Hat, Inc.
  *
  * This software is licensed to you under the GNU General Public License,
@@ -19,16 +20,10 @@ import java.io.Serializable;
 import java.util.Date;
 
 /**
- * Class Address that reflects the DB representation of WEB_USER_SITE_INFO
- * and ancillary tables.
+ * Class Address that reflects the DB representation of WEB_USER_SITE_INFO.
  * DB table: WEB_USER_SITE_INFO
  */
 public interface Address extends Serializable {
-
-    /**
-    * Public string representing the marketing type of address
-    */
-    String TYPE_MARKETING = "M";
 
     /**
      * Getter for id
@@ -134,22 +129,15 @@ public interface Address extends Serializable {
 
     /**
      * Getter for isPoBox
-     * @return isPoBox
+     * @return true if this is a PO Box address
      */
-    String getIsPoBox();
+    boolean isPoBox();
 
     /**
      * Setter for isPoBox
-     * @param isPoBoxIn New value for isPoBox
+     * @param isPoBoxIn true if this is a PO Box address
      */
-    void setIsPoBox(String isPoBoxIn);
-
-    /**
-     * Getter for type
-     * @return Type
-     */
-    String getType();
-
+    void setIsPoBox(boolean isPoBoxIn);
 
     /**
      * Getter for created
@@ -174,5 +162,17 @@ public interface Address extends Serializable {
      * @param modifiedIn New value for modified
      */
     void setModified(Date modifiedIn);
+
+    /**
+     * Gets the user associated with this address
+     * @return user associated with this address
+     */
+    User getUser();
+
+    /**
+     * Sets the user associated with this address
+     * @param user New value for user
+     */
+    void setUser(User user);
 
 }

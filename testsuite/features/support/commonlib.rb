@@ -1,4 +1,4 @@
-# Copyright (c) 2013-2025 SUSE LLC.
+# Copyright (c) 2013-2026 SUSE LLC.
 # Licensed under the terms of the MIT license.
 
 require 'tempfile'
@@ -6,8 +6,25 @@ require 'yaml'
 require 'nokogiri'
 require 'timeout'
 require 'rubygems'
+require_relative 'kubernetes'
 require_relative 'constants'
 require_relative 'api_test'
+
+# Switch the active Capybara session and app_host to a different server for the
+# duration of the block. Each server gets its own isolated browser session
+# (separate cookies, history), so two servers can be logged into simultaneously.
+#
+# Usage:
+#   using_server('server2') do
+#     visit('/rhn/YourRhn.do')
+#   end
+#   # default session (server) is automatically restored after the block
+def using_server(host)
+  Capybara.using_session(host) do
+    Capybara.app_host = "https://#{get_target(host).full_hostname}"
+    yield
+  end
+end
 
 # Returns the current URL of the driver.
 #
@@ -27,38 +44,39 @@ def count_table_items
   items_label.split('of ')[1].strip
 end
 
-# Determines the product type (Uyuni or SUSE Manager) based on installed patterns, raises error if undetermined.
+# Tells whether the run happens before the server has been deployed.
 #
-# @return [String] The product name.
-def product
-  return $product unless $product.nil?
-
-  _product_raw, code = get_target('server').run('rpm -q patterns-uyuni_server', check_errors: false)
-  if code.zero?
-    $product = 'Uyuni'
-    return 'Uyuni'
-  end
-  _product_raw, code = get_target('server').run('rpm -q patterns-suma_server', check_errors: false)
-  if code.zero?
-    $product = 'SUSE Manager'
-    return 'SUSE Manager'
-  end
-  raise NotImplementedError, 'Could not determine product'
+# @return [Boolean] True if the UYUNI_NOT_INSTALLED environment variable is set to 'true'.
+def uyuni_not_installed?
+  ENV['UYUNI_NOT_INSTALLED'] == 'true'
 end
 
-# Returns the version of the product
+# Determines the product type (Uyuni or SUSE Manager) based on installed patterns, raises error if undetermined.
 #
-# @return [String] The version number of the product being tested.
-def product_version
-  product_raw, code = get_target('server').run('rpm -q patterns-uyuni_server', check_errors: false)
-  m = product_raw.match(/patterns-uyuni_server-(.*)-.*/)
-  return m[1] if code.zero? && !m.nil?
+# @return [String, nil] The product name, or nil when UYUNI_NOT_INSTALLED is set.
+def product
+  return $product unless $product.nil?
+  return if uyuni_not_installed?
 
-  product_raw, code = get_target('server').run('rpm -q patterns-suma_server', check_errors: false)
-  m = product_raw.match(/patterns-suma_server-(.*)-.*/)
-  return m[1] if code.zero? && !m.nil?
+  patterns = { 'patterns-uyuni_server' => 'Uyuni', 'patterns-suma_server' => 'SUSE Manager' }
+  server = get_target('server')
 
-  raise NotImplementedError, 'Could not determine product version'
+  # If running RKE2, first check inside the pod
+  if running_rke2?
+    pod = get_pod_name('server', 'server')
+    patterns.each do |pattern, name|
+      _out, code = server.run_local("kubectl exec -n uyuni #{pod} -- rpm -q #{pattern}", check_errors: false)
+      return $product = name if code.zero?
+    end
+  end
+
+  # Check on the host or using traditional containerization (mgrctl)
+  patterns.each do |pattern, name|
+    _out, code = server.run("rpm -q #{pattern}", check_errors: false)
+    return $product = name if code.zero?
+  end
+
+  raise NotImplementedError, 'Could not determine product'
 end
 
 # Retrieves the full product version using the 'venv-salt-call' command.
@@ -67,11 +85,11 @@ end
 #   the output is not empty, otherwise nil.
 def product_version_full
   cmd = 'venv-salt-call --local grains.get product_version | tail -n 1'
-  out, code = get_target('server').run(cmd)
+  out, code = get_target('server').run(cmd, runs_in_container: false)
   out.strip if code.zero? && !out.nil?
 end
 
-# WARN: It's working for /24 mask, but couldn't not work properly with others
+# WARN: It's working for /24 mask, but couldn't work properly with others
 # Returns the reverse DNS lookup address for a given network address.
 #
 # @param net [String] The network address in the format "x.x.x.x".
@@ -100,9 +118,9 @@ def repeat_until_timeout(timeout: DEFAULT_TIMEOUT, retries: nil, message: nil, r
       # At the time of writing some of the problems described have been addressed.
       # However, at least https://bugs.ruby-lang.org/issues/15886 remains reproducible and code below
       # works around it by adding an additional check between loops
-      start = Time.new
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
       attempts = 0
-      while (Time.new - start <= timeout) && (retries.nil? || attempts < retries)
+      while Process.clock_gettime(Process::CLOCK_MONOTONIC) <= deadline && (retries.nil? || attempts < retries)
         last_result = yield
         attempts += 1
       end
@@ -121,35 +139,33 @@ def repeat_until_timeout(timeout: DEFAULT_TIMEOUT, retries: nil, message: nil, r
 end
 
 #
-# Checks if the specified text is visible on the page and catches a request timeout popup if it appears.
+# Checks if the specified text is visible on the page.
 #
 # @param text1 [String] The first text to check for visibility.
 # @param text2 [String, nil] The second text to check for visibility (optional).
+# @param stopper [String, nil] Text that aborts the wait and makes the check fail if it shows up first (optional).
 # @param timeout [Integer] The maximum time to wait for the text to become visible (default: Capybara.default_max_wait_time).
-# @return [Boolean] Returns true if the text is visible or the request timeout popup is caught, false otherwise.
-def check_text_and_catch_request_timeout_popup?(text1, text2: nil, timeout: Capybara.default_max_wait_time)
-  return has_text?(text1, wait: timeout) || (!text2.nil? && has_text?(text2, wait: timeout)) unless $catch_timeout_message
+# @return [Boolean] Returns true if the text is visible, false otherwise.
+def check_text?(text1, text2: nil, stopper: nil, timeout: Capybara.default_max_wait_time)
+  # Rely on Capybara's (Playwright-backed) native auto-waiting instead of a hand-rolled
+  # polling loop: has_text? already polls the page until the text appears or `wait` elapses.
+  # When two candidates are given, OR them into a single Regexp so the whole `timeout` budget
+  # is shared across both instead of being spent sequentially on each one (the old loop waited
+  # 1s on text1 before ever looking at text2). Capybara.default_normalize_ws collapses
+  # whitespace for us. Regexp.union escapes both strings, so regex metacharacters stay literal.
+  wanted = text2.nil? ? text1 : Regexp.union(text1, text2)
+  return has_text?(wanted, wait: timeout) if stopper.nil?
 
-  start_time = Time.now
-  repeat_until_timeout(message: "'#{text1}' still not visible", timeout: DEFAULT_TIMEOUT) do
-    while Time.now - start_time <= timeout
-      begin
-        return true if has_text?(text1, wait: 4)
-        return true if !text2.nil? && has_text?(text2, wait: 4)
-      rescue Selenium::WebDriver::Error::UnknownError, Selenium::WebDriver::Error::StaleElementReferenceError => e
-        warn "Selenium::WebDriver::Error caught: #{e.message}"
-        next
-      end
-      next unless has_text?('Request has timed out', wait: 0)
+  # A stopper is the opposite of text2: it must NOT appear. Race it against the wanted text in a
+  # single Regexp so the timeout stays a shared budget and we give up as soon as the stopper shows
+  # up, instead of burning the whole timeout waiting for a text that will never come.
+  return false unless has_text?(Regexp.union(wanted, stopper), wait: timeout)
 
-      log 'Request timeout found, performing reload'
-      click_button('reload the page')
-      start_time = Time.now
-      raise "Request timeout message still present after #{Capybara.default_max_wait_time} seconds." unless has_no_text?('Request has timed out')
-
-    end
-    return false
-  end
+  # Both may be on the page by now; the wanted text wins, as in the pre-Playwright loop.
+  has_text?(wanted, wait: 0)
+rescue Capybara::ElementNotFound, NoMethodError
+  # Page was mid-navigation / driver transiently unusable: treat as "not found".
+  false
 end
 
 # Formats the detail message with optional last result and report result.
@@ -166,12 +182,34 @@ end
 
 # This Ruby function refreshes the current page and handles any modal not found errors.
 def refresh_page
+  # A bare reload usually fires no JS prompt, so bound the wait: the Playwright driver passes
+  # this straight to the modal future and value!(nil) would otherwise block forever.
+  accept_prompt(wait: Capybara.default_max_wait_time) do
+    execute_script 'window.location.reload()'
+  end
+rescue Capybara::ModalNotFound
+  # no beforeunload dialog appeared - page reloaded normally
+end
+
+#
+# Waits for any page transition triggered by a preceding click to complete.
+# Handles both Senna SPA transitions (.senna-loading) and hard navigations.
+#
+def wait_for_page_transition
+  # Grace period: both the Senna loading class and a hard navigation are set up
+  # asynchronously after the click (e.g. React fires an API call before bouncing
+  # window.location). Without this, both checks below pass vacuously against the
+  # old, already-loaded page.
+  sleep 0.3
   begin
-    accept_prompt do
-      execute_script 'window.location.reload()'
-    end
-  rescue Capybara::ModalNotFound
-    # ignored
+    warn 'Timeout: Waiting AJAX transition' unless has_no_css?('.senna-loading', wait: 20)
+  rescue StandardError => e
+    $stdout.puts e.message # context may be destroyed mid-check by a hard navigation
+  end
+  begin
+    page.driver.with_playwright_page { |pw_page| pw_page.wait_for_load_state(state: 'load', timeout: 30_000) }
+  rescue Playwright::Error
+    # No navigation occurred, or the page is already loaded -- acceptable
   end
 end
 
@@ -181,26 +219,33 @@ end
 # @param locator [String] (optional) The locator for the button element.
 # @param options [Hash] (optional) Additional options for the click_button method.
 def click_button_and_wait(locator = nil, **options)
-  click_button(locator, **options)
   begin
-    warn 'Timeout: Waiting AJAX transition (click link)' unless has_no_css?('.senna-loading', wait: 20)
-  rescue StandardError => e
-    $stdout.puts e.message # Skip errors related to .senna-loading element
+    click_button(locator, **options)
+  rescue Playwright::Error => e
+    raise unless e.message.include?('Timeout') && locator
+
+    warn "click_button_and_wait: Playwright action timeout for '#{locator}' -- waiting for page load to complete"
+    page.driver.with_playwright_page { |pw_page| pw_page.wait_for_load_state(state: 'load', timeout: 60_000) }
   end
+  wait_for_page_transition
 end
 
 #
 # Clicks on a link and waits for any AJAX transition to complete.
 #
 # @param locator [String, nil] The locator for the link to click.
+# @param force [Boolean] When true, uses Playwright force-click (bypasses overlay/actionability
+#   checks). Useful for <a> elements styled as buttons where the standard click is intercepted.
 # @param options [Hash] Additional options for the click action.
-def click_link_and_wait(locator = nil, **options)
-  click_link(locator, **options)
-  begin
-    warn 'Timeout: Waiting AJAX transition (click link)' unless has_no_css?('.senna-loading', wait: 20)
-  rescue StandardError => e
-    $stdout.puts e.message # Skip errors related to .senna-loading element
+def click_link_and_wait(locator = nil, force: false, **options)
+  if force && locator
+    page.driver.with_playwright_page do |pw_page|
+      pw_page.get_by_role('link', name: locator, exact: false).first.click(force: true)
+    end
+  else
+    click_link(locator, **options)
   end
+  wait_for_page_transition
 end
 
 #
@@ -217,14 +262,19 @@ def click_link_or_button_and_wait(locator = nil, **options)
   end
 end
 
-# Capybara Node Element extension to override click method, clicking and then waiting for ajax transition
+# Capybara Node Element extension to override click method,
+# clicking and then waiting for the Senna SPA transition to complete
 module CapybaraNodeElementExtension
   def click
     super
+    # Senna adds .senna-loading asynchronously after the click.
+    # Wait a short moment for it to appear (it may legitimately never
+    # appear for non-navigating clicks), then wait for it to be gone.
+    has_css?('.senna-loading', wait: 1)
     begin
       warn 'Timeout: Waiting AJAX transition (click link)' unless has_no_css?('.senna-loading', wait: 20)
     rescue StandardError => e
-      $stdout.puts e.message # Skip errors related to .senna-loading element
+      $stdout.puts e.message
     end
   end
 end
@@ -349,10 +399,183 @@ def generate_repository_name(repo_url)
   repo_name.sub!(%r{http://(download.suse.de|download.opensuse.org|minima-mirror-ci-bv.mgr.*|.*compute.internal)/ibs/Devel:/Galaxy:/Manager:/}, '')
   repo_name.sub!(%r{http://(download.suse.de|download.opensuse.org|minima-mirror-ci-bv.mgr.*|.*compute.internal)/SUSE:/Maintenance:/}, '')
   repo_name.sub!(%r{http://(download.suse.de|download.opensuse.org|minima-mirror-ci-bv.mgr.*|.*compute.internal)/ibs/SUSE:/SLE-15:/Update:/Products:/MultiLinuxManagerTools/images/repo/}, '')
+  repo_name.sub!(%r{http://(download.suse.de|download.opensuse.org|minima-mirror-ci-bv.mgr.*|.*compute.internal)/ibs/SUSE:/SLFO:/Products:/MultiLinuxManagerTools:/PullRequest:/}, 'PR')
+  repo_name.sub!(%r{http://(download.suse.de|download.opensuse.org|minima-mirror-ci-bv.mgr.*|.*compute.internal)/ibs/SUSE:/SLFO:/Products:/MultiLinuxManagerTools:/}, '')
   repo_name.sub!(%r{http://(download.suse.de|download.opensuse.org|minima-mirror-ci-bv.mgr.*|.*compute.internal)/ibs/SUSE:/}, '')
   repo_name.gsub!('/', '_')
   repo_name.gsub!(':', '_')
   repo_name[0...64] # HACK: Due to the 64 characters size limit of a repository label
+end
+
+# Get the channel a spacewalk-repo-sync process is synchronizing
+#
+# @param process [String] A line of the output of "ps axo pid,cmd"
+# @return [String, nil] The label of the channel, or nil if the line synchronizes no channel
+def reposync_channel(process)
+  process[/\s(?:--channel|-c)[ =](\S+)/, 1]
+end
+
+# Kill spacewalk-repo-sync execution for a given channel
+#
+# @param channel [String] The channel label of the channel to kill reposync execution
+def kill_reposync_for_channel(channel)
+  time_spent = 0
+  checking_rate = 5
+  node = get_target('server')
+  killed_pid = nil
+  repeat_until_timeout(timeout: 60, message: 'Some reposync processes were not killed properly', dont_raise: true) do
+    command_output, _code = node.run('ps axo pid,cmd | grep spacewalk-repo-sync | grep -v grep', verbose: true, check_errors: false)
+    processes = command_output.split("\n").reject { |line| line.strip.empty? }
+    process = processes.find { |line| reposync_channel(line) == channel }
+    if process.nil?
+      other_channels = processes.map { |line| reposync_channel(line) }.compact
+      log "Warning: Repo-sync processes running for the channels #{other_channels.join(', ')}." unless other_channels.empty?
+      log "#{time_spent / 60} minutes waiting for '#{channel}' channel to start its repo-sync processes." if ((time_spent += checking_rate) % 60).zero?
+      sleep checking_rate
+      next
+    end
+
+    killed_pid = process.split[0]
+    node.run("kill #{killed_pid}", verbose: true, check_errors: false)
+    break
+  end
+  return if killed_pid.nil?
+
+  # The wait is done outside of the loop above on purpose: that loop swallows any error,
+  # while a zypp lock that is never released has to fail the scenario
+  wait_for_reposync_termination(node, killed_pid)
+  log "Reposync of channel #{channel} killed"
+end
+
+# Wait until a killed spacewalk-repo-sync and the zypper it spawned are really gone
+#
+# Killing spacewalk-repo-sync only signals the Python process: the zypper it spawned to
+# refresh the metadata keeps running for some moments and keeps the zypp lock. A new
+# spacewalk-repo-sync started while that lock is held dies immediately with
+# "RepoMDError: Cannot access repository", which leaves the channel empty.
+#
+# @param node [RemoteNode] The server node
+# @param pid [String] The PID of the spacewalk-repo-sync process that was killed
+def wait_for_reposync_termination(node, pid)
+  repeat_until_timeout(timeout: 120, message: "The spacewalk-repo-sync process #{pid} is still running after being killed") do
+    _output, code = node.run("kill -0 #{pid}", check_errors: false)
+    break if code.nonzero?
+
+    sleep 2
+  end
+  wait_for_zypp_lock_release(node)
+end
+
+# Wait until no zypper is running on a node and the zypp lock is free
+#
+# The zypper spawned by a reposync can still be starting up when we look, so the node has
+# to come back idle several times in a row before we conclude the lock is free.
+#
+# @param node [RemoteNode] The node to check
+def wait_for_zypp_lock_release(node)
+  settled_checks = 0
+  repeat_until_timeout(timeout: 300, message: 'The zypp lock is still held, a new reposync would fail immediately') do
+    settled_checks = zypp_locked?(node) ? 0 : settled_checks + 1
+    break if settled_checks >= 3
+
+    sleep 2
+  end
+end
+
+# Check whether zypper is running on a node, or the zypp lock is held by a process still alive
+#
+# The reposync uses its own zypper root, so its lock file is not the system one.
+#
+# @param node [RemoteNode] The node to check
+# @return [Boolean] Whether the zypp lock is taken
+def zypp_locked?(node)
+  _output, code = node.run('pgrep -x zypper > /dev/null', check_errors: false)
+  return true if code.zero?
+
+  ZYPP_LOCK_FILES.any? { |lock_file| zypp_lock_file_held?(node, lock_file) }
+end
+
+# Check whether a zypp lock file holds the PID of a process that is still alive
+#
+# A lock file left behind holds a PID that is already gone, and its first line is not
+# necessarily a PID at all, so its content is validated before being used. Zero is rejected
+# along with the rest: "kill -0 0" signals our own process group and would always succeed.
+#
+# @param node [RemoteNode] The node to check
+# @param lock_file [String] The path of the zypp lock file
+# @return [Boolean] Whether the lock file is held
+def zypp_lock_file_held?(node, lock_file)
+  content, code = node.run("head -n 1 #{lock_file}", check_errors: false)
+  pid = content.to_s.strip
+  return false unless code.zero? && pid.match?(/\A[1-9]\d*\z/)
+
+  _output, alive = node.run("kill -0 #{pid}", check_errors: false)
+  alive.zero?
+end
+
+# Check whether a failed synchronization was blocked by the zypp lock
+#
+# The lock is the reason to retry, so the lock state is what decides. The output is only
+# looked at as well to cover the window where the lock is released between the failure and
+# the check.
+#
+# @param node [RemoteNode] The node the synchronization ran on
+# @param output [String] The output of the failed synchronization
+# @return [Boolean] Whether the synchronization is worth retrying
+def blocked_by_zypp_lock?(node, output)
+  zypp_locked?(node) || ZYPP_LOCK_FAILURE_MARKERS.any? { |marker| output.to_s.include?(marker) }
+end
+
+# Synchronize a channel with spacewalk-repo-sync, restricted to a list of packages
+#
+# A synchronization blocked by the zypp lock fails in no time, so it is worth retrying.
+# Any other failure is raised: a channel that stays empty makes every scenario using its
+# packages fail much later, with a symptom that says nothing about the synchronization.
+#
+# @param channel [String] The label of the channel to synchronize
+# @param packages [Array<String>] The packages to include in the synchronization
+# @return [String] The output of the synchronization
+def sync_channel_including_packages(channel, packages)
+  raise ScriptError, "No package to include in the synchronization of channel #{channel}" if packages.nil? || packages.empty?
+
+  node = get_target('server')
+  append_includes = packages.map { |pkg| "--include #{pkg}" }.join(' ')
+  output = nil
+  3.times do |attempt|
+    output, code = node.run("spacewalk-repo-sync -c #{channel} #{append_includes}", check_errors: false, verbose: true)
+    return output if code.zero?
+
+    raise ScriptError, "Synchronization of channel #{channel} failed:\n#{output}" unless blocked_by_zypp_lock?(node, output)
+
+    log "Attempt #{attempt + 1} to synchronize #{channel} found the zypp lock held, waiting for it to be released"
+    wait_for_zypp_lock_release(node)
+  end
+  raise ScriptError, "Synchronization of channel #{channel} lost the race for the zypp lock on every attempt:\n#{output}"
+end
+
+# Update the URL for a given repository
+#
+# @param repo [String] The name of the repository to update
+# @param url [String] The new URL to set for this repository
+def update_repository_url(repo, url)
+  get_target('server').run("spacecmd -u admin -p admin repo_updateurl \"#{repo}\" #{url}", check_errors: false)
+end
+
+# Check whether a bypass of the repository URL is needed for the given channel
+# in case of running tests for uyuni-main
+#
+# @param channel_label [String] The label of the channel to check
+# @return [Boolean, nil] Return true if repo has been updated
+def bypass_channel_repo_if_needed(channel_label)
+  return unless UYUNI_MAIN_REPO_URL_BYPASS.key?(channel_label)
+  return unless product_version_full == 'uyuni-main'
+
+  log "The repo URL for channel #{channel_label} must be bypassed for Uyuni:Main"
+  repo, _code = get_target('server').run("spacecmd -q -u admin -p admin softwarechannel_listrepos #{channel_label}", check_errors: true)
+  bypass_url = UYUNI_MAIN_REPO_URL_BYPASS[channel_label]
+  update_repository_url(repo.strip, bypass_url)
+  log "Bypassed repo URL for channel #{channel_label} to #{bypass_url}"
+  true
 end
 
 #
@@ -377,7 +600,7 @@ def extract_logs_from_node(node, host)
     raise ScriptError, 'Download log archive failed' unless success
   rescue Errno::ECONNRESET
     $stdout.puts "⚠️ WARN: Skipping log extraction for node #{host} due to connection reset."
-  rescue RuntimeError => e
+  rescue RuntimeError, ScriptError => e
     $stdout.puts e.message
   end
 end
@@ -534,20 +757,20 @@ def get_system_name(host)
         word.match?(/example.Intel-Genuine-None-/) || word.match?(/example.pxeboot-/) || word.match?(/example.Intel/) || word.match?(/pxeboot-/)
       end
     system_name = 'pxeboot.example.org' if system_name.nil?
-  when 'sle15sp6_terminal'
+  when 'sles15sp6_terminal'
     output, _code = get_target('server').run('salt-key')
     system_name =
       output.split.find do |word|
-        word.match?(/example.sle15sp6terminal-/)
+        word.match?(/example.sles15sp6terminal-/)
       end
-    system_name = 'sle15sp6terminal.example.org' if system_name.nil?
-  when 'sle15sp7_terminal'
+    system_name = 'sles15sp6terminal.example.org' if system_name.nil?
+  when 'sles15sp7_terminal'
     output, _code = get_target('server').run('salt-key')
     system_name =
       output.split.find do |word|
-        word.match?(/example.sle15sp7terminal-/)
+        word.match?(/example.sles15sp7terminal-/)
       end
-    system_name = 'sle15sp7terminal.example.org' if system_name.nil?
+    system_name = 'sles15sp7terminal.example.org' if system_name.nil?
   else
     begin
       node = get_target(host)
@@ -614,14 +837,223 @@ def channel_timeout(channel)
   timeout
 end
 
-# This method checks if the channel with the given label has been fully synced
+# This method calculates the timeout needed for channels still waiting to solve dependencies
 #
+# @param channels [Array<String>] List of channel names that still need solving
+# @return [Integer] Total timeout in seconds for these channels
+def calculate_remaining_channels_timeout(channels)
+  channels.reduce(0) { |acc, elem| acc + channel_timeout(elem) }
+end
+
 # @param channel_label [String] the label of the channel to check
 # @return [Boolean] true if the synchronization is completed, false otherwise
 def channel_sync_completed?(channel_label)
   channel_details = $api_test.channel.software.get_details(channel_label)
   # 'C' for new created, 'S' for syncing and 'R' for ready
   channel_details['sync_status'] == 'R'
+end
+
+# Verifies that a list of channels has downloaded all delivered packages,
+# blocking until completion or until the global timeout budget is exhausted.
+#
+# This method handles the lifecycle of channel synchronization by:
+# 1 Initializing shared context variables (idempotent).
+# 2 Calculating a cumulative timeout: Sum of (channel_timeouts) + 900s flat margin.
+# 3 Polling the system until packages are downloaded or the timeout expires.
+# 4 Updating a global 'channels_timeout' budget used by the step solving packages dependencies for each channel
+#
+# @param channels [String, Array<String>] A single channel name or an array of channel names.
+# @param label [String] A descriptive name (e.g., parent channel name) for logging.
+# @param margin [Integer] The time buffer in seconds to add to the timeout (e.g., 900 for a standard, 0 for custom/PTF).
+#
+# @return [void]
+def wait_for_channels(channels, label, margin: 900)
+  channels = Array(channels).clone
+  # --- Context Initialization ---
+  add_context('channels_timeout', 0) if get_context('channels_timeout').nil?
+  add_context('channels_to_wait_solv_file', []) if get_context('channels_to_wait_solv_file').nil?
+  add_context('channels_failed_downloading', []) if get_context('channels_failed_downloading').nil?
+
+  # Register these channels for the later step solving packages dependencies for each channel
+  add_context('channels_to_wait_solv_file', get_context('channels_to_wait_solv_file') + channels)
+  # --- Timeout Calculation ---
+  total_channel_timeouts = channels.reduce(0) { |acc, elem| acc + channel_timeout(elem) }
+  timeout = total_channel_timeouts + margin
+  time_spent = 0
+  checking_rate = 10
+
+  # --- Execution Loop ---
+  begin
+    repeat_until_timeout(timeout: timeout, message: "Sync failed for #{label}") do
+      # Remove channels from the local tracking list as they complete
+      channels.reject! { |c| channel_packages_are_downloaded?(c) }
+      break if channels.empty?
+
+      if ((time_spent += checking_rate) % 60).zero?
+        log "#{time_spent / 60}m / #{timeout / 60}m waiting for #{label} synchronization"
+      end
+      sleep checking_rate
+    end
+  rescue StandardError => e
+    log "Failed channels for #{label}: #{channels}. #{e.message}"
+    # Cleanup: Remove failed channels from the solving queue
+    add_context('channels_to_wait_solv_file', get_context('channels_to_wait_solv_file') - channels)
+    add_context('channels_failed_downloading', get_context('channels_failed_downloading') + channels)
+    # Credit the remaining time budget to the global channels timeout
+    add_context('channels_timeout', get_context('channels_timeout') + (timeout - time_spent))
+    raise unless $build_validation
+  else
+    # Success: Add the "saved" time from this run to the global channels timeout
+    add_context('channels_timeout', get_context('channels_timeout') + (timeout - time_spent))
+  end
+end
+
+# This method checks if the channel with the given label has been fully synced
+#
+# @param channel_name [String] the label of the channel to check
+# @return [Boolean] true if the synchronization is completed, false otherwise
+def channel_packages_are_downloaded?(channel_name)
+  if channel_name.include?('custom_channel')
+    client = channel_name.delete_prefix('custom_channel_')
+    if client == 'monitoring_server'
+      # Monitoring server doesn't have an entry in the custom repository JSON file.
+      # Its custom channel uses MU repositories from minions sharing the same base channel.
+      # Skip the sync wait only when none of those minions have custom repos configured.
+      monitoring_base_channel = BASE_CHANNEL_BY_CLIENT[product][client]
+      matching_minions = BASE_CHANNEL_BY_CLIENT[product].select { |k, v| k.end_with?('_minion') && v == monitoring_base_channel }.keys
+      return true if matching_minions.none? { |c| $custom_repositories[c] }
+    elsif $custom_repositories[client].nil?
+      return true
+    end
+  end
+  log_tmp_file = '/tmp/reposync.log'
+  # Copy reposync logs to /tmp/ to prevent race condition and error when calling .extract()
+  # if the reposync log file is being updated during the underlying "mgrctl cp" call:
+  #
+  # https://github.com/uyuni-project/uyuni-tools/issues/772
+  #
+  # INF Starting mgrctl cp server:/var/log/rhn/reposync.log /tmp/reposync.log
+  # INF Error: 1 error occurred:
+  #  * copying from container: copier: get: "/var/log/rhn/reposync.log": copying /var/log/rhn/reposync.log: archive/tar: write too long
+  # (ScriptError)
+  #
+  get_target('server').run('cp /var/log/rhn/reposync.log /tmp/testsuite_reposync_check.log')
+  get_target('server').extract('/tmp/testsuite_reposync_check.log', log_tmp_file)
+  unless File.exist?(log_tmp_file) && !File.empty?(log_tmp_file)
+    log "DEBUG: Log file #{log_tmp_file} is missing or empty."
+    return false
+  end
+  log_content = File.readlines(log_tmp_file)
+  target_index = log_content.rindex { |line| line.include?("Channel: #{channel_name}") }
+  if target_index.nil?
+    log "DEBUG: Channel '#{channel_name}' not found in reposync.log"
+    return false
+  end
+  log "DEBUG: Found channel '#{channel_name}' at line #{target_index + 1}. Checking for completion..."
+  (target_index...log_content.length).each do |i|
+    line = log_content[i]
+    if line.include?('Channel: ') && !line.include?(channel_name)
+      log "DEBUG: Found a different channel header before completion for #{channel_name} at line #{i + 1}."
+      break
+    end
+
+    # spacewalk-repo-sync logs the completion message whatever the outcome of the
+    # synchronization, so an error here still counts as completed
+    log "WARN: Error while synchronizing #{channel_name} at line #{i + 1}: #{line.strip}" if line.include?('ERROR') || line.include?('RepoMDError')
+
+    next unless line.include?('Sync of channel completed.')
+
+    log "DEBUG: Found 'Sync of channel completed.' for #{channel_name} at line #{i + 1}."
+    log "SUCCESS: #{channel_name} is fully synchronized."
+    return true
+  end
+  log "DEBUG: Sync for #{channel_name} still in progress (no completion message found)."
+  false
+end
+
+# Return the child channels an activation key should carry for the given client,
+# excluding the proxy/server channels that don't belong to the client's role.
+def child_channels_for_activation_key(client, base_channel_label)
+  child_channels = $api_test.channel.software.list_child_channels(base_channel_label)
+
+  role = ACTIVATION_KEY_ROLE_BY_CLIENT.fetch(client, :minion)
+  excluded_tokens =
+    ACTIVATION_KEY_EXCLUDED_CATEGORIES_BY_ROLE[role]
+    .flat_map { |category| ACTIVATION_KEY_CHANNEL_CATEGORIES[category] }
+  child_channels.reject! { |channel| excluded_tokens.any? { |token| channel.include?(token) } }
+
+  # A non-transactional proxy/server (5.1 and 5.2) shares the SLES15 SP7 HostOS, so the
+  # other MLM version's channels show up too - drop them.
+  if client.include?('nontransactional')
+    version = product_version_full
+    version_to_exclude =
+      if version&.include?('5.1')
+        '5.2'
+      elsif version&.include?('5.2') || version&.include?('head')
+        '5.1'
+      end
+    child_channels.reject! { |channel| channel.include?(version_to_exclude) } if version_to_exclude
+  end
+
+  child_channels
+end
+
+# Determines whether a channel is synchronized on the server.
+#
+# @param channel [String] The name of the channel to check.
+# @return [Boolean] Returns true if the channel is synchronized, false otherwise.
+def channel_is_synced?(channel)
+  sync_status = false
+  repo_path = "/var/cache/rhn/repodata/#{channel}"
+  server = get_target('server')
+  # Using a temporary dump file to avoid timeout with huge dumpsolv output
+  tmp_file = "/tmp/#{channel}_solv_dump"
+
+  _, new_file_check_code = server.run("test -f #{repo_path}/solv.new", check_errors: false)
+  if new_file_check_code.zero?
+    log "INFO: Found #{repo_path}/solv.new - metadata regeneration still in progress."
+    return false
+  end
+  deb_code = nil
+
+  # Try RPM-based solv check
+  _, rpm_code = server.run("dumpsolv #{repo_path}/solv > #{tmp_file}", verbose: false, check_errors: false)
+  # Try Debian-based check
+  _, deb_code = server.run("test -s #{repo_path}/Release && test -e #{repo_path}/Packages", verbose: false, check_errors: false) unless rpm_code.zero?
+  if rpm_code.zero?
+    size_check, = server.run("grep 'repo size:' #{tmp_file}", verbose: false, check_errors: false)
+    if size_check.include?('repo size: 0')
+      if EMPTY_CHANNELS.include?(channel)
+        log "INFO: Channel #{channel} is verified empty as expected."
+      else
+        # Confirm package count in XML for channels not explicitly marked as empty
+        primary_result, = server.run("zcat #{repo_path}/*primary.xml.gz", verbose: false, check_errors: false)
+        log "WARN: #{channel} metadata exists but contains 0 packages." if primary_result.include?('packages="0")')
+      end
+    else
+      log "SUCCESS: Channel #{channel} initialized. No '.new' files and repo size > 0."
+    end
+    sync_status = true
+    server.run("rm #{tmp_file}", verbose: false, check_errors: false)
+  elsif deb_code&.zero?
+    log "SUCCESS: Debian-like channel #{channel} initialized (Release/Packages exist)."
+    sync_status = true
+  else
+    sync_status = false
+  end
+
+  # Log duration if synchronization is confirmed
+  if sync_status
+    begin
+      duration = channel_synchronization_duration(channel)
+      log "INFO: Channel #{channel} synchronization took #{duration} seconds."
+    rescue ScriptError => e
+      log "ERROR: Failed to retrieve sync duration for #{channel}: #{e.message}"
+      # We don't necessarily set sync_status to false here if the files actually exist
+    end
+  end
+
+  sync_status
 end
 
 # This function initializes the API client
@@ -700,7 +1132,7 @@ def pillar_get(key, minion)
   system_name = get_system_name(minion)
   if minion == 'sle_minion'
     cmd = 'salt'
-  elsif %w[ssh_minion rhlike_minion deblike_minion].include?(minion)
+  elsif %w[sshminion rhlike_minion deblike_minion].include?(minion)
     cmd = 'mgr-salt-ssh'
   else
     raise 'Invalid target'
@@ -724,6 +1156,13 @@ end
 # @param timeout [Integer] The maximum time to wait for the action to complete, in seconds. Defaults to `DEFAULT_TIMEOUT`.
 def wait_action_complete(actionid, timeout: DEFAULT_TIMEOUT)
   repeat_until_timeout(timeout: timeout, message: 'Action was not found among completed actions') do
+    failed = $api_test.schedule.list_failed_actions
+    if failed.any? { |a| a['id'] == actionid }
+      failed_systems = $api_test.schedule.list_failed_systems(actionid)
+      details = failed_systems.map { |s| "#{s['server_name']}: #{s['message']}" }.join('; ')
+      raise "Action #{actionid} failed: #{details}"
+    end
+
     list = $api_test.schedule.list_completed_actions
     break if list.any? { |a| a['id'] == actionid }
 
@@ -761,21 +1200,42 @@ def api_unlock
   end
 end
 
-# Function to get the highest event ID (latest event)
+# Function to get the most recent events for a system
 #
-# @param host String The hostname of the system from requested
-def get_last_event(host)
+# @param host [String] The hostname of the requested system
+# @param count [Integer] The number of recent events to return (default: 1)
+# @return [Array<Hash>] The most recent events, newest first
+def get_last_events(host, count = 1)
   node = get_target(host)
   system_id = get_system_id(node)
-  $api_test.system.get_event_history(system_id, 0, 1)[0]
+  $api_test.system.get_event_history(system_id, 0, count)
 end
 
 # Function to trigger the upgrade command
 #
-# @param hostname String The hostname of the system from requested
+# @param hostname String The hostname of the requested system
 # @param package String The package name where it will trigger an upgrade
 def trigger_upgrade(hostname, package)
+  get_target('server').run('spacecmd -u admin -p admin clear_caches', check_errors: false)
   get_target('server').run("spacecmd -u admin -p admin system_upgradepackage #{hostname} #{package} -y", check_errors: true)
+end
+
+# Function to trigger the install command
+#
+# @param hostname String The hostname of the requested system
+# @param package String The package name to install
+def trigger_install(hostname, package)
+  get_target('server').run('spacecmd -u admin -p admin clear_caches', check_errors: false)
+  get_target('server').run("spacecmd -u admin -p admin system_installpackage #{hostname} #{package} -y", check_errors: true)
+end
+
+# Function to trigger the remove command
+#
+# @param hostname String The hostname of the requested system
+# @param package String The package name to remove
+def trigger_remove(hostname, package)
+  get_target('server').run('spacecmd -u admin -p admin clear_caches', check_errors: false)
+  get_target('server').run("spacecmd -u admin -p admin system_removepackage #{hostname} #{package} -y", check_errors: true)
 end
 
 # Function to select the latest package from a list based on version and release
@@ -805,4 +1265,26 @@ def latest_package(packages)
       [Gem::Version.new('0.0.0'), Gem::Version.new('0')]
     end
   end
+end
+
+# Retrieves the environment variable name for a given host, with fallback support
+#
+# This function checks if the primary environment variable (from ENV_VAR_BY_HOST)
+# is set. If not, it falls back to an alternative environment variable name.
+# Useful for scenarios where a host may be aliased or mapped to a different
+# environment variable when the primary one is unavailable.
+#
+# @param host_key [String] The key in ENV_VAR_BY_HOST (e.g., 'sle_minion')
+# @param fallback_var [String] The fallback environment variable name to use if the primary variable is not set (e.g., 'SLES15SP7_MINION')
+# @return [String] The environment variable name that is set, or the fallback if the primary is not set
+#
+# @example
+#   env_var = get_env_var_with_fallback('sle_minion', 'SLES15SP7_MINION')
+#   # Returns 'MINION' if ENV['MINION'] is set, otherwise 'SLES15SP7_MINION'
+#
+# @raise [KeyError] If host_key does not exist in ENV_VAR_BY_HOST
+#
+def get_env_var_with_fallback(host_key, fallback_var)
+  env_var_name = ENV_VAR_BY_HOST[host_key]
+  ENV.key?(env_var_name) ? env_var_name : fallback_var
 end

@@ -33,6 +33,7 @@ import com.redhat.rhn.domain.recurringactions.RecurringActionFactory;
 import com.redhat.rhn.domain.recurringactions.type.RecurringActionType;
 import com.redhat.rhn.domain.recurringactions.type.RecurringHighstate;
 import com.redhat.rhn.domain.recurringactions.type.RecurringPlaybook;
+import com.redhat.rhn.domain.recurringactions.type.RecurringScapPolicy;
 import com.redhat.rhn.domain.recurringactions.type.RecurringState;
 import com.redhat.rhn.domain.role.RoleFactory;
 import com.redhat.rhn.domain.server.MinionServer;
@@ -133,6 +134,8 @@ public class RecurringActionManager extends BaseManager {
                 return new RecurringState(false);
             case PLAYBOOK:
                 return new RecurringPlaybook(false);
+            case SCAPPOLICY:
+                return new RecurringScapPolicy(false);
             default:
                 throw new UnsupportedOperationException("type not supported");
         }
@@ -220,7 +223,7 @@ public class RecurringActionManager extends BaseManager {
      * @return list of group recurring actions
      */
     public static List<RecurringAction> listGroupRecurringActions(long groupId, User user) {
-        if (!user.isMemberOf(AccessGroupFactory.SYSTEM_GROUP_ADMIN)) {
+        if (!user.isMemberOf(AccessGroupFactory.getSystemGroupAdmin())) {
             throw new PermissionException(String.format("User does not have access to group id %d", groupId));
         }
         try {
@@ -262,7 +265,7 @@ public class RecurringActionManager extends BaseManager {
         DataResult<SimpleMinionJson> members;
         switch (type) {
             case GROUP:
-                if (!user.isMemberOf(AccessGroupFactory.SYSTEM_GROUP_ADMIN)) {
+                if (!user.isMemberOf(AccessGroupFactory.getSystemGroupAdmin())) {
                     throw new PermissionException(String.format("User does not have access to group id %d", id));
                 }
                 members = RecurringActionFactory.listGroupMembers(id, pc, parser);
@@ -340,7 +343,7 @@ public class RecurringActionManager extends BaseManager {
      */
     public static RecurringAction saveAndSchedule(RecurringAction action, User user) throws TaskomaticApiException {
         validateAction(action, user);
-        RecurringAction saved = (RecurringAction) HibernateFactory.getSession().merge(action);
+        RecurringAction saved = HibernateFactory.getSession().merge(action);
         taskomaticApi.scheduleRecurringAction(saved, user);
         saveStateConfig(saved);
         return saved;

@@ -1,4 +1,94 @@
 -------------------------------------------------------------------
+Wed Aug 05 16:54:25 CEST 2026 - antonio.garofalo@suse.com
+
+- version 5.3.1-0
+  * Propagate cert validation errors to UI (bsc#1271332)
+  * Fix cleanup timeout when deleting minions (bsc#1258567)
+  * Bump version to 5.3.0
+
+-------------------------------------------------------------------
+Fri Jul 03 15:43:34 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.14-0
+  * Fix SCAP remediation truncation at <sub> element (bsc#1270049)
+
+-------------------------------------------------------------------
+Fri Jun 26 14:40:36 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.13-0
+  * Prevent inventory refresh before ansible package
+    is installed (bsc#1244141)
+
+-------------------------------------------------------------------
+Wed Jun 17 14:17:06 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.12-0
+  * Install ansible and ansible-core depending on their availability
+  * Handle release package for SLE16 correctly depending on the
+    transactional flag
+  * Allow mgr_events to run on openSUSE Leap 16.0
+  * Add cpe for Raspbian
+
+-------------------------------------------------------------------
+Fri May 29 15:51:06 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.11-0
+  * Use db_ssl_enabled value consistently
+
+-------------------------------------------------------------------
+Fri May 22 08:36:05 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.10-0
+  * Ignore podman interfaces when resolving FQDNs (bsc#1262720)
+  * Fix gpg key import on first key deploy (bsc#1259482)
+  * Fix refresh of virtual instance information (bsc#1261723)
+  * Fix test to run on new openSUSE Leap 16.0 image
+  * Use either ansible-core or ansible packages
+    for Ansible Control node, prefer ansible-core (bsc#1259087)
+  * Fix CPU reporting for ppc64le clients (bsc#1259521)
+
+-------------------------------------------------------------------
+Mon Apr 27 13:02:47 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.9-0
+  * Include directory for scap-content in path (bsc#1262721)
+
+-------------------------------------------------------------------
+Wed Apr 22 09:07:49 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.8-0
+  * Fixed the baseurl of installation repos
+
+-------------------------------------------------------------------
+Thu Apr 16 14:25:56 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.7-0
+  * Added salt states to support migration from sles 15 to sles 16
+  * Salt states for centralized SCAP auditing and remediation
+  * Adjust the postgresql exporter to OpenMetrics spec
+  * Replace Tomcat and Taskomatic metrics systemd conf file with
+    shell files.
+  * Use primary FQDN to contact Build Host (bsc#1247004)
+  * Remove usage of module_run compatibility function from mgrcompat
+    in the default salt states as not needed anymore.
+
+-------------------------------------------------------------------
+Mon Mar 02 13:07:10 CET 2026 - michael.calmer@suse.com
+
+- version 5.2.6-0
+  * Fix bootstrap for SLM 6.2 and newer (bsc#1257992)
+  * Make mgr_events salt engine non-blocking on reading events
+  * Avoid losing the events on DB connection issues (bsc#1252098)
+  * Use more clear condition in bootstrap state
+    to avoid confusing log messages in salt-ssh trace
+
+-------------------------------------------------------------------
+Wed Feb 04 14:12:32 CET 2026 - michael.calmer@suse.com
+
+- version 5.2.5-0
+  * Add check for virt vm_info availability (bsc#1254316)
+
+-------------------------------------------------------------------
 Tue Jan 27 09:30:16 WET 2026 - psuarezhernandez@suse.com
 
 - version 5.2.4-0

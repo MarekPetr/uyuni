@@ -1,4 +1,42 @@
 -------------------------------------------------------------------
+Wed Aug 05 12:37:32 CEST 2026 - antonio.garofalo@suse.com
+
+- version 5.3.1
+  * Add a README file for artifacthub to display
+  * Bump version to 5.3.0
+  * Install python3 to provide /usr/bin/python3 required by the
+    container entry point scripts on BCI 16.0
+    (gh#uyuni-project/uyuni#12368, bsc#1273343)
+
+-------------------------------------------------------------------
+Wed Jun 17 15:02:03 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.8
+  * Image rebuilt to the newest version with updated dependencies
+    for SUSE Multi-Linux Manager 5.2.0
+
+-------------------------------------------------------------------
+Fri May 22 13:56:12 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.7
+  * Image rebuilt to the newest version with updated dependencies
+    for SUSE Multi-Linux Manager 5.2 RC
+
+-------------------------------------------------------------------
+Thu Apr 16 14:47:40 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.6
+  * Image rebuilt to the newest version with updated dependencies
+
+-------------------------------------------------------------------
+Mon Mar 02 13:41:51 CET 2026 - michael.calmer@suse.com
+
+- version 5.2.5
+  * Do not load the CA if it has already been mounted
+  * Use global proxy_fqdn value in configuration
+  * Move the expected CA to /etc/pki/anchors (bsc#1258709)
+
+-------------------------------------------------------------------
 Tue Jan 27 09:26:26 WET 2026 - psuarezhernandez@suse.com
 
 - version 5.2.4

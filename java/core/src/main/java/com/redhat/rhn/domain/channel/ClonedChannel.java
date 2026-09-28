@@ -17,23 +17,23 @@ package com.redhat.rhn.domain.channel;
 
 import com.redhat.rhn.domain.common.ChecksumType;
 
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
-
 import java.util.Optional;
 
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.Inheritance;
-import javax.persistence.InheritanceType;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.PrimaryKeyJoinColumn;
-import javax.persistence.Table;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrimaryKeyJoinColumn;
+import jakarta.persistence.Table;
 
 /**
  * ClonedChannel
+ *
+ * Suppressed warning about not overloaded "equals" which would cause problems with HibernateProxy objects.
  */
+@SuppressWarnings("java:S2160")
 @Entity
 @Table(name = "rhnChannelCloned")
 @Inheritance(strategy = InheritanceType.JOINED)
@@ -91,30 +91,5 @@ public class ClonedChannel extends Channel {
         }
         return super.getChecksumType();
 
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean equals(final Object other) {
-        if (other instanceof SelectableChannel castOther) {
-            return this.equals(castOther.getChannel());
-        }
-        if (!(other instanceof ClonedChannel castOther)) {
-            return false;
-        }
-        return new EqualsBuilder()
-                .appendSuper(super.equals(other))
-                .append(isCloned(), castOther.isCloned())
-                .isEquals();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int hashCode() {
-        return new HashCodeBuilder().appendSuper(super.hashCode()).append(isCloned()).toHashCode();
     }
 }

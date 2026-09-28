@@ -16,11 +16,13 @@
 package com.suse.oval.vulnerablepkgextractor;
 
 import com.suse.oval.OsFamily;
-import com.suse.oval.manager.OVALLookupHelper;
+import com.suse.oval.manager.OVALResourcesCache;
 import com.suse.oval.ovaltypes.DefinitionClassEnum;
 import com.suse.oval.ovaltypes.DefinitionType;
 import com.suse.oval.vulnerablepkgextractor.redhat.RedHatVulnerablePackageExtractorFromPatchDefinition;
 import com.suse.oval.vulnerablepkgextractor.redhat.RedHatVulnerablePackageExtractorFromVulnerabilityDefinition;
+
+import java.util.Optional;
 
 /**
  * A factory for {@link VulnerablePackagesExtractor}
@@ -34,33 +36,48 @@ public class VulnerablePackagesExtractors {
      *
      * @param definition the definition to extract vulnerable packages from
      * @param osFamily the os family
-     * @param ovalLookupHelper a helper class to lookup OVAL resources efficiently
+     * @param ovalResourcesCache a helper class to lookup OVAL resources efficiently
      * @return a vulnerable package extractor instance
      * */
-    public static VulnerablePackagesExtractor create(DefinitionType definition, OsFamily osFamily,
-                                                     OVALLookupHelper ovalLookupHelper) {
+    public static Optional<VulnerablePackagesExtractor> create(DefinitionType definition, OsFamily osFamily,
+                                                                 OVALResourcesCache ovalResourcesCache) {
         switch (osFamily) {
-            case LEAP:
-            case LEAP_MICRO:
-            case SUSE_LINUX_ENTERPRISE_SERVER:
-            case SUSE_LINUX_ENTERPRISE_DESKTOP:
-            case SUSE_LINUX_ENTERPRISE_MICRO:
-                return new SUSEVulnerablePackageExtractor(definition, ovalLookupHelper);
+            case LEAP,
+                 SUSE_LINUX_ENTERPRISE_SERVER, SUSE_LINUX_ENTERPRISE_DESKTOP, SUSE_LINUX_ENTERPRISE_MICRO,
+                 SUSE_LIBERTY_LINUX:
+                return Optional.of(new SUSEVulnerablePackageExtractor(definition, ovalResourcesCache));
             case DEBIAN:
-                return new DebianVulnerablePackagesExtractor(definition);
-            case REDHAT_ENTERPRISE_LINUX:
+                return Optional.of(new DebianVulnerablePackagesExtractor(definition));
+            case REDHAT_ENTERPRISE_LINUX, ALMA_LINUX, ORACLE_LINUX:
                 if (definition.getDefinitionClass() == DefinitionClassEnum.VULNERABILITY) {
-                    return new RedHatVulnerablePackageExtractorFromVulnerabilityDefinition(definition);
+                    return Optional.of(new RedHatVulnerablePackageExtractorFromVulnerabilityDefinition(definition));
                 }
                 else if (definition.getDefinitionClass() == DefinitionClassEnum.PATCH) {
-                    return new RedHatVulnerablePackageExtractorFromPatchDefinition(definition);
+                    if (definition.getCves().isEmpty()) {
+                        // If a patch definition has no CVEs (e.g. bugfix or enhancement errata),
+                        // it does not contain vulnerability mappings, so we cleanly return empty.
+                        return Optional.empty();
+                    }
+                    return Optional.of(new RedHatVulnerablePackageExtractorFromPatchDefinition(definition));
                 }
                 else {
                     throw new IllegalArgumentException(
                             "Only VULNERABILITY and PATCH definitions are allowed for RedHat OVALs");
                 }
             case UBUNTU:
-                return new UbuntuVulnerablePackageExtractor(definition);
+                if (definition.getDefinitionClass() == DefinitionClassEnum.VULNERABILITY) {
+                    return Optional.of(new UbuntuVulnerablePackageExtractor(definition));
+                }
+                else if (definition.getDefinitionClass() == DefinitionClassEnum.INVENTORY) {
+                    // Inventory is a valid definition class for Ubuntu OVALs,
+                    // but it doesn't contain any vulnerable package information,
+                    // so we return an empty Optional here.
+                    return Optional.empty();
+                }
+                else {
+                    throw new IllegalArgumentException(
+                            "Only VULNERABILITY and INVENTORY definitions are allowed for Ubuntu OVALs");
+                }
             default:
                 throw new IllegalArgumentException(
                         "Cannot find any vulnerable packages extractor implementation for " + osFamily);

@@ -1,5 +1,5 @@
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 <%@ taglib uri="http://rhn.redhat.com/tags/list" prefix="rl" %>
@@ -22,7 +22,7 @@
         <div class="spacewalk-section-toolbar">
             <div class="action-button-wrapper">
                 <rl:csv dataset="pageList" name="packageList" exportColumns="id, nvrea, provider"/>
-                <button type="submit" name="confirm" class="btn btn-default">
+                <button type="submit" name="confirm" class="btn btn-default" value="removepackages">
                     <bean:message key='channel.jsp.package.removebutton'/>
                 </button>
             </div>

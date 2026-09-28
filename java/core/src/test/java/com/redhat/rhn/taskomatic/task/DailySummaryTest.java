@@ -1,0 +1,73 @@
+/*
+ * Copyright (c) 2009--2014 Red Hat, Inc.
+ *
+ * This software is licensed to you under the GNU General Public License,
+ * version 2 (GPLv2). There is NO WARRANTY for this software, express or
+ * implied, including the implied warranties of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. You should have received a copy of GPLv2
+ * along with this software; if not, see
+ * http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+ *
+ * Red Hat trademarks are not licensed under GPLv2. No permission is
+ * granted to use or replicate Red Hat trademarks that are incorporated
+ * in this software or its documentation.
+ */
+package com.redhat.rhn.taskomatic.task;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.redhat.rhn.common.db.datasource.ModeFactory;
+import com.redhat.rhn.common.db.datasource.WriteMode;
+import com.redhat.rhn.testing.BaseTestCase;
+import com.redhat.rhn.testing.UserTestUtils;
+
+import org.junit.jupiter.api.Test;
+
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * DailySummaryTest
+ */
+public class DailySummaryTest extends BaseTestCase {
+
+    @Test
+    void testDequeueOrg() {
+        WriteMode clear = ModeFactory.getWriteMode("test_queries",
+            "delete_from_daily_summary_queue");
+        clear.executeUpdate(new HashMap<>());
+
+        DailySummary ds = new DailySummary();
+        Long oid = UserTestUtils.createOrg(this).getId();
+        assertNotNull(oid);
+        int rows = ds.dequeueOrg(oid);
+        assertEquals(0, rows);
+
+        WriteMode m = ModeFactory.getWriteMode("test_queries",
+                "insert_into_daily_summary_queue");
+        Map<String, Object> params = new HashMap<>();
+        params.put("org_id", oid);
+        rows = m.executeUpdate(params);
+        assertEquals(1, rows);
+        rows = ds.dequeueOrg(oid);
+        assertEquals(1, rows);
+    }
+
+    @Test
+    void testIsEndOfLifeNotificationPeriod() {
+        LocalDate today = LocalDate.of(2026, 1, 1);
+
+        // More than 6 months before the end of life -> do not notify yet
+        assertFalse(DailySummary.isEndOfLifeNotificationPeriod(today.plusMonths(7), today));
+        // Within the 6 months notification window -> notify
+        assertTrue(DailySummary.isEndOfLifeNotificationPeriod(today.plusMonths(3), today));
+        // End of life reached today -> notify
+        assertTrue(DailySummary.isEndOfLifeNotificationPeriod(today, today));
+        // Already past the end of life -> notify
+        assertTrue(DailySummary.isEndOfLifeNotificationPeriod(today.minusDays(1), today));
+    }
+}

@@ -15,11 +15,11 @@
 
 package com.suse.oval.ovaltypes;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlAttribute;
-import javax.xml.bind.annotation.XmlType;
-import javax.xml.bind.annotation.XmlValue;
+import jakarta.xml.bind.annotation.XmlAccessType;
+import jakarta.xml.bind.annotation.XmlAccessorType;
+import jakarta.xml.bind.annotation.XmlAttribute;
+import jakarta.xml.bind.annotation.XmlType;
+import jakarta.xml.bind.annotation.XmlValue;
 
 /**
  * This represents the epoch, version, and release fields as a single version string.
@@ -30,8 +30,6 @@ import javax.xml.bind.annotation.XmlValue;
 public class EVRType {
     @XmlValue
     private String value;
-    @XmlAttribute(name = "datatype")
-    private EVRDataTypeEnum datatype;
     @XmlAttribute(name = "operation", required = true)
     private OperationEnumeration operation;
 
@@ -41,14 +39,6 @@ public class EVRType {
 
     public void setValue(String valueIn) {
         this.value = valueIn;
-    }
-
-    public EVRDataTypeEnum getDatatype() {
-        return datatype;
-    }
-
-    public void setDatatype(EVRDataTypeEnum datatypeIn) {
-        this.datatype = datatypeIn;
     }
 
     public OperationEnumeration getOperation() {

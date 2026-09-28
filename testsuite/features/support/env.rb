@@ -1,7 +1,8 @@
-# Copyright (c) 2010-2025 SUSE LLC
+# Copyright (c) 2010-2026 SUSE LLC
 # Licensed under the terms of the MIT license.
 
 require 'English'
+require 'fileutils'
 require 'rubygems'
 require 'tmpdir'
 require 'base64'
@@ -9,10 +10,10 @@ require 'capybara'
 require 'capybara/cucumber'
 require 'cucumber'
 # require 'simplecov'
-require 'minitest/autorun'
-require 'minitest/unit'
+require 'minitest'
+require 'minitest/assertions'
 require 'securerandom'
-require 'selenium-webdriver'
+require 'capybara/playwright'
 require 'multi_test'
 require 'set'
 require 'timeout'
@@ -43,11 +44,16 @@ end
 # Context per feature
 $context = {}
 
+# Set by the Layer 3 watchdog (see the Around hook below) when it has force-torn-down the browser
+# session. Once true, every remaining scenario in the run is skipped with one clear reason instead
+# of failing individually with confusing Playwright::Transport::AlreadyDisconnectedError traces.
+$watchdog_run_aborted = false
+
 # Other global variables
 $pxeboot_mac = ENV.fetch('PXEBOOT_MAC', nil)
-$pxeboot_image = ENV.fetch('PXEBOOT_IMAGE', nil) || 'sles15sp3o'
-$sle15sp6_terminal_mac = ENV.fetch('SLE15SP6_TERMINAL_MAC', nil)
-$sle15sp7_terminal_mac = ENV.fetch('SLE15SP7_TERMINAL_MAC', nil)
+$pxeboot_image = ENV.fetch('PXEBOOT_IMAGE', nil) || 'sles15sp7o'
+$sles15sp6_terminal_mac = ENV.fetch('SLES15SP6_TERMINAL_MAC', nil)
+$sles15sp7_terminal_mac = ENV.fetch('SLES15SP7_TERMINAL_MAC', nil)
 $private_net = ENV.fetch('PRIVATENET', nil) if ENV['PRIVATENET']
 $mirror = ENV.fetch('MIRROR', nil)
 $server_http_proxy = ENV.fetch('SERVER_HTTP_PROXY', nil) if ENV['SERVER_HTTP_PROXY']
@@ -57,9 +63,11 @@ $no_auth_registry = ENV.fetch('NO_AUTH_REGISTRY', nil) if ENV['NO_AUTH_REGISTRY'
 $auth_registry = ENV.fetch('AUTH_REGISTRY', nil) if ENV['AUTH_REGISTRY']
 $current_user = 'admin'
 $current_password = 'admin'
-$chromium_dev_tools = ENV.fetch('REMOTE_DEBUG', false)
-$chromium_dev_port = 9222 + ENV['TEST_ENV_NUMBER'].to_i
 $use_salt_bundle = ENV.fetch('USE_SALT_BUNDLE', true)
+$is_external_cluster = ENV.fetch('IS_EXTERNAL_CLUSTER', false) if ENV['IS_EXTERNAL_CLUSTER']
+$create_spacewalk_pv = ENV.fetch('CREATE_VAR_SPACEWALK_PV', true) if ENV['CREATE_VAR_SPACEWALK_PV']
+$create_pgsql_pv = ENV.fetch('CREATE_VAR_PGSQL_PV', true) if ENV['CREATE_VAR_PGSQL_PV']
+$default_local_storage_class = ENV.fetch('LOCAL_PATH_DEFAULT_CLASS', true) if ENV['LOCAL_PATH_DEFAULT_CLASS']
 
 # maximal wait before giving up
 # the tests return much before that delay in case of success
@@ -67,13 +75,25 @@ $stdout.sync = true
 STARTTIME = Time.new.to_i
 Capybara.default_max_wait_time = ENV['CAPYBARA_TIMEOUT'] ? ENV['CAPYBARA_TIMEOUT'].to_i : 10
 DEFAULT_TIMEOUT = ENV['DEFAULT_TIMEOUT'] ? ENV['DEFAULT_TIMEOUT'].to_i : 250
+# Layer 3 per-scenario watchdog ceiling (see the Around hook below). Backstop against hangs that
+# Ruby's Timeout.timeout cannot interrupt (e.g. a blocked Playwright pipe call).
+# Regular scenarios are expected to finish well under 30 min; default the ceiling to 40 min.
+SCENARIO_HARD_LIMIT = ENV['SCENARIO_HARD_LIMIT'] ? ENV['SCENARIO_HARD_LIMIT'].to_i : 2400
+# Scenarios tagged @long_running (e.g. "Synchronize products" in the Setup Wizard: ~40 min in CI,
+# up to ~13 h in BV) use this instead. It is 0 (watchdog disabled, rely on the external Layer 4
+# job timeout) unless explicitly set, so set it per pipeline: e.g. 3600 in CI, 50400 in BV.
+LONG_SCENARIO_HARD_LIMIT = ENV.fetch('LONG_SCENARIO_HARD_LIMIT', '9000').to_i
+# Small positive wait for "is it there right now" existence gates. capybara-playwright-driver does
+# NOT support wait: 0 / wait: false: it requires wait > 0, and a 0 maps to Playwright's "disable
+# timeout" which means wait forever. Never use wait: 0 with the Playwright driver - use this instead.
+IMMEDIATE_WAIT = ENV['IMMEDIATE_WAIT'] ? ENV['IMMEDIATE_WAIT'].to_i : 1
 $is_cloud_provider = ENV['PROVIDER'].include? 'aws'
 $is_gh_validation = ENV['PROVIDER'].include? 'podman'
-$is_containerized_server = %w[k3s podman].include? ENV.fetch('CONTAINER_RUNTIME', '')
+$is_containerized_server = %w[k3s podman rke2].include? ENV.fetch('CONTAINER_RUNTIME', '')
+$is_rke2 = ENV.fetch('CONTAINER_RUNTIME', '').include? 'rke2'
 $is_transactional_server = transactional_system?('server', runs_in_container: false)
 $is_using_build_image = ENV.fetch('IS_USING_BUILD_IMAGE', false)
 $is_using_scc_repositories = (ENV.fetch('IS_USING_SCC_REPOSITORIES', 'False') != 'False')
-$catch_timeout_message = (ENV.fetch('CATCH_TIMEOUT_MESSAGE', 'False') == 'True')
 $beta_enabled = (ENV.fetch('BETA_ENABLED', 'False') == 'True')
 $api_protocol = ENV.fetch('API_PROTOCOL', nil) if ENV['API_PROTOCOL'] # force the API protocol to be used. You can use 'http' or 'xmlrpc'
 
@@ -88,51 +108,56 @@ end
 # Fix a problem with minitest and cucumber options passed through rake
 MultiTest.disable_autorun
 
-# register chromedriver in headless mode
+# register the Playwright driver (Chromium, headless unless debug)
 def capybara_register_driver
-  Capybara.register_driver :selenium_chrome_headless do |app|
-    # WORKAROUND failure at Scenario: Test IPMI functions: increase from 60 s to 180 s
-    client = Selenium::WebDriver::Remote::Http::Default.new(open_timeout: 30, read_timeout: 240)
-    chrome_options = Selenium::WebDriver::Chrome::Options.new(
+  Capybara.register_driver :playwright do |app|
+    Capybara::Playwright::Driver.new(
+      app,
+      browser_type: :chromium,
+      headless: !$debug_mode,
+      playwright_cli_executable_path: ENV.fetch('PLAYWRIGHT_CLI_EXECUTABLE_PATH', '/usr/local/bin/playwright'),
       args: %w[
         --disable-dev-shm-usage
         --ignore-certificate-errors
-        --window-size=2048,2048
-        --js-flags=--max-old-space-size=2048
         --no-sandbox
         --disable-notifications
-      ]
+        --window-size=2048,2048
+        --js-flags=--max-old-space-size=2048
+        --log-level=3
+      ],
+      ignoreHTTPSErrors: true,
+      acceptDownloads: true,
+      viewport: { width: 2048, height: 2048 },
+      # Hard browser-context bounds so a wedged action/navigation can never hang the run
+      # indefinitely (the old Selenium driver enforced this via Http::Default read_timeout: 240).
+      # NOTE: capybara-playwright-driver expects these in SECONDS and multiplies by 1000 internally.
+      default_timeout: Capybara.default_max_wait_time,
+      default_navigation_timeout: 240
     )
-    chrome_options.args << '--headless=new' unless $debug_mode
-    chrome_options.args << "--remote-debugging-port=#{$chromium_dev_port}" if $chromium_dev_tools
-    chrome_options.args << '--user-data-dir=/root' if $is_cloud_provider
-
-    chrome_options.add_preference('prompt_for_download', false)
-    chrome_options.add_preference('download.default_directory', '/tmp/downloads')
-    chrome_options.add_preference('unhandledPromptBehavior', 'accept')
-    chrome_options.add_preference('unexpectedAlertBehaviour', 'accept')
-
-    Capybara::Selenium::Driver.new(app, browser: :chrome, options: chrome_options, http_client: client)
   end
 end
 
-# register chromedriver headless mode
+# register the Playwright driver
 $capybara_driver = capybara_register_driver
-Selenium::WebDriver.logger.level = :error
-Capybara.default_driver = :selenium_chrome_headless
-Capybara.javascript_driver = :selenium_chrome_headless
+Capybara.default_driver = :playwright
+Capybara.javascript_driver = :playwright
 Capybara.default_normalize_ws = true
 Capybara.enable_aria_label = true
 Capybara.automatic_label_click = true
+# capybara-playwright-driver registers a mandatory on('download') handler that does
+# FileUtils.mkdir_p(Capybara.save_path) on EVERY download. If save_path is nil this raises a
+# TypeError inside the Playwright dispatch thread, breaking the connection so the run hangs forever
+# on the first download. Setting it both fixes that and gives the driver a directory to auto-save to.
+Capybara.save_path = ENV.fetch('DOWNLOAD_DIR', '/tmp/downloads')
 Capybara.app_host = "https://#{ENV.fetch('SERVER', nil)}"
 Capybara.server_port = 8888 + ENV['TEST_ENV_NUMBER'].to_i
 $stdout.puts "Capybara APP Host: #{Capybara.app_host}:#{Capybara.server_port}"
 
 # enable minitest assertions in steps
-World(MiniTest::Assertions)
+World(Minitest::Assertions)
 
 # Initialize the API client
-$api_test = new_api_client
+$api_test = new_api_client unless uyuni_not_installed?
 
 # Init CodeCoverage Handler
 $code_coverage = CodeCoverage.new if $code_coverage_mode
@@ -151,12 +176,22 @@ After do |scenario|
   log "This scenario took: #{current_epoch - @scenario_start_time} seconds"
   if scenario.failed?
     begin
-      if scenario.exception.is_a?(Selenium::WebDriver::Error::WebDriverError)
-        log "Caught web driver error: #{scenario.exception.message}"
-        Capybara.current_session.driver.quit
-        visit Capybara.app_host
-        log 'Web driver has been restarted'
-      elsif web_session_is_active?
+      # web_session_is_active? can raise or hang if the Playwright pipe was corrupted mid-call
+      # (e.g. by Timeout.timeout firing inside repeat_until_timeout). The 10s backstop ensures
+      # the After hook doesn't wait 36+ minutes for the watchdog when the connection is already dead.
+      session_active =
+        begin
+          Timeout.timeout(10) { web_session_is_active? }
+        rescue Timeout::Error
+          warn 'After: Playwright connection hung during session check — triggering emergency browser kill'
+          unblock_wedged_browser
+          $watchdog_run_aborted = true
+          false
+        rescue StandardError => e
+          log "Web session went stale when checking for active session: #{e.message}"
+          false
+        end
+      if session_active
         handle_screenshot_and_relog(scenario, current_epoch)
       else
         warn 'There is no active web session; unable to take a screenshot or relog.'
@@ -179,16 +214,20 @@ end
 def web_session_is_active?
   return false unless capybara_session_created?
 
-  page.has_selector?('header') || page.has_selector?('#username-field')
+  page.has_selector?('header', wait: IMMEDIATE_WAIT) || page.has_selector?('#username-field', wait: IMMEDIATE_WAIT)
+rescue Capybara::ElementNotFound, NoMethodError
+  # the page is mid-navigation and not in a usable state
+  false
 end
 
 # Take a screenshot and try to log back at suse manager server
 def handle_screenshot_and_relog(scenario, current_epoch)
-  Dir.mkdir('screenshots') unless File.directory?('screenshots')
-  path = "screenshots/#{scenario.name.tr(' ./', '_')}.png"
+  screenshot_dir = ENV.fetch('SCREENSHOT_DIR', 'screenshots')
+  FileUtils.mkdir_p(screenshot_dir)
+  path = "#{screenshot_dir}/#{scenario.name.tr(' ./', '_')}.png"
   begin
     click_details_if_present
-    page.driver.browser.save_screenshot(path)
+    page.driver.with_playwright_page { |pw_page| pw_page.screenshot(path: path) }
     attach path, 'image/png'
     # Attach additional information
     attach "#{Time.at(@scenario_start_time).strftime('%H:%M:%S:%L')} - #{Time.at(current_epoch).strftime('%H:%M:%S:%L')} | Current URL: #{current_url}", 'text/plain'
@@ -201,7 +240,7 @@ end
 
 # Try to get the minion details when on minion page
 def click_details_if_present
-  return unless page.has_content?('Bootstrap Minions', wait: 0) && page.has_content?('Details', wait: 0)
+  return unless page.has_content?('Bootstrap Minions', wait: IMMEDIATE_WAIT) && page.has_content?('Details', wait: IMMEDIATE_WAIT)
 
   begin
     click_button('Details')
@@ -258,6 +297,15 @@ AfterAll do
   process_code_coverage
 end
 
+After('@install_mlm_on_rke2') do |scenario|
+  next unless scenario.passed?
+
+  bashrc_file = '/root/.bashrc'
+  localhost = get_target('localhost')
+  localhost.run("sed -i '/^export UYUNI_NOT_INSTALLED=/d' #{bashrc_file}")
+  localhost.run("echo 'export UYUNI_NOT_INSTALLED=false' >> #{bashrc_file}")
+end
+
 # get the Cobbler log output when it fails
 After('@scope_cobbler') do |scenario|
   if scenario.failed?
@@ -273,13 +321,95 @@ end
 AfterStep do
   next unless capybara_session_created?
 
-  log 'Timeout: Waiting AJAX transition' if has_css?('.senna-loading', wait: 0) && !has_no_css?('.senna-loading', wait: 30)
+  # has_no_css? returns immediately when the spinner is absent (the common case) and otherwise polls
+  # until it disappears, so this both replaces the old wait: 0 gate and adds ~no per-step overhead.
+  log 'Timeout: Waiting AJAX transition' unless has_no_css?('.senna-loading', wait: 30)
 end
 
 Before do
   current_time = Time.new
   @scenario_start_time = current_time.to_i
   log "This scenario ran at: #{current_time}\n"
+end
+
+# Recursively SIGKILL every descendant process of the given PID (the Playwright Node server and the
+# whole Chromium process tree). Scoped to our own descendants so parallel workers - which run in
+# separate Ruby processes - are never affected. Killed depth-first so we enumerate grandchildren
+# before their parent can reparent them.
+def kill_descendant_processes(root_pid)
+  children = `pgrep -P #{root_pid} 2>/dev/null`.split.map(&:to_i)
+  children.each do |child_pid|
+    kill_descendant_processes(child_pid)
+    begin
+      Process.kill('KILL', child_pid)
+    rescue Errno::ESRCH, Errno::EPERM
+      # already gone, or not ours to kill
+    end
+  end
+end
+
+# Unblock a wedged scenario by SIGKILLing our browser subprocess tree (the Playwright Node server
+# and Chromium). This is the ONLY reliable unblock: a thread blocked inside the Playwright pipe never
+# returns to the Ruby interpreter, and a graceful driver.quit issued from here would itself block on
+# the gem's connection mutex that the wedged main thread still holds (observed: the watchdog parked
+# in futex_wait, the browser never died, the run hung past its deadline). Severing the pipe makes the
+# reader hit EOF, so the main thread's pending call raises, the scenario fails, and Capybara rebuilds
+# a fresh browser for the next scenario. We deliberately do NOT call driver.quit - it can re-wedge.
+def unblock_wedged_browser
+  kill_descendant_processes(Process.pid)
+end
+
+# Layer 3 watchdog: a hard per-scenario ceiling that survives hangs which neither Ruby's
+# Timeout.timeout nor a graceful driver.quit can interrupt. A thread blocked inside the Playwright
+# pipe never returns to the Ruby interpreter, so it cannot be interrupted in-process; the only
+# reliable unblock is killing the browser process at the OS level (see unblock_wedged_browser). A
+# monitor thread enforces the deadline and SIGKILLs the browser subtree, so the scenario fails and
+# the run continues instead of hanging for hours. NOTE: this is best-effort - the guaranteed backstop
+# is an external job-level activity timeout (Jenkins `timeout(activity: true)`), because no in-process
+# mechanism can fully guarantee interrupting a native pipe wait.
+Around do |scenario, block|
+  limit =
+    if scenario.source_tag_names.include?('@long_running')
+      LONG_SCENARIO_HARD_LIMIT
+    else
+      SCENARIO_HARD_LIMIT
+    end
+
+  # limit <= 0 disables the watchdog (e.g. @long_running with no LONG_SCENARIO_HARD_LIMIT set, such
+  # as a 13 h product sync in BV); the external job wall-clock remains the backstop in that case.
+  if limit <= 0
+    block.call
+    next
+  end
+
+  finished = false
+  watchdog =
+    Thread.new do
+      sleep limit
+      next if finished
+
+      warn "WATCHDOG: scenario '#{scenario.name}' exceeded its hard limit of #{limit}s - " \
+           'tearing down the browser session to unblock the run'
+      unblock_wedged_browser
+      # capybara/cucumber's own After hook calls driver.reset! unconditionally, which tries to talk
+      # to the browser process we just killed and raises again - it does not rebuild a fresh one.
+      # Without this flag every remaining scenario would fail one-by-one with confusing
+      # Playwright::Transport::AlreadyDisconnectedError traces instead of a single clear reason.
+      $watchdog_run_aborted = true
+    end
+
+  begin
+    block.call
+  ensure
+    finished = true
+    watchdog.kill
+  end
+end
+
+# Must be the first unconditional Before hook in the suite (registered here, right after the
+# watchdog) so it runs before any hook that touches the browser. See $watchdog_run_aborted above.
+Before do
+  skip_this_scenario if $watchdog_run_aborted
 end
 
 Before('@skip') do
@@ -291,7 +421,7 @@ Before('@skip_known_issue') do
 end
 
 # Create a user for each feature
-Before do |scenario|
+Before('not @no_user_creation') do |scenario|
   feature_path = scenario.location.file
   $feature_filename = feature_path.split(%r{(\.feature|/)})[-2]
   next if get_context('user_created') == true
@@ -303,201 +433,335 @@ Before do |scenario|
   end
 end
 
+Before('@skip_if_external_cluster') do
+  skip_this_scenario if $is_external_cluster
+end
+
+Before('@is_external_cluster') do
+  skip_this_scenario unless $is_external_cluster
+end
+
+Before('@create_spacewalk_pv') do
+  skip_this_scenario unless $create_spacewalk_pv
+end
+
+Before('@create_pgsql_pv') do
+  skip_this_scenario unless $create_pgsql_pv
+end
+
+Before('@default_local_path_class') do
+  skip_this_scenario unless $default_local_storage_class
+end
+
 # do some tests only if the corresponding node exists
 Before('@proxy') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['proxy']
 end
 
-Before('@run_if_proxy_transactional_or_slmicro61_minion') do
-  skip_this_scenario unless suse_proxy_transactional? || ENV.key?(ENV_VAR_BY_HOST['slmicro61_minion'])
+Before('@proxy2') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['proxy2']
 end
 
-Before('@run_if_proxy_not_transactional_or_sles15sp7_minion') do
-  skip_this_scenario unless suse_proxy_non_transactional? || ENV.key?(ENV_VAR_BY_HOST['sle15sp7_minion'])
+Before('@proxy3') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['proxy3']
+end
+
+Before('@server2') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['server2']
+end
+
+Before('@server3') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['server3']
+end
+
+Before('@server4') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['server4']
+end
+
+Before('@run_if_proxy_transactional_or_slmicro62_minion') do
+  skip_this_scenario unless suse_proxy_transactional? || ENV.key?(ENV_VAR_BY_HOST['slmicro62_minion'])
+end
+
+Before('@run_if_proxy_not_transactional_or_sles15sp7_minion_or_monitoring_server') do
+  skip_this_scenario unless suse_proxy_non_transactional? || ENV.key?(ENV_VAR_BY_HOST['sles15sp7_minion']) || ENV.key?(ENV_VAR_BY_HOST['monitoring_server'])
 end
 
 Before('@sle_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle_minion']
+  env_var_name = get_env_var_with_fallback('sle_minion', 'SLES15SP7_MINION')
+  skip_this_scenario unless ENV.key?(env_var_name)
 end
 
 Before('@rhlike_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rhlike_minion']
+  env_var_name = get_env_var_with_fallback('rhlike_minion', 'ROCKY8_MINION')
+  skip_this_scenario unless ENV.key?(env_var_name)
 end
 
 Before('@deblike_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['deblike_minion']
+  env_var_name = get_env_var_with_fallback('deblike_minion', 'UBUNTU2404_MINION')
+  skip_this_scenario unless ENV.key?(env_var_name)
 end
 
 Before('@pxeboot_minion') do
-  skip_this_scenario unless $pxeboot_mac
+  mac_address = $pxeboot_mac || $sles15sp7_terminal_mac
+  skip_this_scenario unless mac_address
 end
 
-Before('@ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['ssh_minion']
+Before('@sshminion') do
+  env_var_name = get_env_var_with_fallback('sshminion', 'SLES15SP7_MINION')
+  skip_this_scenario unless ENV.key?(env_var_name)
 end
 
 Before('@build_host') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['build_host']
+  env_var_name = get_env_var_with_fallback('build_host', 'SLES15SP7_BUILDHOST')
+  skip_this_scenario unless ENV.key?(env_var_name)
 end
 
 Before('@alma8_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['alma8_minion']
 end
 
-Before('@alma8_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['alma8_ssh_minion']
+Before('@alma8_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['alma8_sshminion']
 end
 
 Before('@alma9_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['alma9_minion']
 end
 
-Before('@alma9_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['alma9_ssh_minion']
+Before('@alma9_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['alma9_sshminion']
+end
+
+Before('@alma10_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['alma10_minion']
+end
+
+Before('@alma10_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['alma10_sshminion']
 end
 
 Before('@amazon2023_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['amazon2023_minion']
 end
 
-Before('@amazon2023_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['amazon2023_ssh_minion']
+Before('@amazon2023_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['amazon2023_sshminion']
 end
 
 Before('@centos7_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['centos7_minion']
 end
 
-Before('@centos7_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['centos7_ssh_minion']
+Before('@centos7_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['centos7_sshminion']
 end
 
 Before('@liberty9_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['liberty9_minion']
 end
 
-Before('@liberty9_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['liberty9_ssh_minion']
+Before('@liberty9_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['liberty9_sshminion']
+end
+
+Before('@liberty10_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['liberty10_minion']
+end
+
+Before('@liberty10_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['liberty10_sshminion']
 end
 
 Before('@oracle9_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['oracle9_minion']
 end
 
-Before('@oracle9_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['oracle9_ssh_minion']
+Before('@oracle9_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['oracle9_sshminion']
+end
+
+Before('@oracle10_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['oracle10_minion']
+end
+
+Before('@oracle10_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['oracle10_sshminion']
+end
+
+Before('@rhel7_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rhel7_minion']
+end
+
+Before('@rhel7_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rhel7_sshminion']
+end
+
+Before('@rhel8_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rhel8_minion']
+end
+
+Before('@rhel8_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rhel8_sshminion']
 end
 
 Before('@rhel9_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rhel9_minion']
 end
 
-Before('@rhel9_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rhel9_ssh_minion']
+Before('@rhel9_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rhel9_sshminion']
+end
+
+Before('@rhel10_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rhel10_minion']
+end
+
+Before('@rhel10_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rhel10_sshminion']
 end
 
 Before('@rocky8_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rocky8_minion']
 end
 
-Before('@rocky8_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rocky8_ssh_minion']
+Before('@rocky8_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rocky8_sshminion']
 end
 
 Before('@rocky9_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rocky9_minion']
 end
 
-Before('@rocky9_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rocky9_ssh_minion']
+Before('@rocky9_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rocky9_sshminion']
+end
+
+Before('@rocky10_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rocky10_minion']
+end
+
+Before('@rocky10_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['rocky10_sshminion']
 end
 
 Before('@ubuntu2204_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['ubuntu2204_minion']
 end
 
-Before('@ubuntu2204_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['ubuntu2204_ssh_minion']
+Before('@ubuntu2204_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['ubuntu2204_sshminion']
 end
 
 Before('@ubuntu2404_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['ubuntu2404_minion']
 end
 
-Before('@ubuntu2404_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['ubuntu2404_ssh_minion']
+Before('@ubuntu2404_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['ubuntu2404_sshminion']
+end
+
+Before('@ubuntu2604_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['ubuntu2604_minion']
+end
+
+Before('@ubuntu2604_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['ubuntu2604_sshminion']
 end
 
 Before('@debian12_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['debian12_minion']
 end
 
-Before('@debian12_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['debian12_ssh_minion']
+Before('@debian12_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['debian12_sshminion']
 end
 
-Before('@sle12sp5_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle12sp5_minion']
+Before('@debian13_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['debian13_minion']
 end
 
-Before('@sle12sp5_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle12sp5_ssh_minion']
+Before('@debian13_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['debian13_sshminion']
 end
 
-Before('@sle15sp3_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle15sp3_minion']
+Before('@raspios13_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['raspios13_minion']
 end
 
-Before('@sle15sp3_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle15sp3_ssh_minion']
+Before('@raspios13_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['raspios13_sshminion']
 end
 
-Before('@sle15sp4_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle15sp4_minion']
+Before('@sles12sp5_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sles12sp5_minion']
 end
 
-Before('@sle15sp4_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle15sp4_ssh_minion']
+Before('@sles12sp5_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sles12sp5_sshminion']
 end
 
-Before('@sle15sp5_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle15sp5_minion']
+Before('@sles15sp4_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sles15sp4_minion']
 end
 
-Before('@sle15sp5_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle15sp5_ssh_minion']
+Before('@sles15sp4_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sles15sp4_sshminion']
 end
 
-Before('@sle15sp6_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle15sp6_minion']
+Before('@sles15sp5_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sles15sp5_minion']
 end
 
-Before('@sle15sp6_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle15sp6_ssh_minion']
+Before('@sles15sp5_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sles15sp5_sshminion']
 end
 
-Before('@sle15sp7_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle15sp7_minion']
+Before('@sles15sp6_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sles15sp6_minion']
 end
 
-Before('@sle15sp7_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle15sp7_ssh_minion']
+Before('@sles15sp6_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sles15sp6_sshminion']
+end
+
+Before('@sles15sp7_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sles15sp7_minion']
+end
+
+Before('@sles15sp7_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sles15sp7_sshminion']
+end
+
+Before('@sles160_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sles160_minion']
+end
+
+Before('@sles160_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sles160_sshminion']
 end
 
 Before('@opensuse156arm_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['opensuse156arm_minion']
 end
 
-Before('@opensuse156arm_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['opensuse156arm_ssh_minion']
+Before('@opensuse156arm_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['opensuse156arm_sshminion']
 end
 
-Before('@sle15sp5s390_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle15sp5s390_minion']
+Before('@opensuse160arm_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['opensuse160arm_minion']
 end
 
-Before('@sle15sp5s390_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle15sp5s390_ssh_minion']
+Before('@opensuse160arm_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['opensuse160arm_sshminion']
+end
+
+Before('@sles15sp5s390_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sles15sp5s390_minion']
+end
+
+Before('@sles15sp5s390_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sles15sp5s390_sshminion']
 end
 
 Before('@salt_migration_minion') do
@@ -508,80 +772,80 @@ Before('@slemicro') do |scenario|
   skip_this_scenario unless scenario.location.file.include? 'slemicro'
 end
 
-Before('@slemicro51_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slemicro51_minion']
-end
-
-Before('@slemicro51_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slemicro51_ssh_minion']
-end
-
 Before('@slemicro52_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slemicro52_minion']
 end
 
-Before('@slemicro52_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slemicro52_ssh_minion']
+Before('@slemicro52_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slemicro52_sshminion']
 end
 
 Before('@slemicro53_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slemicro53_minion']
 end
 
-Before('@slemicro53_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slemicro53_ssh_minion']
+Before('@slemicro53_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slemicro53_sshminion']
 end
 
 Before('@slemicro54_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slemicro54_minion']
 end
 
-Before('@slemicro54_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slemicro54_ssh_minion']
+Before('@slemicro54_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slemicro54_sshminion']
 end
 
 Before('@slemicro55_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slemicro55_minion']
 end
 
-Before('@slemicro55_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slemicro55_ssh_minion']
+Before('@slemicro55_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slemicro55_sshminion']
 end
 
 Before('@slmicro60_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slmicro60_minion']
 end
 
-Before('@slmicro60_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slmicro60_ssh_minion']
+Before('@slmicro60_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slmicro60_sshminion']
 end
 
 Before('@slmicro61_minion') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slmicro61_minion']
 end
 
-Before('@slmicro61_ssh_minion') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slmicro61_ssh_minion']
+Before('@slmicro61_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slmicro61_sshminion']
 end
 
-Before('@sle15sp6_buildhost') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle15sp6_buildhost']
+Before('@slmicro62_minion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slmicro62_minion']
 end
 
-Before('@sle15sp7_buildhost') do
-  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sle15sp7_buildhost']
+Before('@slmicro62_sshminion') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['slmicro62_sshminion']
+end
+
+Before('@sles15sp6_buildhost') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sles15sp6_buildhost']
+end
+
+Before('@sles15sp7_buildhost') do
+  skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['sles15sp7_buildhost']
 end
 
 Before('@monitoring_server') do
   skip_this_scenario unless ENV.key? ENV_VAR_BY_HOST['monitoring_server']
 end
 
-Before('@sle15sp6_terminal') do
-  skip_this_scenario unless $sle15sp6_terminal_mac
+Before('@sles15sp6_terminal') do
+  skip_this_scenario unless $sles15sp6_terminal_mac
 end
 
-Before('@sle15sp7_terminal') do
-  skip_this_scenario unless $sle15sp6_terminal_mac
+Before('@sles15sp7_terminal') do
+  skip_this_scenario unless $sles15sp7_terminal_mac
 end
 
 Before('@suse_minion') do |scenario|
@@ -598,12 +862,12 @@ Before('@skip_for_debian') do |scenario|
   skip_this_scenario if scenario.location.file.include? 'debian'
 end
 
-Before('@skip_for_rocky9') do |scenario|
-  skip_this_scenario if scenario.location.file.include? 'rocky9'
+Before('@skip_for_ubuntu') do |scenario|
+  skip_this_scenario if scenario.location.file.include? 'ubuntu'
 end
 
-Before('@skip_for_alma9') do |scenario|
-  skip_this_scenario if scenario.location.file.include? 'alma9'
+Before('@skip_for_amazon2023') do |scenario|
+  skip_this_scenario if scenario.location.file.include? 'amazon2023'
 end
 
 Before('@skip_for_minion') do |scenario|
@@ -612,6 +876,31 @@ end
 
 Before('@skip_for_transactional_minion') do |scenario|
   skip_this_scenario if scenario.location.file.include?('slemicro') || scenario.location.file.include?('slmicro')
+end
+
+Before('@skip_for_rhel_container') do |scenario|
+  skip_this_scenario if scenario.location.file.match?(/rhel\d+_(ssh)?minion/)
+end
+
+Before('@skip_for_rhel7') do |scenario|
+  skip_this_scenario if scenario.location.file.include? 'rhel7'
+end
+
+Before('@skip_for_rhel8') do |scenario|
+  skip_this_scenario if scenario.location.file.include? 'rhel8'
+end
+
+Before('@skip_for_rhel9') do |scenario|
+  skip_this_scenario if scenario.location.file.include? 'rhel9'
+end
+
+Before('@skip_for_rhel10') do |scenario|
+  skip_this_scenario if scenario.location.file.include? 'rhel10'
+end
+
+Before('@skip_for_rhel10_like') do |scenario|
+  rhel10_minion_tags = %w[@alma10_minion @alma10_sshminion @oracle10_minion @oracle10_sshminion @rhel10_minion @rhel10_sshminion @rocky10_minion @rocky10_sshminion]
+  skip_this_scenario if rhel10_minion_tags.any? { |tag| scenario.source_tag_names.include?(tag) }
 end
 
 # do some tests only if we have SCC credentials
@@ -637,6 +926,11 @@ end
 # do some tests only if the server is using Uyuni
 Before('@uyuni') do
   skip_this_scenario unless product == 'Uyuni'
+end
+
+# do some tests only for head product builds
+Before('@head') do
+  skip_this_scenario unless product_version_full == 'head'
 end
 
 # do some tests only if we are using salt bundle
@@ -694,6 +988,14 @@ Before('@containerized_server') do
   skip_this_scenario unless $is_containerized_server
 end
 
+Before('@skip_if_rke2') do
+  skip_this_scenario if $is_rke2
+end
+
+Before('@rke2') do
+  skip_this_scenario unless $is_rke2
+end
+
 # skip tests if the server runs on a transactional base OS
 Before('@skip_if_transactional_server') do
   skip_this_scenario if $is_transactional_server
@@ -724,13 +1026,13 @@ end
 # have more infos about the errors
 def print_server_logs
   $stdout.puts '=> /var/log/rhn/rhn_web_ui.log'
-  out, _code = get_target('server').run('tail -n20 /var/log/rhn/rhn_web_ui.log | awk -v limit="$(date --date="5 minutes ago" "+%Y-%m-%d %H:%M:%S")" \'substr($0, 1, 19) > limit\'')
+  out, _code = get_target('server').run('tail -n20 /var/log/rhn/rhn_web_ui.log | awk -v limit="$(date --date="5 minutes ago" "+%Y-%m-%d %H:%M:%S")" \'substr($0, 1, 19) > limit\'', timeout: 10)
   out.each_line do |line|
     $stdout.puts line.to_s
   end
   $stdout.puts
   $stdout.puts '=> /var/log/rhn/rhn_web_api.log'
-  out, _code = get_target('server').run('tail -n20 /var/log/rhn/rhn_web_api.log | awk -v limit="$(date --date="5 minutes ago" "+%Y-%m-%d %H:%M:%S")" \'substr($0, 2, 19) > limit\'')
+  out, _code = get_target('server').run('tail -n20 /var/log/rhn/rhn_web_api.log | awk -v limit="$(date --date="5 minutes ago" "+%Y-%m-%d %H:%M:%S")" \'substr($0, 2, 19) > limit\'', timeout: 10)
   out.each_line do |line|
     $stdout.puts line.to_s
   end

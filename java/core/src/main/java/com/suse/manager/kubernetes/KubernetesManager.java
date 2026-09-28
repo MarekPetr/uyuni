@@ -30,6 +30,7 @@ import com.suse.manager.webui.services.impl.SaltService;
 import com.suse.manager.webui.services.impl.runner.MgrK8sRunner;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -139,7 +140,7 @@ public class KubernetesManager {
                 .forEach(container -> {
                     String imgDigest = container.getImageId();
                     if (imgDigest.startsWith(DOCKER_PULLABLE)) {
-                        imgDigest = StringUtils.removeStart(container.getImageId(), DOCKER_PULLABLE);
+                        imgDigest = Strings.CS.removeStart(container.getImageId(), DOCKER_PULLABLE);
                     }
                     ImageInfo imageInfo = digestToInfo.get(imgDigest);
                     Optional<Integer> imgBuildRevision = Optional.empty();
@@ -167,7 +168,7 @@ public class KubernetesManager {
 
                         Optional<ImageInfo> imgByRepoNameTag =
                                 ImageStoreFactory.lookupBylabelAndOrg(repo, virtHostMgr.getOrg())
-                                        .flatMap(st -> ImageInfoFactory.lookupByName(name, tag, st.getId()));
+                                        .flatMap(st -> ImageInfoFactory.lookupByName(name, tag, st));
                         usage = imgByRepoNameTag
                                 .map(imgInfo -> imgToUsage.get(imgInfo.getId()))
                                 .map(Optional::of).orElseGet(() -> imgByRepoNameTag

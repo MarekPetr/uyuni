@@ -17,7 +17,7 @@ package com.redhat.rhn.frontend.action.configuration.channel;
 import com.redhat.rhn.common.db.datasource.DataResult;
 import com.redhat.rhn.common.localization.LocalizationService;
 import com.redhat.rhn.common.messaging.MessageQueue;
-import com.redhat.rhn.domain.action.ActionFactory;
+import com.redhat.rhn.domain.action.ActionTypeEnum;
 import com.redhat.rhn.domain.config.ConfigChannel;
 import com.redhat.rhn.domain.user.User;
 import com.redhat.rhn.frontend.action.configuration.ConfigActionHelper;
@@ -49,8 +49,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * ChannelOverviewTasks
@@ -181,7 +181,7 @@ public class ChannelOverviewTasks extends RhnAction {
         //create the action and then create the message to send the user.
         SsmConfigFilesEvent event =
                 new SsmConfigFilesEvent(usr.getId(), serverConfigMap, servers,
-                        ActionFactory.TYPE_CONFIGFILES_DIFF, new Date(), null);
+                        ActionTypeEnum.TYPE_CONFIGFILES_DIFF, new Date(), null);
         MessageQueue.publish(event);
         makeMessage(systems.size(), req);
     }
@@ -195,7 +195,7 @@ public class ChannelOverviewTasks extends RhnAction {
     }
 
 
-    // TODO: generalize and move this somewhere it can be used by other
+    // OLDTODO: generalize and move this somewhere it can be used by other
     // action-producers!
     private void makeMessage(int successes, HttpServletRequest request) {
         if (successes > 0) {

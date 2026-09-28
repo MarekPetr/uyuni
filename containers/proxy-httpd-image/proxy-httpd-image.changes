@@ -1,4 +1,37 @@
 -------------------------------------------------------------------
+Wed Aug 05 12:35:10 CEST 2026 - antonio.garofalo@suse.com
+
+- version 5.3.1
+  * Add a README file for artifacthub to display
+  * Bump version to 5.3.0
+
+-------------------------------------------------------------------
+Wed Jun 17 14:52:50 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.9
+  * Fix CERTIFICATE_VERIFY_FAILED error when running
+    uyuni-configure.py on openSUSE Leap 16.0
+
+-------------------------------------------------------------------
+Fri May 22 13:56:27 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.8
+  * Image rebuilt to the newest version with updated dependencies
+    for SUSE Multi-Linux Manager 5.2 RC
+
+-------------------------------------------------------------------
+Thu Apr 16 14:46:17 CEST 2026 - michael.calmer@suse.com
+
+- version 5.2.7
+  * Image rebuilt to the newest version with updated dependencies
+
+-------------------------------------------------------------------
+Mon Mar 02 13:42:16 CET 2026 - michael.calmer@suse.com
+
+- version 5.2.6
+  * Get the server version using the API instead of the configuration
+
+-------------------------------------------------------------------
 Tue Jan 27 09:25:10 WET 2026 - psuarezhernandez@suse.com
 
 - version 5.2.5

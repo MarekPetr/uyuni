@@ -21,7 +21,6 @@ import com.redhat.rhn.manager.satellite.StartupTasksCommand;
 import com.redhat.rhn.manager.satellite.UpgradeCommand;
 
 import com.suse.manager.metrics.PrometheusExporter;
-import com.suse.manager.metrics.SystemsCollector;
 import com.suse.manager.reactor.SaltReactor;
 
 import org.apache.logging.log4j.LogManager;
@@ -32,8 +31,8 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Enumeration;
 
-import javax.servlet.ServletContextEvent;
-import javax.servlet.ServletContextListener;
+import jakarta.servlet.ServletContextEvent;
+import jakarta.servlet.ServletContextListener;
 
 /* Long term, if we end up with a lot of code in here, we will want to
  * move this code out of a single listener and into multiple classes
@@ -126,7 +125,6 @@ public class RhnServletListener implements ServletContextListener {
         startMessaging();
         logStart("Messaging");
 
-        HibernateFactory.registerComponentName(SystemsCollector.PRODUCT_NAME);
         startHibernate();
         logStart("Hibernate");
 

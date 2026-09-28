@@ -16,8 +16,7 @@ package com.redhat.rhn.frontend.action.configuration.files;
 
 import com.redhat.rhn.common.util.DatePicker;
 import com.redhat.rhn.domain.action.ActionChain;
-import com.redhat.rhn.domain.action.ActionFactory;
-import com.redhat.rhn.domain.action.ActionType;
+import com.redhat.rhn.domain.action.ActionTypeEnum;
 import com.redhat.rhn.domain.config.ConfigRevision;
 import com.redhat.rhn.domain.rhnset.RhnSet;
 import com.redhat.rhn.domain.rhnset.RhnSetElement;
@@ -45,8 +44,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * GlobalRevisionDeployConfirmSubmit
@@ -105,8 +104,6 @@ public class GlobalRevisionDeployConfirmSubmit extends RhnListDispatchAction {
         Set<Long> revisions = new HashSet<>();
         revisions.add(cr.getId());
 
-        ActionType deploy = ActionFactory.TYPE_CONFIGFILES_DEPLOY;
-
         //go through all of the selected systems
         for (RhnSetElement rhnSetElementIn : systems.getElements()) {
             // Each server-deploy should succeed or fail on its own merits (?)
@@ -117,7 +114,7 @@ public class GlobalRevisionDeployConfirmSubmit extends RhnListDispatchAction {
             //created the action.  One action per server.
             try {
                 if (!revisions.isEmpty() && !ActionChainManager.createConfigActions(user,
-                        revisions, servers, deploy, earliest, actionChain).isEmpty()) {
+                        revisions, servers, ActionTypeEnum.TYPE_CONFIGFILES_DEPLOY, earliest, actionChain).isEmpty()) {
                     successes++;
                 }
             }

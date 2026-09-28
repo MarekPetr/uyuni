@@ -406,7 +406,7 @@ x509_extensions         = req_ca_x509_extensions
 %s
 
 [ req_ca_x509_extensions ]
-basicConstraints = CA:true
+basicConstraints = critical, CA:TRUE
 keyUsage = digitalSignature, keyEncipherment, keyCertSign
 extendedKeyUsage = serverAuth, clientAuth
 # PKIX recommendations harmless if included in all certificates.
@@ -415,7 +415,7 @@ subjectKeyIdentifier    = hash
 authorityKeyIdentifier  = keyid, issuer:always
 
 [ req_server_x509_extensions ]
-basicConstraints = CA:false
+basicConstraints = CA:FALSE
 keyUsage = digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth, clientAuth
 nsCertType = server
@@ -443,7 +443,7 @@ req_extensions          = v3_req
 %s
 
 [ req_server_x509_extensions ]
-basicConstraints = CA:false
+basicConstraints = CA:FALSE
 keyUsage = digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth, clientAuth
 nsCertType = server
@@ -548,7 +548,7 @@ def figureSerial(caCertFilename, serialFilename, indexFilename):
         random.seed()
         # pylint: disable-next=eval-used
         max_serial = eval("0x" + "F" * 40)
-        serial = random.randrange(1, max_serial - caSerial / 2)
+        serial = random.randrange(1, int(max_serial - caSerial / 2))
     serial = fixSerial(hex(serial))
 
     # create the serial file if it doesn't exist
@@ -692,8 +692,7 @@ class ConfigFile:
 dir                     = %s
 database                = $dir/index.txt
 serial                  = $dir/serial
-"""
-                                % newdir
+""" % newdir
                             )
                             # pylint: disable-next=invalid-name
                             dirSetYN = 1

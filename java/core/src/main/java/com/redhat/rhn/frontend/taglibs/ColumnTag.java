@@ -25,11 +25,11 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.TreeMap;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.jsp.JspException;
-import javax.servlet.jsp.JspWriter;
-import javax.servlet.jsp.tagext.Tag;
-import javax.servlet.jsp.tagext.TagSupport;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.jsp.JspException;
+import jakarta.servlet.jsp.JspWriter;
+import jakarta.servlet.jsp.tagext.Tag;
+import jakarta.servlet.jsp.tagext.TagSupport;
 
 /**
  * The ColumnTag represents a column of data in a ListView.  It must be used
@@ -106,7 +106,7 @@ public class ColumnTag extends TagSupport {
     /** header colspan attribute **/
     private String headerStyle;
     /**
-     *  TODO: Eliminate this attribute. This is a dirty dirty
+     *  OLDTODO: Eliminate this attribute. This is a dirty dirty
      *  hack to allow the ColumnTag to know whether to use
      *  UnpagedListDisplayTag as its parent or ListDisplayTag
      *  as its parent. When ListDisplayTag is refactored

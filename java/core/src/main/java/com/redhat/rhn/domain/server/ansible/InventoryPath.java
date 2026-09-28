@@ -21,16 +21,17 @@ import com.redhat.rhn.domain.server.Server;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.persistence.DiscriminatorValue;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.OneToMany;
-import javax.persistence.Transient;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Transient;
 
 /**
  * Ansible Inventory Path
@@ -44,17 +45,29 @@ public class InventoryPath extends AnsiblePath {
     /**
      * Standard constructor
      */
-    public InventoryPath() {
+    protected InventoryPath() {
         inventoryServers = new HashSet<>();
     }
 
     /**
      * Standard constructor
      * @param minionServer the minion server
+     * @param path the path
      */
-    public InventoryPath(MinionServer minionServer) {
-        super(minionServer);
-        inventoryServers = new HashSet<>();
+    public InventoryPath(MinionServer minionServer, Path path) {
+        this(minionServer, path, Set.of());
+    }
+
+    /**
+     * Standard constructor
+     * @param minionServer the minion server
+     * @param path the path
+     * @param servers the inventory servers
+     */
+    public InventoryPath(MinionServer minionServer, Path path, Set<Server> servers) {
+        super(minionServer, path);
+
+        inventoryServers = new HashSet<>(servers);
     }
 
     @Override

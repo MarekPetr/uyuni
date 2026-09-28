@@ -15,8 +15,6 @@
 
 package com.suse.oval;
 
-import static java.util.stream.Collectors.groupingBy;
-
 import com.redhat.rhn.common.db.datasource.CallableMode;
 import com.redhat.rhn.common.db.datasource.DataResult;
 import com.redhat.rhn.common.db.datasource.ModeFactory;
@@ -24,8 +22,10 @@ import com.redhat.rhn.common.db.datasource.Row;
 import com.redhat.rhn.common.db.datasource.SelectMode;
 import com.redhat.rhn.common.db.datasource.WriteMode;
 import com.redhat.rhn.common.hibernate.HibernateFactory;
+import com.redhat.rhn.domain.rhnpackage.PackageEvr;
+import com.redhat.rhn.manager.audit.CVEAuditManagerOVAL;
 
-import com.suse.oval.manager.OVALLookupHelper;
+import com.suse.oval.manager.OVALResourcesCache;
 import com.suse.oval.ovaltypes.DefinitionType;
 import com.suse.oval.ovaltypes.OvalRootType;
 import com.suse.oval.vulnerablepkgextractor.ProductVulnerablePackages;
@@ -38,9 +38,13 @@ import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class OVALCachingFactory extends HibernateFactory {
@@ -50,9 +54,33 @@ public class OVALCachingFactory extends HibernateFactory {
         // Left empty on purpose
     }
 
-    private static void clearOVALMetadataByPlatform(String platformCpe) {
-        WriteMode mode = ModeFactory.getWriteMode("oval_queries", "clear_oval_metadata_by_platform");
-        mode.executeUpdate(Map.of("cpe", platformCpe));
+    /**
+     * Clears the OVAL metadata for the given OS product, meaning:
+     * <ul>
+     *     <li>Clears all entries in the suseOVALPlatformVulnerablePackage table that correspond
+     *     to the given OS product.</li>
+     *     <li>Deletes the OS product from the suseOVALOsProduct table.</li>
+     * </ul>
+     *
+     * @param osProduct the OS product to clear the OVAL metadata for.
+     * */
+    public static void clearOVALMetadataByOsProduct(CVEAuditManagerOVAL.OVALOsProduct osProduct) {
+        WriteMode mode = ModeFactory.getWriteMode("oval_queries", "clear_oval_metadata_by_os_product");
+        Map<String, String> params = new HashMap<>();
+        params.put("os_product_family", osProduct.getOsFamily().toString());
+        params.put("os_product_version", osProduct.getOsVersion());
+        mode.executeUpdate(params);
+    }
+
+    /**
+     * Delete all OVAL metadata older than the given start date.
+     * @param startDate the starting date of the process.
+     */
+    public static void deleteOldOVALMetadata(Date startDate) {
+        WriteMode mode = ModeFactory.getWriteMode("oval_queries", "delete_old_oval_metadata");
+        Map<String, Object> params = new HashMap<>();
+        params.put("start_date", new java.sql.Timestamp(startDate.getTime()));
+        mode.executeUpdate(params);
     }
 
     /**
@@ -63,31 +91,34 @@ public class OVALCachingFactory extends HibernateFactory {
     public static void savePlatformsVulnerablePackages(OvalRootType rootType) {
         CallableMode mode = ModeFactory.getCallableMode("oval_queries", "add_product_vulnerable_package");
 
-        OVALLookupHelper ovalLookupHelper = new OVALLookupHelper(rootType);
+        OVALResourcesCache ovalResourcesCache = new OVALResourcesCache(rootType);
+        CVEAuditManagerOVAL.OVALOsProduct ovalOsProduct =
+            new CVEAuditManagerOVAL.OVALOsProduct(rootType.getOsFamily(), rootType.getOsVersion());
 
         List<ProductVulnerablePackages> productVulnerablePackages = new ArrayList<>();
         for (DefinitionType definition : rootType.getDefinitions()) {
-            VulnerablePackagesExtractor vulnerablePackagesExtractor =
-                    VulnerablePackagesExtractors.create(definition, rootType.getOsFamily(), ovalLookupHelper);
+            Optional<VulnerablePackagesExtractor> vulnerablePackagesExtractor =
+                    VulnerablePackagesExtractors.create(definition, rootType.getOsFamily(), ovalResourcesCache);
 
-            productVulnerablePackages.addAll(vulnerablePackagesExtractor.extract());
+            vulnerablePackagesExtractor.ifPresent(vPackage ->
+                productVulnerablePackages.addAll(vPackage.extract()));
         }
-
-        // Clear previous OVAL metadata
-        productVulnerablePackages.stream()
-                .collect(groupingBy(ProductVulnerablePackages::getProductCpe))
-                .keySet().forEach(OVALCachingFactory::clearOVALMetadataByPlatform);
 
         // Write OVAL metadata in batches
         DataResult<Map<String, Object>> batch = new DataResult<>(new ArrayList<>(1000));
         for (ProductVulnerablePackages pvp : productVulnerablePackages) {
             for (String cve : pvp.getCves()) {
-                for (VulnerablePackage vulnerablePackage : pvp.getVulnerablePackages()) {
+                for (VulnerablePackage vp : pvp.getVulnerablePackages()) {
                     Map<String, Object> params = new HashMap<>();
                     params.put("product_name", pvp.getProductCpe());
+                    params.put("os_product_family", ovalOsProduct.getOsFamily().toString());
+                    params.put("os_product_version", ovalOsProduct.getOsVersion());
                     params.put("cve_name", cve);
-                    params.put("package_name", vulnerablePackage.getName());
-                    params.put("fix_version", vulnerablePackage.getFixVersion().orElse(null));
+                    params.put("package_name", vp.getName());
+                    params.put("fix_epoch", vp.getFixVersion().map(PackageEvr::getEpoch).orElse(null));
+                    params.put("fix_version", vp.getFixVersion().map(PackageEvr::getVersion).orElse(null));
+                    params.put("fix_release", vp.getFixVersion().map(PackageEvr::getRelease).orElse(null));
+                    params.put("fix_type", vp.getFixVersion().map(PackageEvr::getType).orElse(null));
 
                     batch.add(params);
 
@@ -112,24 +143,54 @@ public class OVALCachingFactory extends HibernateFactory {
      * Lookup the list of vulnerable packages by the pair of cpe and cve
      *
      * @param cve the cve
-     * @param productCpe the product cpe
+     * @param serverId the id of the server
      * @return the list of vulnerable packages
      * */
-    public static List<VulnerablePackage> getVulnerablePackagesByProductAndCve(String productCpe, String cve) {
+    public static List<VulnerablePackage> getVulnerablePackagesByProductAndCve(Long serverId, String cve) {
+        return getVulnerablePackagesByProductAndCve(Set.of(serverId), cve)
+                .getOrDefault(serverId, Collections.emptyList());
+    }
+
+    /**
+     * Lookup vulnerable packages for multiple servers by their CPE and CVE.
+     *
+     * @param serverIds the server ids
+     * @param cve the cve
+     * @return vulnerable packages grouped by server id
+     */
+    public static Map<Long, List<VulnerablePackage>> getVulnerablePackagesByProductAndCve(
+            Set<Long> serverIds, String cve) {
+        if (serverIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
         SelectMode mode = ModeFactory.getMode("oval_queries", "get_vulnerable_packages");
 
         Map<String, Object> params = new HashMap<>();
         params.put("cve_name", cve);
-        params.put("product_cpe", productCpe);
 
-        DataResult<Row> result = mode.execute(params);
+        DataResult<Row> result = mode.execute(params, new ArrayList<>(serverIds));
 
-        return result.stream().map(row -> {
-            VulnerablePackage vulnerablePackage = new VulnerablePackage();
-            vulnerablePackage.setName((String) row.get("vulnerablepkgname"));
-            vulnerablePackage.setFixVersion((String) row.get("vulnerablepkgfixversion"));
-            return vulnerablePackage;
-        }).collect(Collectors.toList());
+        return result.stream().collect(Collectors.groupingBy(
+                row -> (Long) row.get("server_id"),
+                Collectors.mapping(OVALCachingFactory::toVulnerablePackage, Collectors.toList())));
+    }
+
+    private static VulnerablePackage toVulnerablePackage(Row row) {
+        VulnerablePackage vulnerablePackage = new VulnerablePackage();
+        vulnerablePackage.setName((String) row.get("package_name"));
+        vulnerablePackage.setFixVersion(
+                Optional.ofNullable((String) row.get("fix_version"))
+                        .map(v -> new PackageEvr(
+                                (String) row.get("fix_epoch"),
+                                v,
+                                (String) row.get("fix_release"),
+                                (String) row.get("fix_type")
+                        ))
+                        .orElse(null)
+        );
+        vulnerablePackage.setAffected((Boolean) row.get("affected"));
+        return vulnerablePackage;
     }
 
     /**
@@ -150,19 +211,16 @@ public class OVALCachingFactory extends HibernateFactory {
     }
 
     /**
-     * Check if we have any OVAL vulnerability records for the given client OS in the database.
+     * Returns the CPEs for which OVAL platform data is available.
      *
-     * @param cpe the cpe representing of the OS of servers to check for
-     * @return {@code True} if OVAL is available for servers with {@code cpe} and {@code False} otherwise.
+     * @return the available OVAL platform CPEs
      */
-    public static boolean checkOVALAvailability(String cpe) {
-        SelectMode m = ModeFactory.getMode("oval_queries", "check_oval_availability");
-        Map<String, Object> params = new HashMap<>();
-        params.put("cpe", cpe);
-
-        DataResult<Integer> result = m.execute(params);
-
-        return !result.isEmpty();
+    public static Set<String> getOVALPlatformCpes() {
+        SelectMode m = ModeFactory.getMode("oval_queries", "list_oval_platform_cpes");
+        DataResult<Row> result = m.execute();
+        return result.stream()
+                .map(row -> (String) row.get("cpe"))
+                .collect(Collectors.toSet());
     }
 
     /**
@@ -179,6 +237,22 @@ public class OVALCachingFactory extends HibernateFactory {
         DataResult<Integer> result = m.execute(params);
 
         return !result.isEmpty();
+    }
+
+    /**
+     * Returns the servers having at least one errata in their CVE channels.
+     *
+     * @param userId the user whose visible servers should be checked
+     * @return the server IDs with available channel errata
+     */
+    public static Set<Long> getServersWithErrata(Long userId) {
+        SelectMode m = ModeFactory.getMode("oval_queries", "list_servers_with_errata");
+        Map<String, Object> params = new HashMap<>();
+        params.put("user_id", userId);
+        DataResult<Row> result = m.execute(params);
+        return result.stream()
+                .map(row -> (Long) row.get("server_id"))
+                .collect(Collectors.toSet());
     }
 
     @Override

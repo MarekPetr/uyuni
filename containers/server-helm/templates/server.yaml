@@ -11,6 +11,7 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/component: server
+      app.kubernetes.io/part-of: uyuni
   strategy:
     type: Recreate
   template:
@@ -19,15 +20,115 @@ spec:
         app.kubernetes.io/component: server
         app.kubernetes.io/part-of: uyuni
     spec:
+{{- include "uyuni.nodePlacement" (dict "global" .Values.placement "local" .Values.server) | nindent 6 }}
       containers:
       - env:
+        - name: container
+          value: oci
         - name: TZ
           value: {{ .Values.timezone | default "Etc/UTC" }}
-{{- if and .Values.mirror (or .Values.mirror.claimName .Values.mirror.hostPath) }}
-          - name: MIRROR_PATH
-            value: /mirror
+{{- if and .Values.server.mirror (or .Values.server.mirror.claimName .Values.server.mirror.hostPath) }}
+        - name: MIRROR_PATH
+          value: /mirror
 {{- end }}
-        image: {{- include "deployment.container.image" (dict "name" "server" "global" .) | indent 1}}
+        - name: ADMIN_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: admin-credentials
+              optional: false
+        - name: ADMIN_PASS
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: admin-credentials
+              optional: false
+        - name: MANAGER_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: db-credentials
+              optional: false
+        - name: MANAGER_PASS
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: db-credentials
+              optional: false
+        - name: REPORT_DB_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: reportdb-credentials
+              optional: false
+        - name: REPORT_DB_PASS
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: reportdb-credentials
+              optional: false
+        - name: MANAGER_DB_NAME
+          value: susemanager
+        - name: MANAGER_DB_HOST
+          value: db
+        - name: MANAGER_DB_CA_CERT
+          value: /etc/pki/trust/anchors/DB-RHN-ORG-TRUSTED-SSL-CERT
+        - name: MANAGER_DB_PORT
+          value: "5432"
+        - name: EXTERNALDB_PROVIDER
+        - name: ISS_PARENT
+        - name: REPORT_DB_NAME
+          value: reportdb
+        - name: REPORT_DB_HOST
+          value: reportdb
+        - name: REPORT_DB_CA_CERT
+          value: /etc/pki/trust/anchors/DB-RHN-ORG-TRUSTED-SSL-CERT
+        - name: REPORT_DB_PORT
+          value: "5432"
+        - name: MANAGER_ADMIN_EMAIL
+          valueFrom:
+            configMapKeyRef:
+              key: email
+              name: uyuni-config
+              optional: false
+        - name: MANAGER_MAIL_FROM
+          valueFrom:
+            configMapKeyRef:
+              key: email
+              name: uyuni-config
+              optional: false
+        - name: UYUNI_HOSTNAME
+          valueFrom:
+            configMapKeyRef:
+              key: fqdn
+              name: uyuni-config
+              optional: false
+{{- if .Values.exposeJavaDebug }}
+        - name: DEBUG_JAVA
+          value: "true"
+{{- end }}
+{{- if .Values.server.sccSecret }}
+        - name: SCC_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: {{ .Values.server.sccSecret }}
+              optional: false
+        - name: SCC_PASS
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: {{ .Values.server.sccSecret }}
+              optional: false
+{{- end }}
+{{- if .Values.server.systemdLogLevel }}
+        - name: SYSTEMD_LOG_TARGET
+          value: console
+        - name: SYSTEMD_LOG_LEVEL
+          value: {{ .Values.server.systemdLogLevel }}
+        tty: true
+{{- end }}
+        image: {{ include "uyuni.image" (dict "name" "server" "global" . "local" .Values.server) }}
         imagePullPolicy: {{ .Values.pullPolicy }}
         lifecycle:
           preStop:
@@ -35,18 +136,27 @@ spec:
               command:
               - /bin/sh
               - -c
-              - spacewalk-service stop && systemctl stop postgresql
-        livenessProbe:
-          failureThreshold: 5
-          httpGet:
-            path: /rhn/manager/api/api/getVersion
-            port: 80
-            scheme: HTTP
-          initialDelaySeconds: 60
-          periodSeconds: 60
-          successThreshold: 1
-          timeoutSeconds: 20
+              - spacewalk-service stop
         name: uyuni
+        securityContext:
+          capabilities:
+            add:
+            - SYS_ADMIN
+          seLinuxOptions:
+            level: "s0"
+  {{- if .Values.server.superPrivileged }}
+            type: "spc_t"
+  {{- else if .Values.server.selinuxType }}
+            type: {{ .Values.server.selinuxType | quote }}
+  {{- end }}
+  {{- if .Values.server.superPrivileged }}
+          appArmorProfile:
+            type: Unconfined
+  {{- else if .Values.server.apparmorProfile }}
+          appArmorProfile:
+            type: Localhost
+            localhostProfile: {{ .Values.server.apparmorProfile }}
+  {{- end }}
         ports:
         - containerPort: 80
         - containerPort: 4505
@@ -57,8 +167,6 @@ spec:
         - containerPort: 8002
         - containerPort: 8003
 {{- end }}
-        - containerPort: 69
-          protocol: UDP
         - containerPort: 9100
 {{- if ne .Values.enableMonitoring false }}
         - containerPort: 5556
@@ -66,15 +174,28 @@ spec:
         - containerPort: 9187
         - containerPort: 9800
 {{- end }}
-        readinessProbe:
+        startupProbe:
+          exec:
+            command:
+            - /usr/bin/startup-check.sh
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3600 # Max 10h
+        livenessProbe:
+          exec:
+            command:
+            - /usr/bin/liveness-check.sh
+          timeoutSeconds: 5
           failureThreshold: 5
+          periodSeconds: 60
+        readinessProbe:
           httpGet:
             path: /rhn/manager/api/api/getVersion
             port: 80
             scheme: HTTP
-          periodSeconds: 30
+          periodSeconds: 10
           successThreshold: 1
-          timeoutSeconds: 20
+          initialDelaySeconds: 120
         volumeMounts:
         - mountPath: /var/lib/cobbler
           name: var-cobbler
@@ -102,8 +223,6 @@ spec:
           name: srv-susemanager
         - mountPath: /srv/spacewalk
           name: srv-spacewalk
-        - mountPath: /root
-          name: root
         - mountPath: /etc/pki/trust/anchors/
           name: ca-certs
         - mountPath: /run/salt/master
@@ -150,15 +269,110 @@ spec:
           name: run
         - mountPath: /sys/fs/cgroup
           name: sys-fs-cgroup
-{{- if and .Values.mirror (or .Values.mirror.claimName .Values.mirror.hostPath) }}
+{{- if and .Values.server.mirror (or .Values.server.mirror.claimName .Values.server.mirror.hostPath) }}
         - name: mirror
           mountPath: /mirror
+{{- end }}
+{{- if .Values.server.extraVolumeMounts }}
+{{ toYaml .Values.server.extraVolumeMounts | nindent 8 }}
 {{- end }}
 {{- if .Values.registrySecret }}
       imagePullSecrets:
       - name: {{ .Values.registrySecret }}
 {{- end }}
       initContainers:
+      - command:
+        - sh
+        - -x
+        - -c
+        - |2
+          # Fill the empty volumes
+          for vol in /var/lib/cobbler \
+                 /var/lib/rhn/search \
+                 /var/lib/salt \
+                 /var/cache \
+                 /var/log \
+                 /srv/salt \
+                 /srv/www \
+                 /srv/tftpboot \
+                 /srv/formula_metadata \
+                 /srv/pillar \
+                 /srv/susemanager \
+                 /srv/spacewalk \
+                 /etc/apache2 \
+                 /etc/rhn \
+                 /etc/systemd/system/multi-user.target.wants \
+                 /etc/systemd/system/sockets.target.wants \
+                 /etc/salt \
+                 /etc/tomcat \
+                 /etc/cobbler \
+                 /etc/sysconfig \
+                 /etc/postfix \
+                 /etc/sssd
+          do
+            chown --reference=$vol /mnt$vol;
+            chmod --reference=$vol /mnt$vol;
+            if [ -z "$(ls -A /mnt$vol)" ]; then
+                cp -a $vol/. /mnt$vol;
+            fi
+          done
+        image: {{ include "uyuni.image" (dict "name" "server" "global" . "local" .Values.server) }}
+        imagePullPolicy: {{ .Values.pullPolicy }}
+        name: init-volumes
+        securityContext:
+          seLinuxOptions:
+            level: "s0"
+        volumeMounts:
+          - mountPath: /mnt/var/lib/cobbler
+            name: var-cobbler
+          - mountPath: /mnt/var/lib/rhn/search
+            name: var-search
+          - mountPath: /mnt/var/lib/salt
+            name: var-salt
+          - mountPath: /mnt/var/cache
+            name: var-cache
+          - mountPath: /mnt/var/spacewalk
+            name: var-spacewalk
+          - mountPath: /mnt/var/log
+            name: var-log
+          - mountPath: /mnt/srv/salt
+            name: srv-salt
+          - mountPath: /mnt/srv/www/
+            name: srv-www
+          - mountPath: /mnt/srv/tftpboot
+            name: srv-tftpboot
+          - mountPath: /mnt/srv/formula_metadata
+            name: srv-formulametadata
+          - mountPath: /mnt/srv/pillar
+            name: srv-pillar
+          - mountPath: /mnt/srv/susemanager
+            name: srv-susemanager
+          - mountPath: /mnt/srv/spacewalk
+            name: srv-spacewalk
+          - mountPath: /mnt/etc/pki/trust/anchors/
+            name: ca-certs
+          - mountPath: /mnt/run/salt/master
+            name: run-salt-master
+          - mountPath: /mnt/etc/apache2
+            name: etc-apache2
+          - mountPath: /mnt/etc/systemd/system/multi-user.target.wants
+            name: etc-systemd-multi
+          - mountPath: /mnt/etc/systemd/system/sockets.target.wants
+            name: etc-systemd-sockets
+          - mountPath: /mnt/etc/salt
+            name: etc-salt
+          - mountPath: /mnt/etc/tomcat
+            name: etc-tomcat
+          - mountPath: /mnt/etc/cobbler
+            name: etc-cobbler
+          - mountPath: /mnt/etc/sysconfig
+            name: etc-sysconfig
+          - mountPath: /mnt/etc/postfix
+            name: etc-postfix
+          - mountPath: /mnt/etc/sssd
+            name: etc-sssd
+          - mountPath: /mnt/etc/rhn
+            name: etc-rhn
       - command:
         - sh
         - -c
@@ -172,11 +386,23 @@ spec:
           done
         env:
           - name: MANAGER_DB_HOST
-            value: db
+            valueFrom:
+              configMapKeyRef:
+                key: "db_host"
+                name: uyuni-config
+                optional: false
           - name: MANAGER_DB_PORT
-            value: "5432"
+            valueFrom:
+              configMapKeyRef:
+                key: "db_port"
+                name: uyuni-config
+                optional: false
           - name: MANAGER_DB_NAME
-            value: susemanager
+            valueFrom:
+              configMapKeyRef:
+                key: "db_name"
+                name: uyuni-config
+                optional: false
           - name: MANAGER_USER
             valueFrom:
               secretKeyRef:
@@ -184,33 +410,32 @@ spec:
                 name: db-credentials
                 optional: false
           - name: REPORT_DB_HOST
-            value: reportdb
+            valueFrom:
+              configMapKeyRef:
+                key: "reportdb_host"
+                name: uyuni-config
+                optional: false
           - name: REPORT_DB_PORT
-            value: "5432"
+            valueFrom:
+              configMapKeyRef:
+                key: "reportdb_port"
+                name: uyuni-config
+                optional: false
           - name: REPORT_DB_NAME
-            value: reportdb
+            valueFrom:
+              configMapKeyRef:
+                key: "reportdb_name"
+                name: uyuni-config
+                optional: false
           - name: REPORT_DB_USER
             valueFrom:
               secretKeyRef:
                 key: username
                 name: reportdb-credentials
                 optional: false
-        image: {{- include "deployment.container.image" (dict "name" "server" "global" .) | indent 1}}
+        image: {{ include "uyuni.image" (dict "name" "server" "global" . "local" .Values.server) }}
         imagePullPolicy: {{ .Values.pullPolicy }}
         name: db-waiter
-      - command:
-        - sh
-        - -c
-        - |2
-          until test -e /root/.MANAGER_SETUP_COMPLETE; do
-            sleep 60
-          done
-        image: {{- include "deployment.container.image" (dict "name" "server" "global" .) | indent 1}}
-        imagePullPolicy: {{ .Values.pullPolicy }}
-        name: setup-waiter
-        volumeMounts:
-        - mountPath: /root
-          name: root
       volumes:
       - name: var-cobbler
         persistentVolumeClaim:
@@ -251,9 +476,6 @@ spec:
       - name: srv-spacewalk
         persistentVolumeClaim:
           claimName: srv-spacewalk
-      - name: root
-        persistentVolumeClaim:
-          claimName: root
       - name: ca-certs
         persistentVolumeClaim:
           claimName: ca-certs
@@ -312,18 +534,19 @@ spec:
           medium: Memory
           sizeLimit: 256Mi
         name: run
-      - hostPath:
-          path: /sys/fs/cgroup
-          type: Directory
-        name: sys-fs-cgroup
-{{- if .Values.mirror }}
-  {{- if .Values.mirror.claimName }}
+      - name: sys-fs-cgroup
+        emptyDir:
+{{- if .Values.server.mirror }}
+  {{- if .Values.server.mirror.claimName }}
       - name: mirror
         persistentVolumeClaim:
-          claimName: {{ .Values.mirror.claimName }}
-  {{- else if .Values.mirror.hostPath }}
+          claimName: {{ .Values.server.mirror.claimName }}
+  {{- else if .Values.server.mirror.hostPath }}
       - name: mirror
         hostPath:
-          path: {{ .Values.mirror.hostPath }}
+          path: {{ .Values.server.mirror.hostPath }}
   {{- end }}
+{{- end }}
+{{- if .Values.server.extraVolumes }}
+{{ toYaml .Values.server.extraVolumes | nindent 6 }}
 {{- end }}

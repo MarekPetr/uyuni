@@ -1,4 +1,4 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
@@ -47,7 +47,7 @@
     <p><bean:message key="kickstart.jsp.create.wizard.third.heading1" /></p>
     <div class="panel panel-default">
       <div class="panel-body">
-        <div class="form-group">
+        <div class="row">
           <div class="col-sm-2">
             <rhn:required-field key="kickstart.root.password.jsp.label"/>:
           </div>
@@ -55,7 +55,7 @@
             <html:password property="rootPassword" styleClass="form-control" />
           </div>
         </div>
-        <div class="form-group">
+        <div class="row">
           <div class="col-sm-2">
             <rhn:required-field key="kickstart.root.password.verify.jsp.label"/>:
           </div>

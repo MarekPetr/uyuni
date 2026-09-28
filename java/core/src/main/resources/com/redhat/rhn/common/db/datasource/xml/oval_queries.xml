@@ -1,38 +1,57 @@
 <datasource_modes>
     <callable-mode name="add_product_vulnerable_package">
-        <query params="package_name, fix_version, product_name, cve_name">
-            call insert_product_vulnerable_packages(:package_name, :fix_version, :product_name, :cve_name)
+        <query params="package_name, fix_epoch, fix_version, fix_release, fix_type, product_name, os_product_family, os_product_version, cve_name">
+            call insert_product_vulnerable_packages(:package_name, :fix_epoch, :fix_version, :fix_release, :fix_type, :product_name, :os_product_family, :os_product_version, :cve_name)
         </query>
     </callable-mode>
 
     <mode name="get_vulnerable_packages">
-        <query params="cve_name, product_cpe">
-            SELECT vulnerablePkg.name AS vulnerablePkgName, vulnerablePkg.fix_version AS vulnerablePkgFixVersion
-            FROM suseovalvulnerablepackage vulnerablePkg,
-                 rhncve cve,
-                 suseovalplatform platform,
-                 suseovalplatformvulnerablepackage platVulnerablePkg
-            WHERE cve.name = :cve_name
-              AND platform.cpe = :product_cpe
-              AND platVulnerablePkg.cve_id = cve.id
-              AND platVulnerablePkg.platform_id = platform.id
-              AND platVulnerablePkg.vulnerable_pkg_id = vulnerablePkg.id;
+        <query params="cve_name">
+            SELECT s.id AS server_id,
+                cve.name,
+                vulnerablePkg.name AS package_name,
+                (vulnerablePkg.fix_version).epoch AS fix_epoch,
+                (vulnerablePkg.fix_version).version AS fix_version,
+                (vulnerablePkg.fix_version).release AS fix_release,
+                (vulnerablePkg.fix_version).type AS fix_type,
+                vulnerablePkg.fix_version IS NULL
+                  OR vulnerablePkg.fix_version > pe.evr AS affected
+            FROM rhnCVE cve
+            JOIN suseovalplatformvulnerable platVulnerable
+              ON platVulnerable.cve_id = cve.id
+                AND cve.name = :cve_name
+            JOIN suseovalplatform platform
+              ON platform.id = platVulnerable.platform_id
+            JOIN rhnServer s
+              ON (starts_with(s.cpe, platform.cpe) OR starts_with(platform.cpe, s.cpe))
+                AND s.id IN (%s)
+            JOIN suseovalvulnerablepackage vulnerablePkg
+              ON vulnerablePkg.plat_vuln_id = platVulnerable.id
+            JOIN rhnPackageName pn
+              ON pn.name = vulnerablePkg.name
+            JOIN rhnServerPackage sp
+              ON sp.server_id = s.id
+                AND sp.name_id = pn.id
+            JOIN rhnPackageEVR pe
+              ON pe.id = sp.evr_id
+            ORDER BY s.id, vulnerablePkg.name;
         </query>
     </mode>
 
     <mode name="can_audit_cve">
         <query params="cve_name">
             SELECT 1
-            FROM suseOVALPlatformVulnerablePackage platVul,
+            FROM suseOVALPlatformVulnerable platVul,
                  rhncve cve
             WHERE platVul.cve_id = cve.id
               AND cve.name = :cve_name;
         </query>
     </mode>
 
-    <mode name="check_oval_availability">
-        <query params="cpe">
-            SELECT 1 FROM suseOVALPlatform plat WHERE starts_with(:cpe, plat.cpe);
+    <mode name="list_oval_platform_cpes">
+        <query>
+            SELECT plat.cpe AS cpe
+            FROM suseOVALPlatform plat;
         </query>
     </mode>
 
@@ -46,10 +65,37 @@
         </query>
     </mode>
 
-    <write-mode name="clear_oval_metadata_by_platform">
-        <query params="cpe">
-            DELETE FROM suseOVALPlatformVulnerablePackage pvp WHERE pvp.platform_id = (SELECT id FROM suseOVALPlatform plat WHERE plat.cpe = :cpe);
-            DELETE FROM suseOVALPlatform plat where plat.cpe = :cpe;
+    <mode name="list_servers_with_errata">
+        <query params="user_id">
+            SELECT userServerPerms.server_id AS server_id
+            FROM rhnUserServerPerms userServerPerms
+            WHERE userServerPerms.user_id = :user_id
+              AND EXISTS (
+                  SELECT 1
+                  FROM suseCVEServerChannel cveServerChannel
+                  JOIN rhnChannelErrata channelErrata
+                    ON cveServerChannel.channel_id = channelErrata.channel_id
+                  WHERE cveServerChannel.server_id = userServerPerms.server_id
+              );
+        </query>
+    </mode>
+
+    <write-mode name="clear_oval_metadata_by_os_product">
+        <query params="os_product_family, os_product_version">
+            DELETE FROM suseOVALOsProduct osProduct
+            WHERE osProduct.os_family = :os_product_family
+              AND osProduct.version = :os_product_version;
         </query>
     </write-mode>
+
+    <write-mode name="delete_old_oval_metadata">
+        <query params="start_date">
+            DELETE FROM suseOVALVulnerablePackage
+            WHERE last_modified &lt; :start_date;
+
+            DELETE FROM suseOVALPlatformVulnerable
+            WHERE last_modified &lt; :start_date;
+        </query>
+    </write-mode>
+
 </datasource_modes>

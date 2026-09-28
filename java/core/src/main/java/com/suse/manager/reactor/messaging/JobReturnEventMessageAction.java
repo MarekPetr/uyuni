@@ -20,6 +20,7 @@ import com.redhat.rhn.domain.action.Action;
 import com.redhat.rhn.domain.action.ActionChain;
 import com.redhat.rhn.domain.action.ActionChainFactory;
 import com.redhat.rhn.domain.action.ActionFactory;
+import com.redhat.rhn.domain.action.ActionTypeEnum;
 import com.redhat.rhn.domain.server.MinionServer;
 import com.redhat.rhn.domain.server.MinionServerFactory;
 import com.redhat.rhn.domain.server.VirtualInstance;
@@ -151,6 +152,11 @@ public class JobReturnEventMessageAction implements MessageAction {
         boolean isStandaloneAction = !isActionChainInvolved && !isFunctionTestMode;
         if (isStandaloneAction) {
             handleStandaloneAction(jobResult, jobReturnEvent, function, actionId);
+
+            // find and update the original pending DistUpgradeAction.
+            if (isMajorMigrationVerifyJob(jobReturnEvent, function)) {
+                saltServerActionService.handleMajorMigrationVerificationResult(jobReturnEvent.getMinionId(), jobResult);
+            }
         }
 
         // Check if event was triggered in response to state scheduled at minion start-up event
@@ -271,6 +277,42 @@ public class JobReturnEventMessageAction implements MessageAction {
         }
     }
 
+    /**
+     * Checks if the job return event corresponds to a post-reboot verification state
+     * used in major version migrations (specifically the SLES 15 to 16 bridge).
+     *
+     * @param jobReturnEvent the Salt event
+     * @param function the Salt function called (e.g., state.apply)
+     * @return true if this is a major migration verification handshake
+     */
+    private boolean isMajorMigrationVerifyJob(JobReturnEvent jobReturnEvent, String function) {
+        LOG.debug("Checking if job {} is major migration verify job", jobReturnEvent.getJobId());
+        if (!"state.apply".equals(function) && !"state.sls".equals(function)) {
+            return false;
+        }
+
+        Object funArgs = jobReturnEvent.getData().getFunArgs();
+        if (!(funArgs instanceof List<?> funArgsList) || funArgsList.isEmpty()) {
+            return false;
+        }
+
+        Object firstArg = funArgsList.get(0);
+        if (ApplyStatesEventMessage.DISTUPGRADE_SLES16_VERIFY.equals(firstArg)) {
+            return true;
+        }
+        if (firstArg instanceof Map<?, ?> argMap) {
+            Object mods = argMap.get("mods");
+            if (ApplyStatesEventMessage.DISTUPGRADE_SLES16_VERIFY.equals(mods)) {
+                return true;
+            }
+            else if (mods instanceof List<?> modsList) {
+                return modsList.contains(ApplyStatesEventMessage.DISTUPGRADE_SLES16_VERIFY);
+            }
+        }
+
+        return false;
+    }
+
     private void handleStandaloneAction(Optional<JsonElement> jobResult, JobReturnEvent jobReturnEvent,
                                                  String function, Optional<Long> actionId) {
         PackageChangeOutcome changeOutcome = handlePackageChanges(jobReturnEvent,
@@ -290,14 +332,17 @@ public class JobReturnEventMessageAction implements MessageAction {
         }
 
         boolean isDistUpgrade = action.map(Action::getActionType)
-                .map(type -> type.equals(ActionFactory.TYPE_DIST_UPGRADE))
+                .map(ActionTypeEnum.TYPE_DIST_UPGRADE::equalsType)
                 .orElse(false);
 
         if (isDistUpgrade) {
             executionTime = Instant.now().plusSeconds(30);
         }
 
-        schedulePackageRefresh(scheduler, jobReturnEvent.getMinionId(), Date.from(executionTime));
+        // No package refresh needed for SLES 15 -> 16 migration
+        if (!saltServerActionService.isSLES15To16Migration(action)) {
+            schedulePackageRefresh(scheduler, jobReturnEvent.getMinionId(), Date.from(executionTime));
+        }
     }
 
     private void updateHostWhenS390(MinionServer m) {

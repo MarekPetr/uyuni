@@ -46,7 +46,7 @@ public class MessageQueueThreadPool extends ThreadPoolExecutor {
      */
     public MessageQueueThreadPool(int size) {
         super(size, size, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
-        setThreadFactory(new BasicThreadFactory.Builder().namingPattern("message-queue-thread-%d").build());
+        setThreadFactory(BasicThreadFactory.builder().namingPattern("message-queue-thread-%d").build());
         log.info("Started message queue thread pool (size: {})", size);
     }
 
@@ -93,8 +93,8 @@ public class MessageQueueThreadPool extends ThreadPoolExecutor {
                 TraceBackAction tba = new TraceBackAction();
                 tba.execute(evt);
             }
-            catch (Throwable t) {
-                log.error("Error sending traceback email, logging for posterity.", t);
+            catch (Exception e) {
+                log.error("Error sending traceback email, logging for posterity.", e);
             }
         }
         else {

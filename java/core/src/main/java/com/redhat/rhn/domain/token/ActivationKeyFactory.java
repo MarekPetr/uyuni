@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 SUSE LLC
  * Copyright (c) 2009--2014 Red Hat, Inc.
  *
  * This software is licensed to you under the GNU General Public License,
@@ -33,6 +34,8 @@ import com.redhat.rhn.frontend.struts.Scrubber;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Session;
+import org.hibernate.type.StandardBasicTypes;
 
 import java.util.HashMap;
 import java.util.List;
@@ -160,15 +163,15 @@ public class ActivationKeyFactory extends HibernateFactory {
         // Set the default server contact method
         newKey.setContactMethod(ServerFactory.findContactMethodById(0L));
 
-        save(newKey);
+        ActivationKey activationKey = save(newKey);
 
         if (universalDefault) {
-            Token token = newKey.getToken();
+            Token token = activationKey.getToken();
             user.getOrg().setToken(token);
             OrgFactory.save(user.getOrg());
         }
 
-        return newKey;
+        return activationKey;
     }
 
     /**
@@ -208,10 +211,12 @@ public class ActivationKeyFactory extends HibernateFactory {
 
     /**
      * Saves an ActivationKey to the database
+     *
      * @param keyIn The ActivationKey to save.
+     * @return the managed {@link ActivationKey}
      */
-    public static void save(ActivationKey keyIn) {
-        singleton.saveObject(keyIn);
+    public static ActivationKey save(ActivationKey keyIn) {
+        return singleton.saveObject(keyIn);
     }
 
 
@@ -320,5 +325,130 @@ public class ActivationKeyFactory extends HibernateFactory {
      */
     public static ActivationKey lookupById(Long id, Org org) {
         return ActivationKeyFactory.lookupByToken(TokenFactory.lookup(id, org));
+    }
+
+    /**
+     * Add an activated server to an activation key
+     * @param key the activation key
+     * @param server the server
+     */
+    public static void addActivatedServer(ActivationKey key, Server server) {
+        if (key.getToken() == null || key.getToken().getActivatedServers().contains(server)) {
+            // Nothing to do
+            return;
+        }
+
+        // Perform a direct insert to avoid problems with stale state in multi-threading operations
+        Session session = getSession();
+        session.createNativeMutationQuery(
+                "INSERT INTO rhnServerTokenRegs (token_id, server_id) VALUES (:tokenId, :serverId)")
+                .setParameter("tokenId", key.getToken().getId())
+                .setParameter("serverId", server.getId())
+                .executeUpdate();
+
+        if (session.contains(key)) {
+            // If object is attached to the session just refresh it
+            session.refresh(key);
+        }
+        else {
+            // Otherwise manually add the server
+            key.getToken().getActivatedServers().add(server);
+        }
+    }
+
+    /**
+     * Remove an activated server from an activation key
+     * @param key the activation key
+     * @param server the server
+     */
+    public static void removeActivatedServer(ActivationKey key, Server server) {
+        if (key.getToken() == null) {
+            return;
+        }
+
+        Session session = getSession();
+        session.createNativeMutationQuery(
+                "DELETE FROM rhnServerTokenRegs WHERE token_id = :tokenId AND server_id = :serverId")
+                .setParameter("tokenId", key.getToken().getId())
+                .setParameter("serverId", server.getId())
+                .executeUpdate();
+
+        if (session.contains(key)) {
+            // If object is attached to the session just refresh it
+            session.refresh(key);
+        }
+        else {
+            // Otherwise manually remove the server
+            key.getToken().getActivatedServers().remove(server);
+        }
+    }
+
+    /**
+     * Gets a list of activation keys referring to a base channel
+     * @param channelId the base channel id
+     * @return a list of activation keys referring to a base channel
+     */
+    public static List<ActivationKey> lookupByBaseChannelId(long channelId) {
+        //rhnRegTokenChannels has no correspondent object, so we need a native query
+        return getSession().createNativeQuery(
+                        """
+                        SELECT ak.*
+                        FROM rhnActivationKey ak
+                            JOIN rhnRegToken rt ON rt.id = ak.reg_token_id
+                            JOIN rhnRegTokenChannels rtc ON rtc.token_id = ak.reg_token_id
+                            JOIN rhnChannel rc ON rc.id = rtc.channel_id
+                        WHERE rc.parent_channel IS NULL
+                        AND rc.id = :channelId
+                        """, ActivationKey.class)
+                .setParameter("channelId", channelId)
+                .addSynchronizedEntityClass(Token.class)
+                .addSynchronizedEntityClass(Channel.class)
+                .getResultList();
+    }
+
+    /**
+     * Counts the activation keys referring to a base channel
+     * @param channelId the base channel id
+     * @return the activation keys count
+     */
+    public static long countActivationKeysWithBaseChannel(long channelId) {
+        //rhnRegTokenChannels has no correspondent object, so we need a native query
+        return getSession().createNativeQuery(
+                        """
+                        SELECT COUNT(*)
+                        FROM rhnActivationKey ak
+                            JOIN rhnRegToken rt ON rt.id = ak.reg_token_id
+                            JOIN rhnRegTokenChannels rtc ON rtc.token_id = ak.reg_token_id
+                            JOIN rhnChannel rc ON rc.id = rtc.channel_id
+                        WHERE rc.parent_channel IS NULL
+                        AND rc.id = :channelId
+                        """, Long.class)
+                .setParameter("channelId", channelId, StandardBasicTypes.LONG)
+                .addSynchronizedEntityClass(Token.class)
+                .addSynchronizedEntityClass(Channel.class)
+                .uniqueResult();
+    }
+
+    /**
+     * Deletes the activation keys referring to a base channel
+     * @param channelId the base channel id
+     */
+    public static void deleteActivationKeysWithBaseChannel(long channelId) {
+        //rhnRegTokenChannels has no correspondent object, so we need a native query
+        getSession().createNativeMutationQuery(
+                        """
+                        DELETE FROM rhnActivationKey WHERE token IN
+                        (
+                            SELECT ak.token
+                            FROM rhnActivationKey ak
+                                JOIN rhnRegToken rt ON rt.id = ak.reg_token_id
+                                JOIN rhnRegTokenChannels rtc ON rtc.token_id = ak.reg_token_id
+                                JOIN rhnChannel rc ON rc.id = rtc.channel_id
+                            WHERE rc.parent_channel IS NULL
+                            AND rc.id = :channelId
+                        )
+                        """)
+                .setParameter("channelId", channelId, StandardBasicTypes.LONG)
+                .executeUpdate();
     }
 }

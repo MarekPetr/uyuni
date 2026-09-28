@@ -18,6 +18,7 @@ import com.redhat.rhn.common.conf.ConfigDefaults;
 import com.redhat.rhn.common.util.http.HttpClientAdapter;
 import com.redhat.rhn.manager.content.ProductTreeEntry;
 
+import com.suse.manager.model.hub.ChannelInfoDetailsJson;
 import com.suse.manager.reactor.utils.OptionalTypeAdapterFactory;
 import com.suse.scc.model.SCCOrderJson;
 import com.suse.scc.model.SCCOrganizationSystemsUpdateResponse;
@@ -137,8 +138,7 @@ public class SCCWebClient implements SCCClient {
     }
 
     private <T> T writeCache(T value, String name) {
-        Path credentialCache = Paths.get(config.getLoggingDir(),
-                config.getUsername().replaceAll("[^a-zA-Z0-9\\._]+", "_"));
+        Path credentialCache = getCacheDir();
         try {
 
             UserPrincipal tomcatUser = null;
@@ -168,6 +168,11 @@ public class SCCWebClient implements SCCClient {
             throw new SCCClientException(e);
         }
         return value;
+    }
+
+    public Path getCacheDir() {
+        return Paths.get(config.getLoggingDir(),
+            config.getUsername().replaceAll("[^a-zA-Z0-9\\._]+", "_"));
     }
 
     /**
@@ -215,6 +220,13 @@ public class SCCWebClient implements SCCClient {
         List<ProductTreeEntry> list = getList("/suma/product_tree.json",
                 ProductTreeEntry.class);
         return writeCache(list, "product_tree");
+    }
+
+    @Override
+    public List<ChannelInfoDetailsJson> listHubChannels() throws SCCClientException {
+        List<ChannelInfoDetailsJson> list = getList("/suma/hub_channels",
+                ChannelInfoDetailsJson.class);
+        return writeCache(list, "hub_channels");
     }
 
     /**

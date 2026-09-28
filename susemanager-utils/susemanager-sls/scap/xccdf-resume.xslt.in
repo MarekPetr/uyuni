@@ -48,6 +48,7 @@ Authors:
                 </profile>
             </xsl:otherwise>
         </xsl:choose>
+        <xsl:apply-templates select="cdf1:Group | cdf2:Group"/>
         <xsl:apply-templates select="cdf1:TestResult[1] | cdf2:TestResult[1]"/>
     </xsl:template>
 
@@ -62,6 +63,39 @@ Authors:
             </xsl:attribute>
         </profile>
     </xsl:template>
+
+<!-- Group element template-->
+    <xsl:template match="cdf1:Group | cdf2:Group">
+        <!-- Only apply templates to rule elements within groups -->
+        <xsl:apply-templates select="cdf1:Rule | cdf2:Rule"/>
+        <xsl:apply-templates select="cdf1:Group | cdf2:Group"/>
+    </xsl:template>
+
+    <!-- Rule element template -->
+    <xsl:template match="cdf1:Rule | cdf2:Rule">
+        <rule>
+            <xsl:copy-of select="@id"/>
+            <xsl:apply-templates select="cdf1:fix[@system='urn:xccdf:fix:script:sh'] | cdf2:fix[@system='urn:xccdf:fix:script:sh']"/>
+        </rule>
+    </xsl:template>
+
+    <!-- Fix element template -->
+    <xsl:template match="cdf1:fix | cdf2:fix">
+        <remediation>
+            <xsl:apply-templates mode="fix-content"/>
+        </remediation>
+    </xsl:template>
+
+    <xsl:template match="text()" mode="fix-content">
+        <xsl:value-of select="."/>
+    </xsl:template>
+
+    <xsl:template match="cdf1:sub | cdf2:sub" mode="fix-content">
+        <xsl:variable name="subId" select="@idref"/>
+        <xsl:value-of select="//*[local-name()='Value' and @id=$subId]/*[local-name()='value' and not(@selector)]"/>
+    </xsl:template>
+
+    <xsl:template match="*" mode="fix-content"/>
 
     <xsl:template match="cdf1:TestResult | cdf2:TestResult">
         <TestResult>

@@ -79,6 +79,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -796,19 +797,18 @@ public class PackageManager extends BaseManager {
      * Deletes a package from the system
      * @param user calling user
      * @param pkg package to delete
-     * @throws PermissionCheckFailureException - caller is not an org admin,
+     * @throws PermissionCheckFailureException - caller is not a channel admin,
      * the package is in one of the RH owned channels, or is in different org
      */
     public static void schedulePackageRemoval(User user, Package pkg)
         throws PermissionCheckFailureException {
-        if (!user.hasRole(RoleFactory.ORG_ADMIN)) {
+        if (!user.hasRole(RoleFactory.CHANNEL_ADMIN)) {
             throw new PermissionCheckFailureException();
         }
-        DataResult<Row> channels = PackageManager.orgPackageChannels(
-                user.getOrg().getId(), pkg.getId());
-        if (pkg.getOrg() == null || user.getOrg() != pkg.getOrg()) {
+        if (pkg.getOrg() == null || !Objects.equals(user.getOrg().getId(), pkg.getOrg().getId())) {
             throw new PermissionCheckFailureException();
         }
+
         Session session = HibernateFactory.getSession();
         cleanupFileEntries(pkg.getId());
         StringBuilder packageFileName = new StringBuilder();
@@ -822,6 +822,7 @@ public class PackageManager extends BaseManager {
 
         // For every channel the package is in, mark the channel as "changed" in case its
         // metadata needs tto be updated (RHEL5+, mostly)
+        DataResult<Row> channels = PackageManager.orgPackageChannels(user.getOrg().getId(), pkg.getId());
         for (Row m : channels) {
             String channelLabel = m.get("label").toString();
             Channel channel = ChannelFactory.lookupByLabel(user.getOrg(), channelLabel);
@@ -829,9 +830,7 @@ public class PackageManager extends BaseManager {
             // otherwise the repodata won't be generated
             channel.setLastModified(new Date());
             ChannelFactory.save(channel);
-            ChannelManager.queueChannelChange(channelLabel,
-                    "java::deletePackage",
-                    pkg.getPackageName().getName());
+            ChannelManager.queueChannelChange(channelLabel, "java::deletePackage", pkg.getPackageName().getName());
         }
         session.remove(pkg);
     }
@@ -840,15 +839,15 @@ public class PackageManager extends BaseManager {
      * Deletes a source package from the system
      * @param user calling user
      * @param pkg source package to delete
-     * @throws PermissionCheckFailureException - caller is not an org admin,
+     * @throws PermissionCheckFailureException - caller is not a channel admin,
      * the package is in one of the RH owned channels, or is in different org
      */
     public static void schedulePackageSourceRemoval(User user, PackageSource pkg)
         throws PermissionCheckFailureException {
-        if (!user.hasRole(RoleFactory.ORG_ADMIN)) {
+        if (!user.hasRole(RoleFactory.CHANNEL_ADMIN)) {
             throw new PermissionCheckFailureException();
         }
-        if (pkg.getOrg() == null || user.getOrg() != pkg.getOrg()) {
+        if (pkg.getOrg() == null || !Objects.equals(user.getOrg().getId(), pkg.getOrg().getId())) {
             throw new PermissionCheckFailureException();
         }
         schedulePackageFileForDeletion(pkg.getPath());
@@ -1430,8 +1429,8 @@ public class PackageManager extends BaseManager {
      */
     public static void deletePackages(Set<Long> ids, User user) {
 
-        if (!user.isMemberOf(AccessGroupFactory.CHANNEL_ADMIN)) {
-            throw new PermissionException(AccessGroupFactory.CHANNEL_ADMIN);
+        if (!user.isMemberOf(AccessGroupFactory.getChannelAdmin())) {
+            throw new PermissionException(AccessGroupFactory.getChannelAdmin());
         }
         if (LOG.isInfoEnabled()) {
             // Important for Auditing
@@ -1527,8 +1526,8 @@ public class PackageManager extends BaseManager {
      */
     public static void deleteSourcePackages(Set<Long> ids, User user) {
 
-        if (!user.isMemberOf(AccessGroupFactory.CHANNEL_ADMIN)) {
-            throw new PermissionException(AccessGroupFactory.CHANNEL_ADMIN);
+        if (!user.isMemberOf(AccessGroupFactory.getChannelAdmin())) {
+            throw new PermissionException(AccessGroupFactory.getChannelAdmin());
         }
 
         long start = System.currentTimeMillis();

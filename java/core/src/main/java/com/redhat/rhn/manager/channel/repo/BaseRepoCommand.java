@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2009--2017 Red Hat, Inc.
+ * Copyright (c) 2010--2026 SUSE LLC
  *
  * This software is licensed to you under the GNU General Public License,
  * version 2 (GPLv2). There is NO WARRANTY for this software, express or
@@ -12,13 +13,9 @@
  * granted to use or replicate Red Hat trademarks that are incorporated
  * in this software or its documentation.
  */
-/*
- * Copyright (c) 2010-2019 SUSE LLC
- */
 package com.redhat.rhn.manager.channel.repo;
 
 import com.redhat.rhn.common.client.InvalidCertificateException;
-import com.redhat.rhn.common.hibernate.HibernateFactory;
 import com.redhat.rhn.domain.channel.ChannelFactory;
 import com.redhat.rhn.domain.channel.ContentSource;
 import com.redhat.rhn.domain.channel.ContentSourceType;
@@ -33,8 +30,8 @@ import com.redhat.rhn.frontend.xmlrpc.channel.repo.InvalidRepoUrlInputException;
 
 import java.net.URI;
 import java.net.URL;
-import java.util.Date;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -48,15 +45,39 @@ public abstract class BaseRepoCommand {
         "^[a-zA-Z\\d][\\w\\d\\s\\-\\.\\'\\(\\)\\/\\_]*$";
 
 
-    protected ContentSource repo;
+    private final ContentSource repo;
+    private final Org org;
 
     private String label;
     private String url;
     private String type;
-    private Set<SslContentSource> sslSetsToAdd = new HashSet<>();
-    private Set<SslContentSource> sslSetsToDelete = new HashSet<>();
-    private Org org;
+    private Set<SslContentSource> sslContentSourcesToAdd = new HashSet<>();
+    private Set<SslContentSource> sslContentSourcesToDelete = new HashSet<>();
     private boolean metadataSigned;
+
+    /**
+     * Creates an instance
+     * @param orgIn the organization who owns the repository
+     */
+    protected BaseRepoCommand(Org orgIn) {
+        this(orgIn, null);
+    }
+    /**
+     * Creates an instance
+     * @param orgIn the organization who owns the repository
+     * @param contentSourceId the repository id to edit, null if creating a new repository
+     */
+    protected BaseRepoCommand(Org orgIn, Long contentSourceId) {
+        this.org = orgIn;
+
+        if (contentSourceId != null) {
+            this.repo = Objects.requireNonNull(ChannelFactory.lookupContentSource(contentSourceId, orgIn),
+                    "Content Source must not be null for id " +  contentSourceId);
+        }
+        else {
+            this.repo = new ContentSource();
+        }
+    }
 
     /**
      *
@@ -64,14 +85,6 @@ public abstract class BaseRepoCommand {
      */
     public Org getOrg() {
         return org;
-    }
-
-    /**
-     *
-     * @param orgIn to set for repo
-     */
-    public void setOrg(Org orgIn) {
-        this.org = orgIn;
     }
 
     /**
@@ -123,25 +136,20 @@ public abstract class BaseRepoCommand {
     }
 
 
-    private SslContentSource createSslSet(Long sslCaCertId, Long sslClientCertId,
-                          Long sslClientKeyId) throws InvalidCertificateException {
+    private SslContentSource createSslContentSource(Long sslCaCertId, Long sslClientCertId, Long sslClientKeyId)
+            throws InvalidCertificateException {
         SslCryptoKey caCert = lookupSslCryptoKey(sslCaCertId, org);
-        SslCryptoKey clientCert = lookupSslCryptoKey(sslClientCertId, org);
-        SslCryptoKey clientKey = lookupSslCryptoKey(sslClientKeyId, org);
         if (caCert == null) {
             return null;
         }
-        else if (clientCert == null && clientKey != null) {
-            throw new InvalidCertificateException(
-                    "client key is provided but client certificate is missing");
+
+        SslCryptoKey clientCert = lookupSslCryptoKey(sslClientCertId, org);
+        SslCryptoKey clientKey = lookupSslCryptoKey(sslClientKeyId, org);
+        if (clientCert == null && clientKey != null) {
+            throw new InvalidCertificateException("client key is provided but client certificate is missing");
         }
-        SslContentSource sslSet = ChannelFactory.createRepoSslSet();
-        sslSet.setCaCert(caCert);
-        sslSet.setClientCert(clientCert);
-        sslSet.setClientKey(clientKey);
-        sslSet.setCreated(new Date());
-        sslSet.setModified(new Date());
-        return sslSet;
+
+        return new SslContentSource(repo, caCert,  clientCert, clientKey);
     }
 
     /**
@@ -152,25 +160,22 @@ public abstract class BaseRepoCommand {
      * @throws InvalidCertificateException in case ca cert is missing or client key is set,
      * but client certificate is missing
      */
-    public void addSslSet(Long sslCaCertId, Long sslClientCertId, Long sslClientKeyId)
+    public void addSslContentSource(Long sslCaCertId, Long sslClientCertId, Long sslClientKeyId)
             throws InvalidCertificateException {
-        SslContentSource sslSet = createSslSet(sslCaCertId, sslClientCertId,
-                sslClientKeyId);
+        SslContentSource sslSet = createSslContentSource(sslCaCertId, sslClientCertId, sslClientKeyId);
         if (sslSet != null) {
-            sslSetsToAdd.add(sslSet);
-            sslSetsToDelete.remove(sslSet);
+            sslContentSourcesToAdd.add(sslSet);
+            sslContentSourcesToDelete.remove(sslSet);
         }
     }
 
     /**
      * Marks all assigned SSL sets for deletion
      */
-    public void deleteAllSslSets() {
-        if (repo != null) {
-            Set<SslContentSource> repoSslSets = repo.getSslSets();
-            sslSetsToDelete.addAll(repoSslSets);
-            sslSetsToAdd.removeAll(repoSslSets);
-        }
+    public void deleteAllSslContentSources() {
+        Set<SslContentSource> repoSslSets = repo.getSslContentSources();
+        sslContentSourcesToDelete.addAll(repoSslSets);
+        sslContentSourcesToAdd.removeAll(repoSslSets);
     }
 
     /**
@@ -202,18 +207,8 @@ public abstract class BaseRepoCommand {
     public void store() throws InvalidRepoUrlException, InvalidRepoLabelException,
             InvalidRepoTypeException, InvalidRepoUrlInputException {
 
-        // create new repository
-        if (repo == null) {
-            this.repo = new ContentSource();
-        }
-
-        Set<SslContentSource> repoSslSets = repo.getSslSets();
-        for (SslContentSource sslSet : sslSetsToAdd) {
-            repoSslSets.add(sslSet);
-        }
-        for (SslContentSource sslSet : sslSetsToDelete) {
-            repoSslSets.remove(sslSet);
-        }
+        sslContentSourcesToAdd.forEach(repo::addSslContentSource);
+        sslContentSourcesToDelete.forEach(repo::removeSslContentSource);
 
         repo.setOrg(org);
 
@@ -252,8 +247,7 @@ public abstract class BaseRepoCommand {
                 throw new InvalidRepoUrlInputException(url);
             }
             ContentSourceType cst = ChannelFactory.lookupContentSourceType(this.type);
-            boolean alreadyExists = !ChannelFactory.lookupContentSourceByOrgAndRepo(
-                    org, cst, url).isEmpty();
+            boolean alreadyExists = !ChannelFactory.lookupContentSourceByOrgAndRepo(org, cst, url).isEmpty();
             if (!this.url.equals(repo.getSourceUrl())) {
                 if (alreadyExists) {
                     throw new InvalidRepoUrlException(url);
@@ -270,8 +264,6 @@ public abstract class BaseRepoCommand {
         repo.setMetadataSigned(this.metadataSigned);
 
         ChannelFactory.save(repo);
-        HibernateFactory.commitTransaction();
-        HibernateFactory.closeSession();
     }
 
     /**

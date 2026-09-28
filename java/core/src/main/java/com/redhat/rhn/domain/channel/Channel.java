@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 SUSE LLC
+ * Copyright (c) 2025--2026 SUSE LLC
  * Copyright (c) 2009--2018 Red Hat, Inc.
  *
  * This software is licensed to you under the GNU General Public License,
@@ -27,15 +27,18 @@ import com.redhat.rhn.domain.user.User;
 import com.redhat.rhn.manager.channel.ChannelManager;
 import com.redhat.rhn.manager.system.SystemManager;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.hibernate.annotations.Type;
+import org.hibernate.type.YesNoConverter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -44,24 +47,25 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Inheritance;
-import javax.persistence.InheritanceType;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
-import javax.persistence.PrimaryKeyJoinColumn;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrimaryKeyJoinColumn;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 
 /**
  * Channel
@@ -98,7 +102,7 @@ public class Channel extends BaseDomainHelper implements Comparable<Channel> {
     private Date endOfLife;
 
     @Column(name = "gpg_check")
-    @Type(type = "yes_no")
+    @Convert(converter = YesNoConverter.class)
     private boolean GPGCheck;
 
     @Column(name = "gpg_key_url")
@@ -144,7 +148,7 @@ public class Channel extends BaseDomainHelper implements Comparable<Channel> {
     private String updateTag;
 
     @Column(name = "installer_updates")
-    @Type(type = "yes_no")
+    @Convert(converter = YesNoConverter.class)
     private boolean installerUpdates;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -224,6 +228,9 @@ public class Channel extends BaseDomainHelper implements Comparable<Channel> {
     @PrimaryKeyJoinColumn(name = "channel_id")
     private ChannelSyncFlag channelSyncFlag;
 
+    @Column(name = "auto_sync")
+    private boolean autoSync;
+
     /**
      * Channel Object Constructor
      */
@@ -241,6 +248,7 @@ public class Channel extends BaseDomainHelper implements Comparable<Channel> {
         GPGCheck = true;
         channelSyncFlag = new ChannelSyncFlag();
         channelSyncFlag.setChannel(this);
+        autoSync = true;
     }
 
     /**
@@ -266,6 +274,9 @@ public class Channel extends BaseDomainHelper implements Comparable<Channel> {
      * @return true if this Channel is a mgr server channel.
      */
     public boolean isMgrServer() {
+        if (null == getChannelFamily()) {
+            return false;
+        }
         return getChannelFamily().getLabel().startsWith(
                 ChannelFamilyFactory.SATELLITE_CHANNEL_FAMILY_LABEL);
     }
@@ -594,15 +605,7 @@ public class Channel extends BaseDomainHelper implements Comparable<Channel> {
      * @return Returns the set of erratas for this channel.
      */
     public Set<Errata> getErratas() {
-        return erratas;
-    }
-
-    /**
-     * Sets the erratas set for this channel
-     * @param erratasIn The set of erratas
-     */
-    public void setErratas(Set<Errata> erratasIn) {
-        this.erratas = erratasIn;
+        return Collections.unmodifiableSet(erratas);
     }
 
     /**
@@ -610,7 +613,107 @@ public class Channel extends BaseDomainHelper implements Comparable<Channel> {
      * @param errataIn The errata to add
      */
     public void addErrata(Errata errataIn) {
+        if (errataIn == null) {
+            return;
+        }
         erratas.add(errataIn);
+        errataIn.addChannelInternal(this);
+    }
+
+    /**
+     * Adds multiple erratas to the channel
+     * @param erratasIn The collection of erratas to add
+     */
+    public void addErratas(Collection<Errata> erratasIn) {
+        if (CollectionUtils.isEmpty(erratasIn)) {
+            return;
+        }
+        erratasIn.forEach(this::addErrata);
+    }
+
+    /**
+     * Removes a single errata from the channel
+     * @param errataIn The errata to remove
+     */
+    public void removeErrata(Errata errataIn) {
+        if (errataIn == null) {
+            return;
+        }
+        erratas.remove(errataIn);
+        errataIn.removeChannelInternal(this);
+    }
+
+
+    /**
+     * Removes multiple erratas from the channel
+     * @param erratasIn The collection of erratas to remove
+     */
+    public void removeErratas(Collection<Errata> erratasIn) {
+        if (CollectionUtils.isEmpty(erratasIn)) {
+            return;
+        }
+        erratasIn.forEach(this::removeErrata);
+    }
+
+    /**
+     * Clears out the errata associated with this channel.
+     */
+    public void clearErratas() {
+        removeErratas(new ArrayList<>(getErratas()));
+    }
+
+    /**
+     * Adds a single package to the channel
+     * @param packageIn The package to add
+     */
+    public void addPackage(Package packageIn) {
+        if (packageIn == null) {
+            return;
+        }
+        packages.add(packageIn);
+        packageIn.addChannelInternal(this);
+    }
+
+    /**
+     * Adds multiple packages to the channel
+     * @param packagesIn The collection of packages to add
+     */
+    public void addPackages(Collection<Package> packagesIn) {
+        if (CollectionUtils.isEmpty(packagesIn)) {
+            return;
+        }
+        packagesIn.forEach(this::addPackage);
+    }
+
+    /**
+     * Removes a package from the packages set.
+     * @param packageIn The package to remove.
+     */
+    public void removePackage(Package packageIn) {
+        if (packageIn == null) {
+            return;
+        }
+        packages.remove(packageIn);
+        packageIn.removeChannelInternal(this);
+    }
+
+
+    /**
+     * Removes multiple packages from the channel
+     * @param packagesIn The collection of packages to remove
+     */
+    public void removePackages(Collection<Package> packagesIn) {
+        if (CollectionUtils.isEmpty(packagesIn)) {
+            return;
+        }
+        packagesIn.forEach(this::removePackage);
+    }
+
+    /**
+     * Clears out the packaged associated with this channel.
+     */
+    public void clearPackages() {
+        removePackages(new ArrayList<>(getPackages()));
     }
 
     /**
@@ -619,7 +722,7 @@ public class Channel extends BaseDomainHelper implements Comparable<Channel> {
      * @return Returns the set of packages for this channel.
      */
     public Set<Package> getPackages() {
-        return packages;
+        return Collections.unmodifiableSet(packages);
     }
 
     /**
@@ -640,15 +743,6 @@ public class Channel extends BaseDomainHelper implements Comparable<Channel> {
         return ChannelFactory.getErrataCount(this);
     }
 
-
-    /**
-     * Sets the packages set for this channel
-     * @param packagesIn The set of erratas
-     */
-    public void setPackages(Set<Package> packagesIn) {
-        this.packages = packagesIn;
-    }
-
     /**
      *
      * @param sourcesIn The set of yum repo sources
@@ -663,17 +757,6 @@ public class Channel extends BaseDomainHelper implements Comparable<Channel> {
      */
     public Set<ContentSource> getSources() {
         return sources;
-    }
-
-    /**
-     * Removes a single package from the channel
-     * @param user the user doing the remove
-     * @param packageIn The package to remove
-     */
-    public void removePackage(Package packageIn, User user) {
-            List<Long> list = new ArrayList<>();
-            list.add(packageIn.getId());
-            ChannelManager.removePackages(this, list, user);
     }
 
     /**
@@ -1161,6 +1244,22 @@ public class Channel extends BaseDomainHelper implements Comparable<Channel> {
      */
     public boolean isTypeDeb() {
         return PackageFactory.ARCH_TYPE_DEB.equalsIgnoreCase(getArchTypeLabel());
+    }
+
+    /**
+     * is auto repos sync activated
+     * @return boolean saying if is repo auto sync is enable
+     */
+    public boolean isAutoSync() {
+        return autoSync;
+    }
+
+    /**
+     * Enable or disable channel auto sync that runs on taskomatic
+     * @param autoSyncIn boolean to set the repo auto sync
+     */
+    public void setAutoSync(boolean autoSyncIn) {
+        autoSync = autoSyncIn;
     }
 
     /**

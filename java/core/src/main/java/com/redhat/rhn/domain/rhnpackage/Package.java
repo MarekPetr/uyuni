@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 SUSE LLC
+ * Copyright (c) 2025--2026 SUSE LLC
  * Copyright (c) 2009--2014 Red Hat, Inc.
  *
  * This software is licensed to you under the GNU General Public License,
@@ -30,27 +30,28 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import java.io.Serial;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
-import javax.persistence.Transient;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 
 /**
  * Package
@@ -121,26 +122,16 @@ public class Package extends BaseDomainHelper {
     @Column(name = "last_modified")
     private Date lastModified;
 
-    @ManyToMany(cascade = {CascadeType.MERGE, CascadeType.PERSIST})
-    @JoinTable(
-            name = "rhnErrataPackage",
-            joinColumns = @JoinColumn(name = "package_id"),
-            inverseJoinColumns = @JoinColumn(name = "errata_id")
-    )
+    @ManyToMany(mappedBy = "packages")
     private Set<Errata> errata = new HashSet<>();
 
-    @ManyToMany(cascade = {CascadeType.MERGE, CascadeType.PERSIST})
-    @JoinTable(
-            name = "rhnChannelPackage",
-            joinColumns = @JoinColumn(name = "package_id"),
-            inverseJoinColumns = @JoinColumn(name = "channel_id")
-    )
+    @ManyToMany(mappedBy = "packages")
     private Set<Channel> channels = new HashSet<>();
 
     @OneToMany(mappedBy = "pack", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private Set<PackageFile> packageFiles = new HashSet<>();
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "checksum_id")
     private Checksum checksum;
 
@@ -168,7 +159,7 @@ public class Package extends BaseDomainHelper {
     @JoinColumn(name = "package_arch_id")
     private PackageArch packageArch;
 
-    @ManyToMany(cascade = CascadeType.ALL)
+    @ManyToMany(cascade = {CascadeType.MERGE, CascadeType.PERSIST, CascadeType.DETACH, CascadeType.REFRESH})
     @JoinTable(
             name = "rhnPackageKeyAssociation",
             joinColumns = @JoinColumn(name = "package_id"),
@@ -766,28 +757,46 @@ public class Package extends BaseDomainHelper {
      * @return Returns the errata.
      */
     public Set<Errata> getErrata() {
-        return errata;
+        return Collections.unmodifiableSet(errata);
     }
 
     /**
-     * @param errataIn The errata to set.
+     * Internal helper for bidirectional relationship - adds an errata to this package
+     * @param errataIn The errata to add
      */
-    public void setErrata(Set<Errata> errataIn) {
-        this.errata = errataIn;
+    public void addErrataInternal(Errata errataIn) {
+        errata.add(errataIn);
+    }
+
+    /**
+     * Internal helper for bidirectional relationship - removes errata from this package.
+     * @param errataIn The channel to remove
+     */
+    public void removeErrataInternal(Errata errataIn) {
+        errata.remove(errataIn);
     }
 
     /**
      * @return Returns the channels.
      */
     public Set<Channel> getChannels() {
-        return channels;
+        return Collections.unmodifiableSet(channels);
     }
 
     /**
-     * @param channelsIn The channels to set.
+     * Internal helper for bidirectional relationship - adds a channel to this package
+     * @param channel The channel to add
      */
-    public void setChannels(Set<Channel> channelsIn) {
-        this.channels = channelsIn;
+    public void addChannelInternal(Channel channel) {
+        channels.add(channel);
+    }
+
+    /**
+     * Internal helper for bidirectional relationship - removes channel from this package.
+     * @param channel The channel to remove
+     */
+    public void removeChannelInternal(Channel channel) {
+        channels.remove(channel);
     }
 
     /**

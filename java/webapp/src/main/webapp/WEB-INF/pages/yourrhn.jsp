@@ -1,4 +1,4 @@
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
@@ -24,6 +24,13 @@
       <div id="subscription-warning" class="col-md-12">
         <script type="text/javascript">
           ajax("subscription-warning", "", makeRendererHandler("subscription-warning", false).callback);
+        </script>
+      </div>
+      </c:if>
+      <c:if test="${requestScope.diskCheckWarning == 'y'}">
+      <div id="disk-check-warning" class="col-md-12">
+        <script type="text/javascript">
+          ajax("disk-check-warning", "", makeRendererHandler("disk-check-warning", false).callback);
         </script>
       </div>
       </c:if>

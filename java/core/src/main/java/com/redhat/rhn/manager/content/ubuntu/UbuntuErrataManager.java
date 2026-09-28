@@ -176,7 +176,12 @@ public class UbuntuErrataManager {
     }
 
     private static Stream<Entry> parseUbuntuErrata(Map<String, UbuntuErrataInfo> errataInfo, Set<String> packageNames) {
-        return errataInfo.values().stream().flatMap(ubuntuErrataInfo -> {
+        return errataInfo.entrySet().stream().flatMap(entry -> {
+            UbuntuErrataInfo ubuntuErrataInfo = entry.getValue();
+
+            // fallback to key if id is not present
+            String errataId = ubuntuErrataInfo.getId() != null ? ubuntuErrataInfo.getId() : entry.getKey();
+
             String description = ubuntuErrataInfo.getDescription().length() > 4000 ?
                     ubuntuErrataInfo.getDescription().substring(0, 4000) :
                     ubuntuErrataInfo.getDescription();
@@ -207,18 +212,18 @@ public class UbuntuErrataManager {
                                                     else {
                                                         return Stream.empty();
                                                     }
-                                                }).collect(Collectors.toList());
+                                        }).collect(Collectors.toList());
                                 return Stream.of(new Tuple3<>(name, version, archs));
                             })
                     ).collect(Collectors.toList());
 
             if (packageData.isEmpty()) {
                 // Skip Errata when we have no matching packages
-                LOG.debug("Skipping errata without matching packages: {}", ubuntuErrataInfo.getId());
+                LOG.debug("Skipping errata without matching packages: {}", errataId);
                 return Stream.empty();
             }
             return Stream.of(new Entry(
-                    ubuntuErrataInfo.getId(),
+                    errataId,
                     ubuntuErrataInfo.getCves(),
                     ubuntuErrataInfo.getSummary(),
                     ubuntuErrataInfo.getIsummary().orElse("-"),
@@ -228,7 +233,6 @@ public class UbuntuErrataManager {
                     packageData));
         });
     }
-
     private static Map<String, UbuntuErrataInfo> getUbuntuErrataInfo() throws IOException {
         String jsonDBUrl = "https://usn.ubuntu.com/usn-db/database.json";
         if (isFromDir()) {
@@ -367,11 +371,15 @@ public class UbuntuErrataManager {
                                 org.orElseGet(OrgFactory::getSatelliteOrg)))
                         .collect(Collectors.toSet());
                 if (errata.getPackages() == null) {
-                    errata.setPackages(packages);
+                    errata.replacePackages(packages);
                     changedErrata.add(errata);
                 }
-                else if (errata.getPackages().addAll(packages)) {
-                    changedErrata.add(errata);
+                else {
+                    int packageCount = errata.getPackages().size();
+                    errata.addPackages(packages);
+                    if (errata.getPackages().size() > packageCount) {
+                        changedErrata.add(errata);
+                    }
                 }
 
                 Set<Channel> matchingChannels = e.getValue().entrySet().stream()
@@ -379,7 +387,9 @@ public class UbuntuErrataManager {
                         .map(Map.Entry::getKey)
                         .collect(Collectors.toSet());
 
-                if (errata.getChannels().addAll(matchingChannels)) {
+                int channelCount = errata.getChannels().size();
+                matchingChannels.forEach(channel -> channel.addErrata(errata));
+                if (errata.getChannels().size() > channelCount) {
                     changedErrata.add(errata);
                 }
 

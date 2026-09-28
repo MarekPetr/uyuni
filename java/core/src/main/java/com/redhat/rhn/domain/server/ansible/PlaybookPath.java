@@ -17,9 +17,11 @@ package com.redhat.rhn.domain.server.ansible;
 
 import com.redhat.rhn.domain.server.MinionServer;
 
-import javax.persistence.DiscriminatorValue;
-import javax.persistence.Entity;
-import javax.persistence.Transient;
+import java.nio.file.Path;
+
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Transient;
 
 /**
  * Ansible Playbook path
@@ -31,14 +33,17 @@ public class PlaybookPath extends AnsiblePath {
     /**
      * Standard constructor
      */
-    public PlaybookPath() { }
+    protected PlaybookPath() {
+        // Default constructor for hibernate
+    }
 
     /**
      * Standard constructor
      * @param minionServer the minion server
+     * @param path the path
      */
-    public PlaybookPath(MinionServer minionServer) {
-        super(minionServer);
+    public PlaybookPath(MinionServer minionServer, Path path) {
+        super(minionServer, path);
     }
 
     @Override

@@ -36,7 +36,7 @@ Possible values are currently:
 | SLES Salt minion                | ```$minion```            | ```$MINION```                                            | ```"sle_minion"```       | ```"minion"```             |
 | SLES Docker and Kiwi build host | ```$build_host```        | ```$BUILD_HOST```                                        | ```"build_host"```       | ```"build_host"```         |
 | Monitoring Server               | ```$monitoring_server``` | ```$MONITORING_SERVER```                                 | ```"monitoring_server``` | ```"minion"```             |
-| SLES Salt SSH minion            | ```$ssh_minion```        | ```$SSH_MINION```                                        | ```"ssh_minion"```       | ```"minion"```             |
+| SLES Salt SSH minion            | ```$sshminion```        | ```$SSHMINION```                                        | ```"sshminion"```       | ```"minion"```             |
 | Red Hat-like Salt minion        | ```$rhlike_minion```     | ```$RHLIKE_MINION```                                     | ```"rhlike_minion"```    | ```"minion"```             |
 | Debian-like Salt minion         | ```$deblike_minion```    | ```$DEBLIKE_MINION```                                    | ```"deblike_minion"```   | ```"minion"```             |
 | PXE-boot minion                 | None                     | ```$PXEBOOT_MAC```                                       | ```"pxeboot_minion"```   | ```"pxeboot"```            |
@@ -221,6 +221,7 @@ For a test with a regular expression, there is ```I should see a text like "..."
 
 ```gherkin
   When I wait until I see "Software Updates Available" text, refreshing the page
+  When I wait at most 300 seconds until I see "Software Updates Available" text, refreshing the page
   When I wait until I do not see "Apply highstate scheduled by admin" text, refreshing the page
   When I wait until I see the name of "sle_minion", refreshing the page
   When I wait until I do not see the name of "sle_minion", refreshing the page
@@ -491,8 +492,8 @@ Note that the text area variant handles the new lines characters while the other
 * Test registration (with API)
 
 ```gherkin
-  Then "ssh_minion" should not be registered
-  Then "ssh_minion" should be registered
+  Then "sshminion" should not be registered
+  Then "sshminion" should be registered
 ```
 
 * Check for base channel (with User Interface)
@@ -521,7 +522,22 @@ Note that the text area variant handles the new lines characters while the other
 
 ```gherkin
   When I wait until onboarding is completed for "rhlike_minion"
+  When I wait at most 300 seconds until onboarding is completed for "rhlike_minion"
   When I wait until event "Package Install/Upgrade scheduled by admin" is completed
+```
+
+Both of the above give the event `DEFAULT_TIMEOUT` seconds to leave the pending
+list and `DEFAULT_TIMEOUT` seconds again to reach Completed, so the total wait can
+be twice that. Onboarding takes an explicit budget in place of the default, and
+gives each of the events it waits for that budget per phase.
+When that phase can take longer than the execution itself — an action chain that
+reboots the system, or anything on a Salt SSH minion, where the chain resumes
+only on the next `ssh-service-default` push — wait for each phase on its own
+budget instead, from the system's page:
+
+```gherkin
+  When I wait at most 900 seconds until the event "Remote Command on" is picked up
+  And I wait at most 300 seconds until the event "Remote Command on" is completed in the history
 ```
 
 ### Salt
@@ -579,7 +595,7 @@ Note that the text area variant handles the new lines characters while the other
 ```gherkin
   When I refresh the pillar data
   Then the pillar data for "timezone:name" should be "Etc/GMT-5" on "sle_minion"
-  Then the pillar data for "timezone" should be empty on "ssh_minion"
+  Then the pillar data for "timezone" should be empty on "sshminion"
 ```
 
 * Apply the Salt highstate

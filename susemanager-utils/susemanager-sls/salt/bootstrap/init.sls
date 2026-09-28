@@ -152,10 +152,10 @@ bootstrap_repo:
     - require:
       - host: mgr_server_localhost_alias_absent
 {%- if repos_disabled.count > 0 %}
-      - mgrcompat: disable_repo_*
+      - module: disable_repo_*
 {%- endif %}
     - onlyif:
-      - ([ {{ bootstrap_repo_exists }} = "True" ])
+      - test "{{ bootstrap_repo_exists }}" = "True"
 
 {% include 'channels/gpg-keys.sls' %}
 
@@ -197,11 +197,16 @@ salt-minion-package:
 {# increase transaction id by 1 since jinja is doing this before new transaction for package install is created #}
 {# this is working under assumption there will be only one transaction between jinja render and actual package installation #}
 {%- set pending_transaction_id = pending_transaction_id|int + 1 %}
+
+{%- if salt['file.directory_exists']('/var/lib/overlay/') %}
+{# SLM 6.1 and older requires writing to snapshot #}
 {%- set salt_config_dir = '/var/lib/overlay/' + pending_transaction_id|string + salt_config_dir %}
 {%- endif %}
 
+{%- endif %}
+
 salt-minion-package:
-  mgrcompat.module_run:
+  module.run:
     - name: transactional_update.pkg_install
     - pkg: {{ salt_minion_name }}
     - args: "--no-recommends"
@@ -314,7 +319,7 @@ salt-minion-master-pub-wipe:
   {%- endif %}
 {%- else %}
 {{ salt_minion_name }}:
-  mgrcompat.module_run:
+  module.run:
     - name: transactional_update.run
     - command: /usr/bin/systemctl enable {{ salt_minion_name }}
     - snapshot: continue

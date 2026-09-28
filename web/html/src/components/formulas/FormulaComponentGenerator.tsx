@@ -1,4 +1,4 @@
-import { type ReactNode, Component, createContext, createRef, Fragment } from "react";
+import { type ReactNode, Component, createContext, createRef } from "react";
 
 import { default as Jexl } from "jexl";
 
@@ -414,16 +414,16 @@ function defaultWrapper(elementName, required, element, help = null) {
   return wrapFormGroupWithLabel(
     elementName,
     required,
-    <Fragment>
+    <>
       <div className="col-lg-6">{element}</div>
       <HelpIcon text={help} />
-    </Fragment>
+    </>
   );
 }
 
 function wrapFormGroupWithLabel(element_name: string, required?: boolean, innerHTML?: ReactNode) {
   return (
-    <div className="form-group" key={element_name}>
+    <div className="row" key={element_name}>
       {wrapLabel(element_name, required)}
       {innerHTML}
     </div>

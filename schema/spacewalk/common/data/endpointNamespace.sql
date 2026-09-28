@@ -27,7 +27,7 @@ INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
     WHERE ns.namespace = 'admin.access' AND ns.access_mode = 'W'
-    AND ep.endpoint = '/manager/admin/access-control/create' AND ep.http_method = 'GET'
+    AND ep.endpoint = '/manager/admin/access-control/create-access-group' AND ep.http_method = 'GET'
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
@@ -1638,7 +1638,7 @@ INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
-    WHERE ns.namespace = 'salt.keys' AND ns.access_mode = 'W'
+    WHERE ns.namespace = 'salt.remote_commands' AND ns.access_mode = 'W'
     AND ep.endpoint = '/manager/systems/cmd' AND ep.http_method = 'GET'
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
@@ -2483,6 +2483,16 @@ INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'systems.ssm' AND ns.access_mode = 'R'
+    AND ep.endpoint = '/ssm/ViewLogDetails.do' AND ep.http_method = 'GET'
+    ON CONFLICT DO NOTHING;
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'systems.ssm' AND ns.access_mode = 'R'
+    AND ep.endpoint = '/ssm/ViewLogDetails.do' AND ep.http_method = 'POST'
+    ON CONFLICT DO NOTHING;
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
     WHERE ns.namespace = 'systems.list' AND ns.access_mode = 'R'
     AND ep.endpoint = '/systems/ssm/ListSystems.do' AND ep.http_method = 'GET'
     ON CONFLICT DO NOTHING;
@@ -2668,18 +2678,33 @@ INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
-    WHERE ns.namespace = 'systems.software.packages' AND ns.access_mode = 'R'
+    WHERE ns.namespace = 'systems.profiles' AND ns.access_mode = 'R'
     AND ep.endpoint = '/systems/details/packages/profiles/ShowProfiles.do' AND ep.http_method = 'GET'
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
-    WHERE ns.namespace = 'systems.software.packages' AND ns.access_mode = 'R'
+    WHERE ns.namespace = 'systems.profiles' AND ns.access_mode = 'R'
     AND ep.endpoint = '/systems/details/packages/profiles/ShowProfiles.do' AND ep.http_method = 'POST'
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
-    WHERE ns.namespace = 'systems.software.packages' AND ns.access_mode = 'R'
+    WHERE ns.namespace = 'systems.profiles' AND ns.access_mode = 'R'
     AND ep.endpoint = '/systems/details/packages/profiles/CompareProfiles.do' AND ep.http_method = 'GET'
+    ON CONFLICT DO NOTHING;
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'systems.profiles' AND ns.access_mode = 'R'
+    AND ep.endpoint = '/systems/details/packages/profiles/CompareProfiles.do' AND ep.http_method = 'POST'
+    ON CONFLICT DO NOTHING;
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'systems.profiles' AND ns.access_mode = 'R'
+    AND ep.endpoint = '/systems/details/packages/profiles/CompareSystems.do' AND ep.http_method = 'GET'
+    ON CONFLICT DO NOTHING;
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'systems.profiles' AND ns.access_mode = 'R'
+    AND ep.endpoint = '/systems/details/packages/profiles/CompareSystems.do' AND ep.http_method = 'POST'
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
@@ -2843,22 +2868,22 @@ INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
-    WHERE ns.namespace = 'systems.software.packages' AND ns.access_mode = 'W'
+    WHERE ns.namespace = 'systems.profiles' AND ns.access_mode = 'W'
     AND ep.endpoint = '/systems/details/packages/profiles/Create.do' AND ep.http_method = 'GET'
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
-    WHERE ns.namespace = 'systems.software.packages' AND ns.access_mode = 'W'
+    WHERE ns.namespace = 'systems.profiles' AND ns.access_mode = 'W'
     AND ep.endpoint = '/systems/details/packages/profiles/Create.do' AND ep.http_method = 'POST'
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
-    WHERE ns.namespace = 'systems.software.packages' AND ns.access_mode = 'W'
+    WHERE ns.namespace = 'systems.profiles' AND ns.access_mode = 'W'
     AND ep.endpoint = '/systems/details/packages/profiles/DeleteProfile.do' AND ep.http_method = 'GET'
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
-    WHERE ns.namespace = 'systems.software.packages' AND ns.access_mode = 'W'
+    WHERE ns.namespace = 'systems.profiles' AND ns.access_mode = 'W'
     AND ep.endpoint = '/systems/details/packages/profiles/DeleteProfile.do' AND ep.http_method = 'POST'
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
@@ -5286,31 +5311,31 @@ INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id
     FROM access.namespace ns, access.endpoint ep
     WHERE ns.namespace = 'systems.software.appstreams' AND ns.access_mode = 'W'
-    AND ep.endpoint = '/rhn/manager/systems/ssm/appstreams' AND ep.http_method = 'GET'
+    AND ep.endpoint = '/manager/systems/ssm/appstreams' AND ep.http_method = 'GET'
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id
     FROM access.namespace ns, access.endpoint ep
     WHERE ns.namespace = 'systems.software.appstreams' AND ns.access_mode = 'W'
-    AND ep.endpoint = '/rhn/manager/systems/ssm/appstreams/configure/:channelId' AND ep.http_method = 'GET'
+    AND ep.endpoint = '/manager/systems/ssm/appstreams/configure/:channelId' AND ep.http_method = 'GET'
     ON CONFLICT (endpoint_id, namespace_id) DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id
     FROM access.namespace ns, access.endpoint ep
     WHERE ns.namespace = 'systems.software.appstreams' AND ns.access_mode = 'W'
-    AND ep.endpoint = '/rhn/manager/api/ssm/appstreams/save' AND ep.http_method = 'POST'
+    AND ep.endpoint = '/manager/api/ssm/appstreams/save' AND ep.http_method = 'POST'
     ON CONFLICT (endpoint_id, namespace_id) DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id
     FROM access.namespace ns, access.endpoint ep
-    WHERE ns.namespace = 'systems.software.appstreams' AND ns.access_mode = 'W'
-    AND ep.endpoint = '/rhn/manager/api/system/appstreams/ssmEnable' AND ep.http_method = 'POST'
+    WHERE ns.namespace = 'api.system.appstreams.ssm_enable' AND ns.access_mode = 'W'
+    AND ep.endpoint = '/manager/api/system/appstreams/ssmEnable' AND ep.http_method = 'POST'
     ON CONFLICT (endpoint_id, namespace_id) DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id
     FROM access.namespace ns, access.endpoint ep
-    WHERE ns.namespace = 'systems.software.appstreams' AND ns.access_mode = 'W'
-    AND ep.endpoint = '/rhn/manager/api/system/appstreams/ssmDisable' AND ep.http_method = 'POST'
+    WHERE ns.namespace = 'api.system.appstreams.ssm_disable' AND ns.access_mode = 'W'
+    AND ep.endpoint = '/manager/api/system/appstreams/ssmDisable' AND ep.http_method = 'POST'
     ON CONFLICT (endpoint_id, namespace_id) DO NOTHING;
 
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
@@ -5731,6 +5756,11 @@ INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'api.sync.hub.list_peripheral_servers' AND ns.access_mode = 'R'
+    AND ep.endpoint = '/manager/api/sync/hub/listPeripheralServers' AND ep.http_method = 'GET'
+    ON CONFLICT DO NOTHING;
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
     WHERE ns.namespace = 'api.sync.hub.get_manager_info' AND ns.access_mode = 'R'
     AND ep.endpoint = '/manager/api/sync/hub/getManagerInfo' AND ep.http_method = 'GET'
     ON CONFLICT DO NOTHING;
@@ -5749,8 +5779,6 @@ INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     WHERE ns.namespace = 'api.sync.hub.list_peripheral_channels_to_sync' AND ns.access_mode = 'R'
     AND ep.endpoint = '/manager/api/sync/hub/listPeripheralChannelsToSync' AND ep.http_method = 'GET'
     ON CONFLICT DO NOTHING;
-
-
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
     WHERE ns.namespace = 'api.sync.hub.migrate_from_iss_v1' AND ns.access_mode = 'W'
@@ -5781,7 +5809,11 @@ INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     WHERE ns.namespace = 'api.sync.hub.regenerate_scc_credentials' AND ns.access_mode = 'W'
     AND ep.endpoint = '/manager/api/sync/hub/regenerateSCCCredentials' AND ep.http_method = 'POST'
     ON CONFLICT DO NOTHING;
-
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'api.sync.hub.schedule_update_task' AND ns.access_mode = 'W'
+    AND ep.endpoint = '/manager/api/sync/hub/scheduleUpdateTask' AND ep.http_method = 'POST'
+    ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
     WHERE ns.namespace = 'api.access.create_role' AND ns.access_mode = 'W'
@@ -6029,6 +6061,21 @@ INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'api.admin.gpg.upload_gpg_key' AND ns.access_mode = 'W'
+    AND ep.endpoint = '/manager/api/admin/gpg/uploadGpgKey' AND ep.http_method = 'POST'
+    ON CONFLICT DO NOTHING;
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'api.admin.gpg.list_gpg_keys' AND ns.access_mode = 'R'
+    AND ep.endpoint = '/manager/api/admin/gpg/listGpgKeys' AND ep.http_method = 'GET'
+    ON CONFLICT DO NOTHING;
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'api.admin.gpg.remove_gpg_key' AND ns.access_mode = 'W'
+    AND ep.endpoint = '/manager/api/admin/gpg/removeGpgKey' AND ep.http_method = 'POST'
+    ON CONFLICT DO NOTHING;
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
     WHERE ns.namespace = 'api.admin.monitoring.disable' AND ns.access_mode = 'W'
     AND ep.endpoint = '/manager/api/admin/monitoring/disable' AND ep.http_method = 'POST'
     ON CONFLICT DO NOTHING;
@@ -6066,6 +6113,11 @@ INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
     WHERE ns.namespace = 'api.admin.payg.set_details' AND ns.access_mode = 'W'
     AND ep.endpoint = '/manager/api/admin/payg/setDetails' AND ep.http_method = 'POST'
+    ON CONFLICT DO NOTHING;
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'api.admin.ssh.remove_known_host' AND ns.access_mode = 'W'
+    AND ep.endpoint = '/manager/api/admin/ssh/removeKnownHost' AND ep.http_method = 'POST'
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
@@ -9039,6 +9091,11 @@ INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'api.system.list_systems_filtered' AND ns.access_mode = 'R'
+    AND ep.endpoint = '/manager/api/system/listSystemsFiltered' AND ep.http_method = 'GET'
+    ON CONFLICT DO NOTHING;
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
     WHERE ns.namespace = 'api.system.list_systems_with_entitlement' AND ns.access_mode = 'R'
     AND ep.endpoint = '/manager/api/system/listSystemsWithEntitlement' AND ep.http_method = 'GET'
     ON CONFLICT DO NOTHING;
@@ -9091,11 +9148,6 @@ INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
     WHERE ns.namespace = 'api.system.refresh_pillar' AND ns.access_mode = 'W'
     AND ep.endpoint = '/manager/api/system/refreshPillar' AND ep.http_method = 'POST'
-    ON CONFLICT DO NOTHING;
-INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
-    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
-    WHERE ns.namespace = 'api.system.register_peripheral_server' AND ns.access_mode = 'W'
-    AND ep.endpoint = '/manager/api/system/registerPeripheralServer' AND ep.http_method = 'POST'
     ON CONFLICT DO NOTHING;
 INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
@@ -9646,4 +9698,117 @@ INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
     SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
     WHERE ns.namespace = 'api.proxy.backup_configuration' AND ns.access_mode = 'W'
     AND ep.endpoint = '/manager/api/proxy/backupConfiguration' AND ep.http_method = 'POST'
+    ON CONFLICT DO NOTHING;
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'api.system.list_migration_targets_with_channels' AND ns.access_mode = 'R'
+    AND ep.endpoint = '/manager/api/system/listMigrationTargetsWithChannels' AND ep.http_method = 'GET'
+    ON CONFLICT (endpoint_id, namespace_id) DO NOTHING;
+
+
+-- XML-RPC System SCAP New API Endpoints
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'api.system.scap.list_scap_content' AND ns.access_mode = 'R'
+      AND ep.endpoint = '/manager/api/system/scap/listScapContent' AND ep.http_method = 'GET';
+
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'api.system.scap.list_policies' AND ns.access_mode = 'R'
+      AND ep.endpoint = '/manager/api/system/scap/listPolicies' AND ep.http_method = 'GET';
+
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'api.system.scap.list_tailoring_files' AND ns.access_mode = 'R'
+      AND ep.endpoint = '/manager/api/system/scap/listTailoringFiles' AND ep.http_method = 'GET';
+
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'api.system.scap.schedule_beta_xccdf_scan_custom' AND ns.access_mode = 'W'
+      AND ep.endpoint = '/manager/api/system/scap/scheduleBetaXccdfScanCustom' AND ep.http_method = 'POST';
+
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'api.system.scap.schedule_beta_xccdf_scan_with_policy' AND ns.access_mode = 'W'
+      AND ep.endpoint = '/manager/api/system/scap/scheduleBetaXccdfScanWithPolicy' AND ep.http_method = 'POST';
+
+-- Recurring Action Policies (Mapped to Existing Namespaces)
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace IN ('systems.groups.recurring', 'systems.recurring', 'home.account.myorg.recurring')
+      AND ns.access_mode = 'W'
+      AND ep.endpoint = '/manager/api/recurringactions/policies' AND ep.http_method = 'GET';
+
+-- SCAP Management - READ
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'audit.scap.management' AND ns.access_mode = 'R'
+      AND ep.endpoint IN (
+        '/manager/audit/scap/content',
+        '/manager/audit/scap/tailoring-files',
+        '/manager/audit/scap/policies',
+        '/manager/audit/scap/policy/details/:id',
+        '/manager/api/audit/profiles/list/:type/:id',
+        '/manager/api/audit/scap/policy/view/:id',
+        '/manager/api/audit/scap/policy/:id/scan-history'
+      );
+
+-- SCAP Management - WRITE
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'audit.scap.management' AND ns.access_mode = 'W'
+      AND ep.endpoint IN (
+        '/manager/audit/scap/content/create',
+        '/manager/audit/scap/content/edit/:id',
+        '/manager/api/audit/scap/content/create',
+        '/manager/api/audit/scap/content/update',
+        '/manager/api/audit/scap/content/delete',
+        '/manager/audit/scap/tailoring-file/create',
+        '/manager/audit/scap/tailoring-file/edit/:id',
+        '/manager/api/audit/scap/tailoring-file/create',
+        '/manager/api/audit/scap/tailoring-file/update',
+        '/manager/api/audit/scap/tailoring-file/delete',
+        '/manager/audit/scap/policy/create',
+        '/manager/audit/scap/policy/edit/:id',
+        '/manager/api/audit/scap/policy/create',
+        '/manager/api/audit/scap/policy/update',
+        '/manager/api/audit/scap/policy/delete'
+      );
+
+-- SCAP Execution - READ
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'audit.scap.execution' AND ns.access_mode = 'R'
+      AND ep.endpoint IN (
+        '/manager/audit/scap/scan/rule-result-details/:sid/:rrid',
+        '/manager/api/audit/scap/custom-remediation/:identifier/:benchmarkId'
+      );
+
+-- SCAP Execution - WRITE (Includes the fixed schedule/create URL)
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'audit.scap.execution' AND ns.access_mode = 'W'
+      AND ep.endpoint IN (
+        '/manager/systems/details/schedule-scap-scan',
+        '/manager/systems/ssm/audit/schedule-scap-scan',
+        '/manager/api/audit/schedule/create',
+        '/manager/api/audit/scap/custom-remediation',
+        '/manager/api/audit/scap/custom-remediation/:identifier/:benchmarkId/:scriptType',
+        '/manager/api/audit/scap/scan/rule-apply-remediation'
+      );
+
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'api.channel.software.setAutoSync' AND ns.access_mode = 'W'
+    AND ep.endpoint = '/manager/api/channel/software/setAutoSync' AND ep.http_method = 'POST'
+    ON CONFLICT DO NOTHING;
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'api.channel.software.isAutoSync' AND ns.access_mode = 'R'
+    AND ep.endpoint = '/manager/api/channel/software/isAutoSync' AND ep.http_method = 'GET'
+    ON CONFLICT DO NOTHING;
+INSERT INTO access.endpointNamespace (namespace_id, endpoint_id)
+    SELECT ns.id, ep.id FROM access.namespace ns, access.endpoint ep
+    WHERE ns.namespace = 'api.channel.listSoftwareChannelsByAutoSync' AND ns.access_mode = 'R'
+    AND ep.endpoint = '/manager/api/channel/listSoftwareChannelsByAutoSync' AND ep.http_method = 'GET'
     ON CONFLICT DO NOTHING;

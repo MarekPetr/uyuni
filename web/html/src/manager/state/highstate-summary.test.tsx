@@ -1,9 +1,13 @@
-import HighstateSummary from "manager/state/highstate-summary";
+import HighstateSummary, { StateSource } from "manager/state/highstate-summary";
 
-import { click, render, screen, server, waitForElementToBeRemoved, within } from "utils/test-utils";
+import { Cancelable } from "utils/functions";
+import Network from "utils/network";
+import { act, click, render, screen, server, waitForElementToBeRemoved, within } from "utils/test-utils";
 
 const API_SUMMARY = "/rhn/manager/api/states/summary?sid=1000";
 const API_HIGHSTATE = "/rhn/manager/api/states/highstate?sid=1000";
+
+afterEach(() => jest.restoreAllMocks());
 
 describe("Highstate summary", () => {
   test("Render summary table", async () => {
@@ -15,16 +19,16 @@ describe("Highstate summary", () => {
     server.mockGetJson(API_SUMMARY, data);
 
     render(<HighstateSummary minionId={1000} />);
-    await screen.findByRole("table");
+    expect(await screen.findByRole("table")).toBeDefined();
 
     const rows = screen.getAllByRole("row");
 
     // Table headers
-    within(rows[0]).getByRole("columnheader", { name: "State Source" });
-    within(rows[0]).getByRole("columnheader", { name: "Type" });
-    within(rows[0]).getByRole("columnheader", { name: "Inherited From" });
+    expect(within(rows[0]).getByRole("columnheader", { name: "State Source" })).toBeDefined();
+    expect(within(rows[0]).getByRole("columnheader", { name: "Type" })).toBeDefined();
+    expect(within(rows[0]).getByRole("columnheader", { name: "Inherited From" })).toBeDefined();
 
-    within(rows[1]).getByText("Internal states");
+    expect(within(rows[1]).getByText("Internal states")).toBeDefined();
   });
 
   test("Render state sources", async () => {
@@ -57,25 +61,71 @@ describe("Highstate summary", () => {
     server.mockGetJson(API_SUMMARY, data);
 
     render(<HighstateSummary minionId={1000} />);
-    await screen.findByRole("table");
+    expect(await screen.findByRole("table")).toBeDefined();
 
     const rows = screen.getAllByRole("row");
     expect(rows.length).toBe(4);
 
     // 1: Directly assigned state channel
-    within(rows[1]).getByRole("link", { name: "My state channel" });
-    within(rows[1]).getByText("State channel");
-    within(rows[1]).getByText("-");
+    expect(within(rows[1]).getByRole("link", { name: "My state channel" })).toBeDefined();
+    expect(within(rows[1]).getByText("State channel")).toBeDefined();
+    expect(within(rows[1]).getByText("-")).toBeDefined();
 
     // 2: Formula inherited from system group
-    within(rows[2]).getByRole("link", { name: "My formula" });
-    within(rows[2]).getByText("Formula");
-    within(rows[2]).getByRole("link", { name: "My group" });
+    expect(within(rows[2]).getByRole("link", { name: "My formula" })).toBeDefined();
+    expect(within(rows[2]).getByText("Formula")).toBeDefined();
+    expect(within(rows[2]).getByRole("link", { name: "My group" })).toBeDefined();
 
     // 3: Config channel inherited from org
-    within(rows[3]).getByRole("link", { name: "My config channel" });
-    within(rows[3]).getByText("Config channel");
-    within(rows[3]).getByRole("link", { name: "My org" });
+    expect(within(rows[3]).getByRole("link", { name: "My config channel" })).toBeDefined();
+    expect(within(rows[3]).getByText("Config channel")).toBeDefined();
+    expect(within(rows[3]).getByRole("link", { name: "My org" })).toBeDefined();
+  });
+
+  test("ignores a stale response after the requested minion changes", async () => {
+    type RawStateSource = Omit<StateSource, "typeName">;
+
+    let resolveFirstRequest: (data: RawStateSource[]) => void = () => undefined;
+    const firstRequest = new Promise<RawStateSource[]>((resolve) => {
+      resolveFirstRequest = resolve;
+    });
+    jest.spyOn(Network, "get").mockImplementation((url) => {
+      if (url.includes("sid=1000")) {
+        return firstRequest as unknown as Cancelable<StateSource[]>;
+      }
+      return Promise.resolve([
+        {
+          id: 2,
+          name: "Current state",
+          type: "STATE",
+          sourceId: 2,
+          sourceName: "Current system",
+          sourceType: "SYSTEM",
+        },
+      ] as RawStateSource[]) as unknown as Cancelable<StateSource[]>;
+    });
+
+    const { rerender } = render(<HighstateSummary minionId={1000} />);
+    rerender(<HighstateSummary minionId={2000} />);
+
+    await screen.findByText("Current state");
+
+    await act(async () => {
+      resolveFirstRequest([
+        {
+          id: 1,
+          name: "Stale state",
+          type: "STATE",
+          sourceId: 1,
+          sourceName: "Old system",
+          sourceType: "SYSTEM",
+        },
+      ]);
+      await firstRequest;
+    });
+
+    expect(screen.queryByText("Stale state")).toBeNull();
+    screen.getByText("Current state");
   });
 });
 
@@ -85,7 +135,7 @@ describe("Highstate output", () => {
     server.mockGetJson(API_HIGHSTATE, "my-example-highstate-string");
 
     render(<HighstateSummary minionId={1000} />);
-    await screen.findByText("There are no entries to show.");
+    expect(await screen.findByText("There are no entries to show.")).toBeDefined();
 
     const highstateLink = screen.getByRole("button", { name: "Show full highstate output" }) as HTMLButtonElement;
     expect(highstateLink.disabled).toBeFalsy();
@@ -93,6 +143,6 @@ describe("Highstate output", () => {
     expect(highstateLink.disabled).toBeTruthy();
     await waitForElementToBeRemoved(highstateLink);
 
-    screen.getByText("my-example-highstate-string");
+    expect(await screen.findByText("my-example-highstate-string")).toBeDefined();
   });
 });

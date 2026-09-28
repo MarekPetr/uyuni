@@ -310,26 +310,12 @@
         </context-group>
         <target>Adressen</target>
       </trans-unit>
-      <trans-unit id="address type B" xml:space="preserve">
-        <source>Billing Address</source>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/users/Addresses</context>
-        </context-group>
-        <target>Rechnungsadresse</target>
-      </trans-unit>
       <trans-unit id="address type M" xml:space="preserve">
         <source>Mailing Address</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/users/Addresses</context>
         </context-group>
         <target>Postadresse</target>
-      </trans-unit>
-      <trans-unit id="address type S" xml:space="preserve">
-        <source>Shipping Address</source>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/users/Addresses</context>
-        </context-group>
-        <target>Lieferadresse</target>
       </trans-unit>
       <trans-unit id="address not filled in" xml:space="preserve">
         <source>Address not filled in</source>
@@ -2772,13 +2758,6 @@ and try again.
           <context context-type="sourcefile">/rhn/account/UserDetails</context>
         </context-group>
         <target>Aktivierungs-Schlüssel Administrator</target>
-      </trans-unit>
-      <trans-unit id="Admin Access" xml:space="preserve">
-        <source>Admin Access</source>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/account/UserDetails</context>
-        </context-group>
-        <target>Admin Zugang</target>
       </trans-unit>
       <trans-unit id="neverinparens" xml:space="preserve">
         <source>(never)</source>
@@ -6485,13 +6464,6 @@ Folgen Sie dieser URL für die vollständige Liste inaktiver Systeme:
         </context-group>
         <target>System {0} kann nicht gekickstartet werden, da es über keine {1} Netzwerkeinheit verfügt.</target>
       </trans-unit>
-      <trans-unit id="kickstart.schedule.noup2date" xml:space="preserve">
-        <source>An autoinstallation was not scheduled for &lt;strong&gt;&lt;a href="/rhn/systems/details/Overview.do?sid={0}"&gt;{1}&lt;/a&gt;&lt;/strong&gt; because the package profile did not contain the 'up2date' package. An update of that system's package profile may be required.</source>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
-        </context-group>
-        <target>Ein Kickstart wurde nicht für {1} ({0}) geplant, weil die Paketprofile kein 'up2date' Paket enthielten. Für das Paketprofil dieses System's wird vielleicht ein Update benötigt.</target>
-      </trans-unit>
       <trans-unit id="kickstart.session.newsession" xml:space="preserve">
         <source>A new autoinstall session was initiated for this system.</source>
         <context-group name="ctx">
@@ -6526,13 +6498,6 @@ Folgen Sie dieser URL für die vollständige Liste inaktiver Systeme:
           <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
         </context-group>
         <target>Profil für Kickstart-Session {0}.</target>
-      </trans-unit>
-      <trans-unit id="kickstart.schedule.noup2dateinchannel" xml:space="preserve">
-        <source>We require version {0} or greater of up2date in order to kickstart a system. &lt;strong&gt;{2}&lt;/strong&gt; has {1} installed but we could not find a version of up2date in this system's channels to upgrade it to the required version or above.</source>
-        <context-group name="ctx">
-          <context context-type="sourcefile">/rhn/kickstart/ScheduleKickstart.do</context>
-        </context-group>
-        <target>Wir benötigen die Version {0} oder höher von up2date um ein System zu kickstarten. Dieses System hat {1} installiert, aber wir konnten in den Channels dieses System's keine Version von up2date finden, um es auf die benötigte Version oder höher zu aktualisieren.</target>
       </trans-unit>
       <trans-unit id="kickstart.state.guesttimedout" xml:space="preserve">
         <source>&lt;p&gt;The guest system has not communicated with @@PRODUCT_NAME@@ in the past {0} minutes. The install process might be progressing slowly due to hardware constraints, or it might be frozen.&lt;/p&gt; &lt;p&gt;You may wish to troubleshoot this issue by running &lt;em&gt;virsh console &lt;strong&gt;guestname&lt;/strong&gt;&lt;/em&gt; on the host system. This command will allow you to connect to the text console of the guest as it is installing, which may provide additional information about this guest system's installation status.&lt;/p&gt;</source>
@@ -7751,11 +7716,11 @@ Folgen Sie dieser URL für die vollständige Liste inaktiver Systeme:
           <context context-type="sourcefile">/rhn/systems/provisioning/preservation/PreservationListDelete.do</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="cobbler.powermanagement.poweron" xml:space="preserve">
+      <trans-unit id="cobbler.powermanagement.power_on" xml:space="preserve">
         <source>Power On</source>
         <target>Anschalten</target>
       </trans-unit>
-      <trans-unit id="cobbler.powermanagement.poweroff" xml:space="preserve">
+      <trans-unit id="cobbler.powermanagement.power_off" xml:space="preserve">
         <source>Power Off</source>
         <target>Ausschalten</target>
       </trans-unit>
@@ -7778,11 +7743,11 @@ Folgen Sie dieser URL für die vollständige Liste inaktiver Systeme:
         <target>Energieverwaltung an einem System ohne gespeicherte Konfiguration nicht möglich.</target>
       </trans-unit>
       <trans-unit id="cobbler.powermanagement.no_fence_agents" xml:space="preserve">
-        <source>This functionality is only available on @@PRODUCT_NAME@@ servers that have installed "fence agents," which are possibly availabe as "fence-agents", "fence-agents-all", or "fence-agents-ipmilan" packages depending on your operating system and desired power management infrastructure. Please install the fence agents. If fence agents are not available for your operating system then power management functionality is not supported.</source>
+        <source>This functionality is only available on @@PRODUCT_NAME@@ servers that have installed "fence agents," which are possibly available as "fence-agents", "fence-agents-all", or "fence-agents-ipmilan" packages depending on your operating system and desired power management infrastructure. Please install the fence agents. If fence agents are not available for your operating system then power management functionality is not supported.</source>
         <context-group name="ctx">
           <context context-type="sourcefile">/rhn/systems/details/kickstart/PowerManagement.do</context>
         </context-group>
-        <target>Diese Funktionalität ist nur an @@PRODUCT_NAME@@ Servern verfügbar, an denen "Fence Agents" installiert sind, die je nach Ihrem Betriebssystem und der gewünschten Energieverwaltungsinfrastruktur möglicherweise als "fence-agents"-, "fence-agents-all"- oder "fence-agents-ipmilan"-Pakete verfügbar sind. Bitte installieren Sie die Fence Agents. Falls Fence Agents für Ihr Betriebssystem nicht verfügbar sind, sonst wird die Energieverwaltungsfunktionalität nicht unterstützt.</target>
+        <target state="needs-adaptation">Diese Funktionalität ist nur an @@PRODUCT_NAME@@ Servern verfügbar, an denen "Fence Agents" installiert sind, die je nach Ihrem Betriebssystem und der gewünschten Energieverwaltungsinfrastruktur möglicherweise als "fence-agents"-, "fence-agents-all"- oder "fence-agents-ipmilan"-Pakete verfügbar sind. Bitte installieren Sie die Fence Agents. Falls Fence Agents für Ihr Betriebssystem nicht verfügbar sind, sonst wird die Energieverwaltungsfunktionalität nicht unterstützt.</target>
       </trans-unit>
       <trans-unit id="cobbler.powermanagement.alom" xml:space="preserve">
         <source>Advanced Lights Out Manager</source>
@@ -10398,8 +10363,8 @@ Alternatively, you will want to download &lt;strong&gt;Incremental Channel Conte
         <target state="new"/>
       </trans-unit>
       <trans-unit id="maintenance.action.reschedule.error.cancel" xml:space="preserve">
-        <source>An error occured trying to cancel affected actions for schedule '{0}'</source>
-        <target state="new"/>
+        <source>An error occurred trying to cancel affected actions for schedule '{0}'</source>
+        <target state="needs-adaptation"/>
       </trans-unit>
       <trans-unit id="maintenance.action.reschedule.error.fail" xml:space="preserve">
         <source>Operation could not be performed. There are scheduled actions on systems</source>
@@ -11854,6 +11819,166 @@ To amend this situation, please add SCC credentials &lt;a href="/rhn/admin/setup
         </context-group>
         <target state="new"/>
       </trans-unit>
-    </body>
+      <trans-unit id="pxeeventfailed" xml:space="preserve">
+        <source>PXE Event Failed</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="ARMHF Debian" xml:space="preserve">
+        <source>ARMHF Debian</source>
+        <target>ARMHF Debian</target>
+      </trans-unit>
+      <trans-unit id="diskcheckwarning" xml:space="preserve">
+        <source>Disk Check</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="notification.diskcheck.summary" xml:space="preserve">
+        <source>You are running out of space on your @@PRODUCT_NAME@@ {0}. This is {1}</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="notification.diskcheck.details" xml:space="preserve">
+        <source>You are running out of space on your @@PRODUCT_NAME@@ {0}. This is {1}. If you run out of disk space, @@PRODUCT_NAME@@ will stop running, and this could lead to a loss of data. @@PRODUCT_NAME@@ will shutdown automatically.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="SCAP Policies" xml:space="preserve">
+        <source>SCAP Policies</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">Navigation Menu</context>
+        </context-group>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="SCAP Content" xml:space="preserve">
+        <source>SCAP Content</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">Navigation Menu</context>
+        </context-group>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="Tailoring Files" xml:space="preserve">
+        <source>Tailoring Files</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">Navigation Menu</context>
+        </context-group>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="distupgrade.sles16.migration.success" xml:space="preserve">
+        <source>SLES 16 migration completed successfully.{0}</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="distupgrade.sles16.migration.success.post_steps" xml:space="preserve">
+        <source>Recommended post-migration steps:
+- Check for orphaned/unneeded packages: zypper packages --orphaned --unneeded
+- Check for updated config files: find /etc/ -name '*.rpmnew' -o -name '*.rpmsave'</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="distupgrade.sles16.migration.failed" xml:space="preserve">
+        <source>SLES 16 migration failed or result not found.{0}</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="user.admin.access" xml:space="preserve">
+        <source>Admin Access</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/account/UserDetails</context>
+        </context-group>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z16.description" xml:space="preserve">
+        <source>KVM on IBM z16 series</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z16.label" xml:space="preserve">
+        <source>KVM on IBM z16 series</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z17.description" xml:space="preserve">
+        <source>KVM on IBM z17 series</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.environment.kvm_ibm_z17.label" xml:space="preserve">
+        <source>KVM on IBM z17 series</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.resultType.ibm_pvattest.description" xml:space="preserve">
+        <source>IBM Secure Execution (IBM SEL)</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.resultType.ibm_pvattest.label" xml:space="preserve">
+        <source>IBM SEL PVATTEST</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.status.requested.description" xml:space="preserve">
+        <source>Requested</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.status.queued.description" xml:space="preserve">
+        <source>Queued</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.status.submitted.description" xml:space="preserve">
+        <source>Submitted</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.missing_input_data" xml:space="preserve">
+        <source>The mandatory input data is missing</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_missing" xml:space="preserve">
+        <source>The secure execution header is missing.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_wrong_format" xml:space="preserve">
+        <source>The secure execution header is not a valid Base64 string.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_empty" xml:space="preserve">
+        <source>The secure execution header is empty.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_too_short" xml:space="preserve">
+        <source>The secure execution header is too short.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_invalid_header" xml:space="preserve">
+        <source>The secure execution header does not start with the expected byte sequence.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.secureExecutionHeader_size_mismatch" xml:space="preserve">
+        <source>The secure execution header size does not match the expected value.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_wrong_format" xml:space="preserve">
+        <source>The host key document is not a valid string.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_not_valid_yet" xml:space="preserve">
+        <source>The host key document is not valid yet.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_expired" xml:space="preserve">
+        <source>The host key document has expired.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="coco.attestation.ibm.hostKeyDocument_failed" xml:space="preserve">
+        <source>The host key document is not a valid PEM certificate.</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="contentmanagement.invalid_issue_date" xml:space="preserve">
+        <source>Invalid date format. It must follow ISO 8601 offset format (e.g. 2026-06-04T22:00:00Z).</source>
+        <target state="new"/>
+      </trans-unit>
+      <trans-unit id="edit_address.jsp.country.select" xml:space="preserve">
+        <source>-- Select Country --</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/users/EditAddress</context>
+        </context-group>
+        <target state="translated">-- Land auswählen --</target>
+      </trans-unit>
+    <trans-unit id="system.entitle.added.peripheral_server" xml:space="preserve">
+        <source>&lt;strong&gt;Peripheral server&lt;/strong&gt; type has been applied.</source>
+        <context-group name="ctx">
+          <context context-type="sourcefile">/rhn/systems/details/Overview.do</context>
+        </context-group>
+      <target state="new"/>
+  </trans-unit>
+      </body>
   </file>
 </xliff>

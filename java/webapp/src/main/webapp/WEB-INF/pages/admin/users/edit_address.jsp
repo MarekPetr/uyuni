@@ -1,5 +1,5 @@
 <%@ taglib uri="http://rhn.redhat.com/rhn" prefix="rhn" %>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
 <%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
 
@@ -15,7 +15,7 @@
         <html:form action="/users/EditAddressSubmit" styleClass="form-horizontal">
             <rhn:csrf />
             <%@ include file="/WEB-INF/pages/common/fragments/user/edit_address_form.jspf" %>
-            <div class="form-group">
+            <div class="row">
                 <div class="col-lg-offset-3 offset-lg-3 col-lg-6">
                     <button type="submit" class="btn btn-primary">
                         <bean:message key="message.Update" />
@@ -23,7 +23,6 @@
                 </div>
             </div>
             <html:hidden property="uid" />
-            <html:hidden property="type"/>
         </html:form>
     </body>
 </html>

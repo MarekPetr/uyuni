@@ -26,8 +26,8 @@ import org.apache.struts.util.LabelValueBean;
 
 import java.util.Set;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * RhnLookupDispatchAction
@@ -84,7 +84,7 @@ public abstract class RhnLookupDispatchAction extends LookupDispatchAction {
              */
             for (String key : keyset) {
                 // Look for the alternateParameter portion in the key
-                if (key.indexOf(alternateParameter) > 0) {
+                if (key.indexOf(alternateParameter) >= 1) {
                     // if we find alternateParameter in the key, set the method name
                     methodName = key.substring(0, key.indexOf(alternateParameter) - 1);
                 }

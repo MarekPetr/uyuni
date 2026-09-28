@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021--2025 SUSE LLC
+ * Copyright (c) 2021--2026 SUSE LLC
  *
  * This software is licensed to you under the GNU General Public License,
  * version 2 (GPLv2). There is NO WARRANTY for this software, express or
@@ -15,10 +15,8 @@ import com.redhat.rhn.common.hibernate.LookupException;
 import com.redhat.rhn.domain.Identifiable;
 import com.redhat.rhn.domain.org.Org;
 
-import com.vladmihalcea.hibernate.type.json.JsonType;
-
-import org.hibernate.annotations.Type;
-import org.hibernate.annotations.TypeDef;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.io.Serializable;
 import java.util.List;
@@ -26,18 +24,18 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Root;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 
 
 /**
@@ -47,7 +45,6 @@ import javax.persistence.criteria.Root;
  */
 
 
-@TypeDef(name = "json", typeClass = JsonType.class)
 @Entity
 @Table(name = "suseSaltPillar")
 public class Pillar implements Identifiable, Serializable {
@@ -73,7 +70,7 @@ public class Pillar implements Identifiable, Serializable {
     @Column(name = "category")
     private String category;
 
-    @Type(type = "json")
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private Map<String, Object> pillar = new TreeMap<>();
 

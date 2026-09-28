@@ -24,27 +24,29 @@ import com.redhat.rhn.domain.server.ServerArch;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.hibernate.annotations.Type;
+import org.hibernate.type.YesNoConverter;
 
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
-import javax.persistence.Transient;
+import jakarta.persistence.Basic;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 
 /**
  * ImageInfo
@@ -94,7 +96,7 @@ public class ImageInfo extends BaseDomainHelper {
     /**
      * @return the org
      */
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     public Org getOrg() {
         return org;
     }
@@ -102,7 +104,7 @@ public class ImageInfo extends BaseDomainHelper {
     /**
      * @return the image arch
      */
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "image_arch_id")
     public ServerArch getImageArch() {
         return imageArch;
@@ -152,7 +154,7 @@ public class ImageInfo extends BaseDomainHelper {
     /**
      * @return the image profile
      */
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "profile_id")
     public ImageProfile getProfile() {
         return profile;
@@ -161,7 +163,7 @@ public class ImageInfo extends BaseDomainHelper {
     /**
      * @return the image store
      */
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id")
     public ImageStore getStore() {
         return store;
@@ -170,7 +172,7 @@ public class ImageInfo extends BaseDomainHelper {
     /**
      * @return the build server
      */
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "build_server_id")
     public MinionServer getBuildServer() {
         return buildServer;
@@ -179,7 +181,7 @@ public class ImageInfo extends BaseDomainHelper {
     /**
      * @return the build action
      */
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "build_action_id")
     public ImageBuildAction getBuildAction() {
         return buildAction;
@@ -195,7 +197,7 @@ public class ImageInfo extends BaseDomainHelper {
     /**
      * @return the inspect action
      */
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "inspect_action_id")
     public ImageInspectAction getInspectAction() {
         return inspectAction;
@@ -227,7 +229,7 @@ public class ImageInfo extends BaseDomainHelper {
     /**
      * @return the channels
      */
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "suseImageInfoChannel",
                joinColumns = { @JoinColumn(name = "image_info_id") },
                inverseJoinColumns = { @JoinColumn(name = "channel_id") })
@@ -238,7 +240,7 @@ public class ImageInfo extends BaseDomainHelper {
     /**
      * @return the installed installedProducts
      */
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "suseImageInfoInstalledProduct",
                joinColumns = { @JoinColumn(name = "image_info_id") },
                inverseJoinColumns = { @JoinColumn(name = "installed_product_id") })
@@ -250,7 +252,7 @@ public class ImageInfo extends BaseDomainHelper {
      * @return true if the image has been built outside SUSE Manager
      */
     @Column(name = "external_image")
-    @Type(type = "yes_no")
+    @Convert(converter = YesNoConverter.class)
     public boolean isExternalImage() {
         return externalImage;
     }
@@ -259,7 +261,7 @@ public class ImageInfo extends BaseDomainHelper {
      * @return true if the image is obsolete (has been replaced in the store)
      */
     @Column(name = "obsolete")
-    @Type(type = "yes_no")
+    @Convert(converter = YesNoConverter.class)
     public boolean isObsolete() {
         return obsolete;
     }
@@ -268,7 +270,7 @@ public class ImageInfo extends BaseDomainHelper {
      * @return true if the image has been successfully built
      */
     @Column(name = "built")
-    @Type(type = "yes_no")
+    @Convert(converter = YesNoConverter.class)
     public boolean isBuilt() {
         return built;
     }
@@ -292,7 +294,7 @@ public class ImageInfo extends BaseDomainHelper {
     /**
      * @return the pillar
      */
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pillar_id")
     public Pillar getPillar() {
         return pillar;
@@ -304,7 +306,7 @@ public class ImageInfo extends BaseDomainHelper {
         return deltaSourceFor;
     }
 
-    @OneToMany
+    @OneToMany(fetch = FetchType.LAZY)
     @JoinColumn(name = "target_image_id", updatable = false)
     public Set<DeltaImageInfo> getDeltaTargetFor() {
         return deltaTargetFor;
@@ -313,6 +315,7 @@ public class ImageInfo extends BaseDomainHelper {
     /**
      * @return build log
      */
+    @Basic(fetch = FetchType.LAZY)
     @Column(name = "log")
     public String getBuildLog() {
         return buildLog;
